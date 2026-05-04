@@ -1,13 +1,14 @@
 terraform {
   required_providers {
-    cloudlake = {
-      source = "cetic-group/cloudlake"
+    ccp = {
+      source  = "cetic-group/cetic-cloud-platform"
+      version = "~> 0.5"
     }
   }
 }
 
-provider "cloudlake" {
-  # api_key et api_url depuis env CCP_API_KEY / CL_API_URL ou ~/.cloudlake/config.yaml
+provider "ccp" {
+  # api_key et api_url depuis env CCP_API_KEY / CCP_API_URL
 }
 
 # Pré-requis : un VPC et un VNet existants
@@ -39,10 +40,10 @@ resource "ccp_load_balancer" "demo" {
 
 output "lb_vip" {
   description = "VIP privée du LB sur le VNet"
-  value       = cloudlake_load_balancer.demo.vip_address
+  value       = ccp_load_balancer.demo.vip_address
 }
 
 output "lb_public_ip" {
   description = "IP publique attachée"
-  value       = cloudlake_load_balancer.demo.public_ip_address
+  value       = ccp_load_balancer.demo.public_ip_address
 }

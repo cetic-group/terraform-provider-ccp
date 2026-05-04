@@ -1,25 +1,25 @@
-# Cloud Lake — basic example
+# CETIC Cloud Platform — basic example
 #
 # Prerequisites:
 #   export CCP_API_KEY="ccp_live_..."   (required, scope >= write)
-#   export CCP_API_URL="..."          (optional, defaults to https://api.in.techledger.io)
+#   export CCP_API_URL="..."            (optional, defaults to https://api.in.techledger.io)
 #
 # Note: ccp_vpc and ccp_vnet are provisioned asynchronously by
-# the Cloud Lake SDN backend. The provider polls the resource until it
+# the CCP SDN backend. The provider polls the resource until it
 # reaches "active" — expect up to ~90s on first apply.
 
 terraform {
   required_providers {
-    cloudlake = {
-      source  = "cetic-group/cloudlake"
-      version = "~> 0.2"
+    ccp = {
+      source  = "cetic-group/cetic-cloud-platform"
+      version = "~> 0.5"
     }
   }
 }
 
-provider "cloudlake" {
-  api_key  = "ccp_live_KIhyBNjJFROgLjhTwpqjNe6w17PgtDT1fmPHuE_s1TU"                 # or via CCP_API_KEY env var
-  endpoint = "http://localhost:8000"    # or via CCP_API_URL
+provider "ccp" {
+  api_key  = "ccp_live_..."       # or via CCP_API_KEY env var
+  endpoint = "https://api.in.techledger.io"  # or via CCP_API_URL
 }
 
 # ---------------------------------------------------------------------------
@@ -29,7 +29,7 @@ provider "cloudlake" {
 data "ccp_regions" "available" {}
 
 output "regions" {
-  value = data.cloudlake_regions.available.regions
+  value = data.ccp_regions.available.regions
 }
 
 # ---------------------------------------------------------------------------
