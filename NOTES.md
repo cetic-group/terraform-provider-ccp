@@ -180,7 +180,7 @@ Not set up yet. Open TODOs:
 
 - [ ] GitHub Actions workflow with `goreleaser` (cross-compile linux/darwin/windows × amd64/arm64).
 - [ ] GPG-sign release artifacts (Terraform Registry requires a detached signature).
-- [ ] Publish to the Terraform Registry under `cetic-group/cloudlake`.
+- [ ] Publish to the Terraform Registry under `cetic-group/cetic-cloud-platform`.
 - [ ] Generate `docs/` from schema descriptions via
       [`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs)
       and commit the output (the registry consumes them from there).

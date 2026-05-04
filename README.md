@@ -33,14 +33,14 @@ export CCP_API_URL="https://api.in.techledger.io"   # optional, this is the defa
 ```hcl
 terraform {
   required_providers {
-    cloudlake = {
-      source  = "cetic-group/cloudlake"
+    ccp = {
+      source  = "cetic-group/cetic-cloud-platform"
       version = "~> 0.3"
     }
   }
 }
 
-provider "cloudlake" {}
+provider "ccp" {}
 ```
 
 A full working example (SSH key, VPC, two VNets, region listing) lives in
@@ -76,13 +76,13 @@ Each CETIC Cloud API key is **bound to a single organization**
 key via Terraform's provider aliases:
 
 ```hcl
-provider "cloudlake" {
+provider "ccp" {
   # default — reads CCP_API_KEY (org "prod")
 }
 
-provider "cloudlake" {
+provider "ccp" {
   alias    = "staging"
-  api_key  = var.cloudlake_staging_key   # org "staging"
+  api_key  = var.ccp_staging_key   # org "staging"
 }
 
 resource "ccp_vpc" "prod" {
@@ -91,7 +91,7 @@ resource "ccp_vpc" "prod" {
 }
 
 resource "ccp_vpc" "staging" {
-  provider = cloudlake.staging
+  provider = ccp.staging
   name     = "staging"
   region   = "RNN"
 }
@@ -104,7 +104,7 @@ right API key), use the data source:
 data "ccp_organizations" "all" {}
 
 output "accessible_orgs" {
-  value = [for o in data.cloudlake_organizations.all.organizations : {
+  value = [for o in data.ccp_organizations.all.organizations : {
     id         = o.id
     name       = o.name
     is_default = o.is_default
@@ -122,7 +122,7 @@ output "accessible_orgs" {
 | `endpoint` | `CCP_API_URL` | `https://api.in.techledger.io`   | Base URL of the CETIC Cloud API.    |
 
 ```hcl
-provider "cloudlake" {
+provider "ccp" {
   # api_key  = "ccp_live_..."             # prefer the env var
   # endpoint = "https://api.in.techledger.io"
 }
@@ -140,7 +140,7 @@ make build
 
 # Build + install into the local Terraform plugin cache so a sibling
 # terraform init can pick it up:
-#   ~/.terraform.d/plugins/registry.terraform.io/cetic-group/cloudlake/0.3.0/<os>_<arch>/
+#   ~/.terraform.d/plugins/registry.terraform.io/cetic-group/cetic-cloud-platform/0.3.0/<os>_<arch>/
 make install
 
 # Other helpers

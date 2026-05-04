@@ -104,10 +104,10 @@ Copy the template at the bottom of this doc and adapt:
 ```go
 import (
     // ...
-    "github.com/cetic-group/terraform-provider-cloudlake/internal/resources/myresource"
+    "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/myresource"
 )
 
-func (p *cloudlakeProvider) Resources(_ context.Context) []func() resource.Resource {
+func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
     return []func() resource.Resource{
         // ... existing
         myresource.New,
@@ -122,8 +122,8 @@ Create `examples/myresource/main.tf`:
 ```hcl
 terraform {
   required_providers {
-    cloudlake = {
-      source = "cetic-group/cloudlake"
+    ccp = {
+      source = "cetic-group/cetic-cloud-platform"
     }
   }
 }
@@ -138,7 +138,7 @@ resource "ccp_my_resource" "example" {
 
 ```bash
 cd infrastructure/terraform
-go build -o terraform-provider-cloudlake .
+go build -o terraform-provider-cetic-cloud-platform .
 make install  # if Makefile target exists
 cd examples/myresource
 terraform init
@@ -152,14 +152,14 @@ Save as `internal/resources/myresource/myresource.go` and find/replace
 `MyResource` / `myresource` / `my_resource` / `my-resources` to your case:
 
 ```go
-// Package myresource implements the cloudlake_my_resource Terraform resource.
+// Package myresource implements the ccp_my_resource Terraform resource.
 package myresource
 
 import (
     "context"
     "fmt"
 
-    "github.com/cetic-group/terraform-provider-cloudlake/internal/client"
+    "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
     "github.com/hashicorp/terraform-plugin-framework/path"
     "github.com/hashicorp/terraform-plugin-framework/resource"
     "github.com/hashicorp/terraform-plugin-framework/resource/schema"
