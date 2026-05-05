@@ -336,18 +336,50 @@ type Organization struct {
 // (create + delete + tags + IP attachment) only.
 
 type LoadBalancer struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	Region          string    `json:"region"`
-	VnetID          string    `json:"vnet_id"`
-	VIPAddress      *string   `json:"vip_address,omitempty"`
-	PublicIPAddress *string   `json:"public_ip_address,omitempty"`
-	PublicIPID      *string   `json:"public_ip_id,omitempty"`
-	Status          string    `json:"status"`
-	ErrorMessage    *string   `json:"error_message,omitempty"`
-	Tags            []string  `json:"tags"`
-	CreatedAt       string    `json:"created_at"`
-	UpdatedAt       string    `json:"updated_at"`
+	ID              string       `json:"id"`
+	Name            string       `json:"name"`
+	Region          string       `json:"region"`
+	VnetID          string       `json:"vnet_id"`
+	VIPAddress      *string      `json:"vip_address,omitempty"`
+	PublicIPAddress *string      `json:"public_ip_address,omitempty"`
+	PublicIPID      *string      `json:"public_ip_id,omitempty"`
+	Status          string       `json:"status"`
+	ErrorMessage    *string      `json:"error_message,omitempty"`
+	Tags            []string     `json:"tags"`
+	Listeners       []LBListener `json:"listeners"`
+	CreatedAt       string       `json:"created_at"`
+	UpdatedAt       string       `json:"updated_at"`
+}
+
+type LBListener struct {
+	ID           string      `json:"id"`
+	Name         string      `json:"name"`
+	Algorithm    string      `json:"algorithm"`
+	Protocol     string      `json:"protocol"`
+	FrontendPort int         `json:"frontend_port"`
+	Backends     []LBBackend `json:"backends"`
+}
+
+type LBBackend struct {
+	ID          string  `json:"id"`
+	ContainerID *string `json:"container_id,omitempty"`
+	VMID        *string `json:"vm_instance_id,omitempty"`
+	Port        int     `json:"port"`
+	Weight      int     `json:"weight"`
+}
+
+type LBListenerCreateRequest struct {
+	Name         string `json:"name"`
+	Algorithm    string `json:"algorithm"`
+	Protocol     string `json:"protocol"`
+	FrontendPort int    `json:"frontend_port"`
+}
+
+type LBBackendCreateRequest struct {
+	ContainerID *string `json:"container_id,omitempty"`
+	VMID        *string `json:"vm_instance_id,omitempty"`
+	Port        int     `json:"port"`
+	Weight      int     `json:"weight,omitempty"`
 }
 
 type LoadBalancerCreateRequest struct {

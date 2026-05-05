@@ -604,6 +604,30 @@ func (c *Client) DetachLoadBalancerPublicIP(ctx context.Context, id string) (*Lo
 	return &out, nil
 }
 
+func (c *Client) CreateLBListener(ctx context.Context, lbID string, req LBListenerCreateRequest) (*LBListener, error) {
+	var out LBListener
+	if err := c.do(ctx, http.MethodPost, "/v1/load-balancers/"+lbID+"/listeners", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteLBListener(ctx context.Context, lbID, listenerID string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID, nil, nil)
+}
+
+func (c *Client) AddLBBackend(ctx context.Context, lbID, listenerID string, req LBBackendCreateRequest) (*LBBackend, error) {
+	var out LBBackend
+	if err := c.do(ctx, http.MethodPost, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) RemoveLBBackend(ctx context.Context, lbID, listenerID, backendID string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends/"+backendID, nil, nil)
+}
+
 // ─── Container Scale Set ─────────────────────────────────────────────────────
 
 func (c *Client) ListContainerScaleSets(ctx context.Context, region string) ([]ContainerScaleSet, error) {
