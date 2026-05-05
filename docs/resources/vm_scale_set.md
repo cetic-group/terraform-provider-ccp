@@ -2,7 +2,7 @@
 page_title: "ccp_vm_scale_set Resource - cetic-cloud-platform"
 subcategory: "Compute"
 description: |-
-  Manages a VM scale set (auto-scaling group of QEMU virtual machines) on CETIC Cloud Platform.
+  Manages a VM scale set (auto-scaling group of virtual machines) on CETIC Cloud Platform.
 ---
 
 # ccp_vm_scale_set (Resource)
@@ -34,7 +34,7 @@ resource "ccp_vm_scale_set" "compute_workers" {
 - `name` - (Required) Name of the scale set.
 - `region` - (Required, Forces new resource) Region where the scale set is created. One of: `RNN`, `PAR`, `ABJ`.
 - `plan` - (Required) Instance plan for each VM. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
-- `template` - (Required, Forces new resource) QEMU template key (e.g. `ubuntu-24.04`, `debian-12`).
+- `template` - (Required, Forces new resource) VM template key (e.g. `ubuntu-24.04`, `debian-12`).
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach all VMs to.
 - `replicas` - (Required) Desired number of VM replicas.
 

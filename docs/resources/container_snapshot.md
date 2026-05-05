@@ -7,7 +7,7 @@ description: |-
 
 # ccp_container_snapshot (Resource)
 
-Creates a point-in-time snapshot of a container instance. Snapshots are stored on Ceph RBD and can be used to restore the container to a previous state via the console or CLI. Up to 2 free snapshots are included per instance.
+Creates a point-in-time snapshot of a container instance. Snapshots can be used to restore the container to a previous state via the console or CLI. Up to 2 free snapshots are included per instance.
 
 ~> **Note:** Snapshots are immutable after creation. Any change to `container_id` or `name` forces the existing snapshot to be deleted and a new one to be created.
 

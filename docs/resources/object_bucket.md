@@ -2,12 +2,12 @@
 page_title: "ccp_object_bucket Resource - cetic-cloud-platform"
 subcategory: "Storage"
 description: |-
-  Manages an S3-compatible object storage bucket (Ceph RGW) on CETIC Cloud Platform.
+  Manages an S3-compatible object storage bucket on CETIC Cloud Platform.
 ---
 
 # ccp_object_bucket (Resource)
 
-Manages an S3-compatible object storage bucket backed by Ceph RGW. Buckets are accessible via any standard S3 client or SDK using the region endpoint. Each tenant has a dedicated RGW user — data is isolated at the S3 user level. Use `ccp_object_storage_key` to create scoped access credentials for the bucket.
+Manages an S3-compatible object storage bucket on CETIC Cloud Platform. Buckets are accessible via any standard S3 client or SDK using the region endpoint. Data is isolated at the tenant level. Use `ccp_object_storage_key` to create scoped access credentials for the bucket.
 
 ~> **Note:** Bucket names must be unique within a region. Once created, the bucket name and region cannot be changed — these fields force a new resource.
 

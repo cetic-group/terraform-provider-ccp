@@ -2,12 +2,12 @@
 page_title: "ccp_k8s_cluster Resource - cetic-cloud-platform"
 subcategory: "Kubernetes"
 description: |-
-  Manages a Kubernetes cluster (CAPI/CAPMOX) on CETIC Cloud Platform.
+  Manages a Kubernetes cluster on CETIC Cloud Platform.
 ---
 
 # ccp_k8s_cluster (Resource)
 
-Manages a Kubernetes cluster provisioned via Cluster API (CAPI) and CAPMOX on CETIC Cloud infrastructure. The cluster runs on Proxmox VMs inside the tenant VPC, with Cilium CNI, Ceph RBD persistent storage, and an in-cluster operator (`cloud-lake-cluster-agent`) that automates `LoadBalancer` service IP allocation.
+Manages a Kubernetes cluster on CETIC Cloud Platform. The cluster runs inside the tenant VPC with Cilium CNI, persistent block storage, and an in-cluster operator that automates `LoadBalancer` service IP allocation from the tenant's public IP pool.
 
 ~> **Note:** Cluster provisioning is fully asynchronous and involves bootstrapping control plane VMs, joining workers, and deploying cluster add-ons (Cilium, CSI, cluster-agent). The provider polls until the cluster reaches `active` status, which typically takes 8 to 15 minutes.
 

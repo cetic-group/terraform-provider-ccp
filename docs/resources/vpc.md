@@ -7,7 +7,7 @@ description: |-
 
 # ccp_vpc (Resource)
 
-Manages a VPC (Virtual Private Cloud) on CETIC Cloud Platform. Each VPC creates an isolated VXLAN SDN zone in the target region. A NAT Gateway is automatically provisioned when the first VNet is created inside the VPC, providing internet access for all instances without exposing private IPs.
+Manages a VPC (Virtual Private Cloud) on CETIC Cloud Platform. Each VPC creates an isolated private network in the target region. A NAT Gateway is automatically provisioned when the first VNet is created inside the VPC, providing internet access for all instances without exposing private IPs.
 
 ~> **Note:** VPC creation is asynchronous — the provider polls until the VPC reaches `active` status. Provisioning typically completes within 30 seconds.
 

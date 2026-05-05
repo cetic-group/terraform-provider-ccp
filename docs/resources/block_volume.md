@@ -2,12 +2,12 @@
 page_title: "ccp_block_volume Resource - cetic-cloud-platform"
 subcategory: "Storage"
 description: |-
-  Manages a block storage volume (Ceph RBD) on CETIC Cloud Platform.
+  Manages a block storage volume on CETIC Cloud Platform.
 ---
 
 # ccp_block_volume (Resource)
 
-Manages a block storage volume backed by Ceph RBD. Volumes can be attached to container instances or VM instances and appear as raw block devices inside the guest (e.g. `/dev/sdb`). Volumes persist independently of the instances they are attached to — detaching and reattaching to a different instance is supported.
+Manages a block storage volume on CETIC Cloud Platform. Volumes can be attached to container instances or VM instances and appear as raw block devices inside the guest (e.g. `/dev/sdb`). Volumes persist independently of the instances they are attached to — detaching and reattaching to a different instance is supported.
 
 ~> **Note:** A volume can be attached to at most one instance at a time. Detaching and re-attaching is supported. Resizing (`size_gb`) is supported in-place when the volume is attached — the guest filesystem must be grown separately after resize.
 

@@ -7,7 +7,7 @@ description: |-
 
 # ccp_db_valkey_instance (Resource)
 
-Manages a managed Valkey instance — an open-source, BSD-licensed Redis fork fully compatible with the Redis protocol and all Redis clients. Instances run on the shared regional Kubernetes workload cluster via the `valkey/valkey-helm` chart. Data is persisted on Ceph RBD volumes.
+Manages a managed Valkey instance — an open-source, BSD-licensed Redis fork fully compatible with the Redis protocol and all Redis clients. Instances run on the shared regional Kubernetes workload cluster. Data is persisted on high-performance block storage.
 
 ~> **Note:** The `tier` argument is immutable — it determines the replica count at creation and cannot be changed. `dev` provisions 1 replica (no HA); `prod` provisions 3 replicas with anti-affinity for HA. To migrate from `dev` to `prod`, create a new instance.
 

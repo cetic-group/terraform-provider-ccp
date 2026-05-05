@@ -7,9 +7,9 @@ description: |-
 
 # ccp_load_balancer (Resource)
 
-Manages a load balancer on CETIC Cloud Platform. Each load balancer is provisioned as a highly-available pair of instances running HAProxy with a floating virtual IP managed by Keepalived VRRP. Inter-node HA is provided via VXLAN zone networking, enabling failover across Proxmox nodes without downtime.
+Manages a load balancer on CETIC Cloud Platform. Each load balancer is highly available, with a floating virtual IP and automatic failover across availability zones — no downtime during node failures.
 
-~> **Note:** Load balancer provisioning is asynchronous and includes OS installation, HAProxy/Keepalived configuration, and health-check validation. The provider polls until the load balancer reaches `active` status, which typically takes 3 to 5 minutes.
+~> **Note:** Load balancer provisioning is asynchronous. The provider polls until the load balancer reaches `active` status, which typically takes 3 to 5 minutes.
 
 ## Example Usage
 

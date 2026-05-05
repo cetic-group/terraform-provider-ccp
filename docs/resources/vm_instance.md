@@ -2,12 +2,12 @@
 page_title: "ccp_vm_instance Resource - cetic-cloud-platform"
 subcategory: "Compute"
 description: |-
-  Manages a virtual machine instance (QEMU/KVM) on CETIC Cloud Platform.
+  Manages a virtual machine instance on CETIC Cloud Platform.
 ---
 
 # ccp_vm_instance (Resource)
 
-Manages a virtual machine instance on CETIC Cloud Platform. VMs are full QEMU/KVM virtual machines provisioned via Proxmox, with cloud-init support for initial user, SSH key, and package configuration. VMs run guest kernels and are suitable for workloads that require kernel-level isolation or specific kernel versions.
+Manages a virtual machine instance on CETIC Cloud Platform. VMs are full virtual machines with cloud-init support for initial user, SSH key, and package configuration. They run guest kernels and are suitable for workloads that require kernel-level isolation or specific kernel versions.
 
 ~> **Note:** VM creation is asynchronous and includes cloud-init execution on first boot. The provider polls until the VM reaches `running` status. Provisioning typically takes 2 to 4 minutes. Changing `plan` updates the VM in-place (requires a stop/start cycle). Changing `template`, `vnet_id`, or `region` forces a new resource.
 
@@ -46,7 +46,7 @@ resource "ccp_vm_instance" "app" {
 - `name` - (Required) Name of the VM instance.
 - `region` - (Required, Forces new resource) Region where the VM is created. One of: `RNN`, `PAR`, `ABJ`.
 - `plan` - (Required) Instance plan controlling vCPU, RAM, and disk. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
-- `template` - (Required, Forces new resource) QEMU template key (e.g. `ubuntu-24.04`, `debian-12`). Available templates are listed in the console under **Compute → Templates**.
+- `template` - (Required, Forces new resource) VM template key (e.g. `ubuntu-24.04`, `debian-12`). Available templates are listed in the console under **Compute → Templates**.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach the VM to.
 
 ### Optional

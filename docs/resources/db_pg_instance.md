@@ -2,12 +2,12 @@
 page_title: "ccp_db_pg_instance Resource - cetic-cloud-platform"
 subcategory: "Databases"
 description: |-
-  Manages a managed PostgreSQL instance (CloudNativePG) on CETIC Cloud Platform.
+  Manages a managed PostgreSQL instance on CETIC Cloud Platform.
 ---
 
 # ccp_db_pg_instance (Resource)
 
-Manages a managed PostgreSQL instance powered by CloudNativePG (CNPG), running on a shared regional Kubernetes workload cluster. The instance is isolated in its own namespace with Kubernetes NetworkPolicies and ResourceQuotas. Data is stored on Ceph RBD persistent volumes.
+Manages a managed PostgreSQL instance on CETIC Cloud Platform. The instance runs on a shared regional Kubernetes workload cluster, isolated in its own namespace with NetworkPolicies and ResourceQuotas. Data is persisted on high-performance block storage.
 
 ~> **Note:** The `tier` argument is immutable — it determines the replica count at creation and cannot be changed. `dev` provisions 1 replica (no HA); `prod` provisions 3 replicas with pod anti-affinity for HA. To migrate from `dev` to `prod`, create a new instance and restore from a snapshot.
 
@@ -47,7 +47,7 @@ output "db_password" {
 - `vpc_id` - (Required, Forces new resource) UUID of the VPC for internal network connectivity.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet where the database endpoint is accessible.
 - `plan` - (Required, Forces new resource) Instance plan controlling CPU and memory. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
-- `tier` - (Required, Forces new resource) Service tier. One of: `dev` (1 replica, no HA, ~12 €/month base), `prod` (3 replicas, HA with anti-affinity, ~36 €/month base).
+- `tier` - (Required, Forces new resource) Service tier. One of: `dev` (1 replica, no HA), `prod` (3 replicas, HA with anti-affinity).
 
 ### Optional
 

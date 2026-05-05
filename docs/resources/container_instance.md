@@ -2,12 +2,12 @@
 page_title: "ccp_container_instance Resource - cetic-cloud-platform"
 subcategory: "Compute"
 description: |-
-  Manages a container instance (LXC) on CETIC Cloud Platform.
+  Manages a container instance on CETIC Cloud Platform.
 ---
 
 # ccp_container_instance (Resource)
 
-Manages a container instance on CETIC Cloud Platform. Containers are high-performance, lightweight compute units running as LXC containers on Proxmox. They boot in seconds, share the host kernel, and support cloud-init for first-boot configuration.
+Manages a container instance on CETIC Cloud Platform. Containers are high-performance, lightweight compute units that boot in seconds, share the host kernel, and support cloud-init for first-boot configuration.
 
 ~> **Note:** Container creation is asynchronous. The provider polls until the container reaches `running` status. Provisioning typically completes within 60 seconds. Changing `plan` updates the container in-place (requires a stop/start cycle). Changing `template`, `vnet_id`, or `region` forces a new resource.
 

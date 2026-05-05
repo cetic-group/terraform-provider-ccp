@@ -2,7 +2,7 @@
 page_title: "ccp_container_scale_set Resource - cetic-cloud-platform"
 subcategory: "Compute"
 description: |-
-  Manages a container scale set (auto-scaling group of LXC containers) on CETIC Cloud Platform.
+  Manages a container scale set (auto-scaling group of containers) on CETIC Cloud Platform.
 ---
 
 # ccp_container_scale_set (Resource)

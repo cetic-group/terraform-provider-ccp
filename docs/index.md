@@ -6,7 +6,7 @@ description: |-
 
 # CETIC Cloud Platform Provider
 
-The **CETIC Cloud Platform** (CCP) provider lets you manage infrastructure resources on [CETIC Cloud](https://console.in.techledger.io) — a sovereign cloud built on Proxmox, offering containers (LXC), virtual machines (QEMU/KVM), Kubernetes as a Service (CAPI/CAPMOX), managed databases (PostgreSQL, Valkey, MariaDB, FerretDB), block and object storage (Ceph RBD/RGW), load balancers, and advanced VPC networking.
+The **CETIC Cloud Platform** (CCP) provider lets you manage infrastructure resources on [CETIC Cloud](https://console.cloud.cetic-group.com) — a sovereign cloud offering containers, virtual machines, Kubernetes as a Service, managed databases (PostgreSQL, Valkey, MariaDB, FerretDB), block and object storage, load balancers, and advanced VPC networking.
 
 ## Authentication
 
@@ -15,7 +15,7 @@ The provider authenticates using an API key. Generate one from the CETIC Cloud c
 Set the key via environment variable (recommended — never commit credentials to source control):
 
 ```shell
-export CCP_API_KEY="cl_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export CCP_API_KEY="ccp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
 Or pass it directly in the provider block (use a variable, not a literal):
@@ -54,7 +54,7 @@ variable "ccp_api_key" {
 
 | Argument | Environment Variable | Required | Description |
 |---|---|---|---|
-| `api_key` | `CCP_API_KEY` | Yes | API key prefixed `cl_live_`. Generate in console → Settings → API Keys. |
+| `api_key` | `CCP_API_KEY` | Yes | API key prefixed `ccp_live_`. Generate in console → Settings → API Keys. |
 | `endpoint` | `CCP_API_URL` | No | Override the API base URL. Defaults to the CETIC Cloud production endpoint. |
 
 ## Example: Full Stack
@@ -150,14 +150,14 @@ output "app_private_ip" {
 
 All compute resources (containers, VMs, Kubernetes nodes) use the following plans:
 
-| Plan | vCPU | RAM | SSD | Price/month |
-|---|---|---|---|---|
-| `nano` | 1 | 512 MB | 10 GB | 1.99 € |
-| `micro` | 1 | 1 GB | 20 GB | 3.99 € |
-| `small` | 2 | 2 GB | 40 GB | 7.99 € |
-| `medium` | 4 | 8 GB | 80 GB | 15.99 € |
-| `large` | 8 | 16 GB | 160 GB | 31.99 € |
-| `xlarge` | 16 | 32 GB | 320 GB | 63.99 € |
+| Plan | vCPU | RAM | SSD |
+|---|---|---|---|
+| `nano` | 1 | 512 MB | 10 GB |
+| `micro` | 1 | 1 GB | 20 GB |
+| `small` | 2 | 2 GB | 40 GB |
+| `medium` | 4 | 8 GB | 80 GB |
+| `large` | 8 | 16 GB | 160 GB |
+| `xlarge` | 16 | 32 GB | 320 GB |
 
 Billing is pay-as-you-go, charged by the hour. Egress bandwidth is free.
 

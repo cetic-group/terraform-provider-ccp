@@ -7,7 +7,7 @@ description: |-
 
 # ccp_vnet (Resource)
 
-Manages a VNet (Virtual Network / subnet) inside a VPC. Each VNet maps to a VXLAN SDN network with a DHCP range managed by Proxmox IPAM. When the first VNet is created in a VPC, a NAT Gateway LXC is automatically provisioned to provide internet access for all instances via SNAT. Additional VNets in the same VPC are automatically routed through the same NAT Gateway — no peering configuration required.
+Manages a VNet (Virtual Network / subnet) inside a VPC. Each VNet has a DHCP range for automatic IP assignment. When the first VNet is created in a VPC, a NAT Gateway is automatically provisioned to provide internet access for all instances. Additional VNets in the same VPC are automatically routed through the same NAT Gateway — no peering configuration required.
 
 ~> **Note:** VNet creation is asynchronous — the provider polls until the VNet reaches `active` status. The first VNet in a VPC triggers NAT Gateway provisioning, which may take up to 2 minutes.
 

@@ -7,7 +7,7 @@ description: |-
 
 # ccp_db_ferretdb_instance (Resource)
 
-Manages a managed MongoDB-compatible instance powered by FerretDB (Apache 2.0 license). FerretDB translates the MongoDB wire protocol to SQL and stores data in a PostgreSQL backend (CloudNativePG), both running in the same isolated namespace. Compatible with all standard MongoDB drivers, tools, and the MongoDB shell.
+Manages a managed MongoDB-compatible instance powered by FerretDB (Apache 2.0 license). FerretDB translates the MongoDB wire protocol to SQL, storing data in a managed PostgreSQL backend — both running in the same isolated namespace. Compatible with all standard MongoDB drivers, tools, and the MongoDB shell.
 
 ~> **Note:** This engine is currently in preview. The `tier` argument is immutable — it determines the replica count at creation and cannot be changed. `dev` provisions 1 replica (no HA); `prod` provisions 3 replicas for HA. To migrate tiers, create a new instance and restore data.
 
