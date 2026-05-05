@@ -1,0 +1,166 @@
+---
+page_title: "Provider: CETIC Cloud Platform"
+description: |-
+  The CETIC Cloud Platform (CCP) provider manages infrastructure on CETIC Cloud — containers, VMs, Kubernetes, databases, networking, and storage.
+---
+
+# CETIC Cloud Platform Provider
+
+The **CETIC Cloud Platform** (CCP) provider lets you manage infrastructure resources on [CETIC Cloud](https://console.in.techledger.io) — a sovereign cloud built on Proxmox, offering containers (LXC), virtual machines (QEMU/KVM), Kubernetes as a Service (CAPI/CAPMOX), managed databases (PostgreSQL, Valkey, MariaDB, FerretDB), block and object storage (Ceph RBD/RGW), load balancers, and advanced VPC networking.
+
+## Authentication
+
+The provider authenticates using an API key. Generate one from the CETIC Cloud console at **Settings → API Keys**.
+
+Set the key via environment variable (recommended — never commit credentials to source control):
+
+```shell
+export CCP_API_KEY="cl_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+Or pass it directly in the provider block (use a variable, not a literal):
+
+```hcl
+provider "ccp" {
+  api_key = var.ccp_api_key
+}
+```
+
+## Provider Configuration
+
+```hcl
+terraform {
+  required_providers {
+    ccp = {
+      source  = "cetic-group/cetic-cloud-platform"
+      version = "~> 1.0"
+    }
+  }
+}
+
+provider "ccp" {
+  api_key  = var.ccp_api_key        # or env CCP_API_KEY
+  endpoint = "https://api.in.techledger.io"  # optional, env CCP_API_URL
+}
+
+variable "ccp_api_key" {
+  description = "CETIC Cloud API key"
+  type        = string
+  sensitive   = true
+}
+```
+
+## Configuration Reference
+
+| Argument | Environment Variable | Required | Description |
+|---|---|---|---|
+| `api_key` | `CCP_API_KEY` | Yes | API key prefixed `cl_live_`. Generate in console → Settings → API Keys. |
+| `endpoint` | `CCP_API_URL` | No | Override the API base URL. Defaults to the CETIC Cloud production endpoint. |
+
+## Example: Full Stack
+
+The following example creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP.
+
+```hcl
+provider "ccp" {}
+
+# Identity
+
+resource "ccp_ssh_key" "ops" {
+  name       = "ops-team"
+  public_key = file("~/.ssh/id_ed25519.pub")
+}
+
+# Network
+
+resource "ccp_vpc" "main" {
+  name   = "production"
+  region = "RNN"
+  tags   = ["env:prod"]
+}
+
+resource "ccp_vnet" "web" {
+  vpc_id = ccp_vpc.main.id
+  name   = "web-tier"
+  cidr   = "10.0.1.0/24"
+  snat   = true
+}
+
+resource "ccp_vnet" "data" {
+  vpc_id = ccp_vpc.main.id
+  name   = "data-tier"
+  cidr   = "10.0.2.0/24"
+  snat   = true
+}
+
+# Public IP for the web container
+
+resource "ccp_public_ip" "web" {
+  region = "RNN"
+}
+
+# Compute
+
+resource "ccp_container_instance" "web" {
+  name        = "web-01"
+  region      = "RNN"
+  plan        = "small"
+  template    = "ubuntu-24.04"
+  vnet_id     = ccp_vnet.web.id
+  ssh_key_ids = [ccp_ssh_key.ops.id]
+  tags        = ["web", "env:prod"]
+
+  user_data = <<-EOF
+    #!/bin/bash
+    apt-get update -q && apt-get install -y -q nginx
+    systemctl enable --now nginx
+  EOF
+}
+
+resource "ccp_vm_instance" "app" {
+  name        = "app-server"
+  region      = "RNN"
+  plan        = "medium"
+  template    = "ubuntu-24.04"
+  vnet_id     = ccp_vnet.web.id
+  ssh_key_ids = [ccp_ssh_key.ops.id]
+  tags        = ["app", "env:prod"]
+}
+
+# Outputs
+
+output "web_public_ip" {
+  value = ccp_public_ip.web.ip_address
+}
+
+output "app_private_ip" {
+  value = ccp_vm_instance.app.ip_address
+}
+```
+
+## Regions
+
+| ID | Name | Location | Timezone |
+|---|---|---|---|
+| `RNN` | Rennes | Rennes, France | Europe/Paris |
+| `PAR` | Paris | Paris, France | Europe/Paris |
+| `ABJ` | Abidjan | Abidjan, Côte d'Ivoire | Africa/Abidjan |
+
+## Resource Plans
+
+All compute resources (containers, VMs, Kubernetes nodes) use the following plans:
+
+| Plan | vCPU | RAM | SSD | Price/month |
+|---|---|---|---|---|
+| `nano` | 1 | 512 MB | 10 GB | 1.99 € |
+| `micro` | 1 | 1 GB | 20 GB | 3.99 € |
+| `small` | 2 | 2 GB | 40 GB | 7.99 € |
+| `medium` | 4 | 8 GB | 80 GB | 15.99 € |
+| `large` | 8 | 16 GB | 160 GB | 31.99 € |
+| `xlarge` | 16 | 32 GB | 320 GB | 63.99 € |
+
+Billing is pay-as-you-go, charged by the hour. Egress bandwidth is free.
+
+## Documentation
+
+Full platform documentation is available at [docs.cloud.cetic-group.com](https://docs.cloud.cetic-group.com).
