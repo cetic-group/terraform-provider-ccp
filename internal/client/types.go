@@ -876,33 +876,26 @@ type OrgMemberUpdateRequest struct {
 // ─── VNet Peering ─────────────────────────────────────────────────────────
 
 type VnetPeering struct {
-	ID            string    `json:"id"`
-	SourceVnetID  string    `json:"source_vnet_id"`
-	TargetVnetID  string    `json:"target_vnet_id"`
-	Status        string    `json:"status"`
-	ErrorMessage  *string   `json:"error_message,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	VnetAID      string    `json:"vnet_a_id"`
+	VnetBID      string    `json:"vnet_b_id"`
+	Tags         []string  `json:"tags"`
+	Status       string    `json:"status"`
+	ErrorMessage *string   `json:"error_message,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type VnetPeeringCreateRequest struct {
-	SourceVnetID string `json:"source_vnet_id"`
-	TargetVnetID string `json:"target_vnet_id"`
+	Name    string   `json:"name"`
+	VnetAID string   `json:"vnet_a_id"`
+	VnetBID string   `json:"vnet_b_id"`
+	Tags    []string `json:"tags,omitempty"`
 }
 
 // ─── VPC Peering ──────────────────────────────────────────────────────────
 
-type VpcPeering struct {
-	ID            string    `json:"id"`
-	RequesterVpcID string   `json:"requester_vpc_id"`
-	AccepterVpcID  string   `json:"accepter_vpc_id"`
-	Status        string    `json:"status"` // pending | active | deleting
-	ErrorMessage  *string   `json:"error_message,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-}
 
-type VpcPeeringCreateRequest struct {
-	AccepterVpcID string `json:"accepter_vpc_id"`
-}
 
 // ─── Support Ticket ────────────────────────────────────────────────────────
 

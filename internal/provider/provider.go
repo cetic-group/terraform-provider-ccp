@@ -44,7 +44,6 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vnetipresv"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vnetpeering"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vpc"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vpcpeering"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -155,7 +154,6 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		apikey.New,
 		orgmember.New,
 		vnetpeering.New,
-		vpcpeering.New,
 		supportticket.New,
 		ipaaspool.New,
 		quotarequest.New,
