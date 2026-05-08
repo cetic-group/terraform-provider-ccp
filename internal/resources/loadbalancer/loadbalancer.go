@@ -39,6 +39,7 @@ type lbBackendModel struct {
 	ID          types.String `tfsdk:"id"`
 	ContainerID types.String `tfsdk:"container_id"`
 	VMID        types.String `tfsdk:"vm_instance_id"`
+	ScaleSetID  types.String `tfsdk:"scale_set_id"`
 	Port        types.Int64  `tfsdk:"port"`
 	Weight      types.Int64  `tfsdk:"weight"`
 }
@@ -167,7 +168,7 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 					},
 					Blocks: map[string]schema.Block{
 						"backend": schema.ListNestedBlock{
-							MarkdownDescription: "Backend target. Exactly one of `container_id` or `vm_instance_id` must be set.",
+							MarkdownDescription: "Backend target. Exactly one of `container_id`, `vm_instance_id`, or `scale_set_id` must be set.",
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
 									"id": schema.StringAttribute{
@@ -181,6 +182,10 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 									},
 									"vm_instance_id": schema.StringAttribute{
 										MarkdownDescription: "UUID of the VM instance to use as a backend.",
+										Optional:            true,
+									},
+									"scale_set_id": schema.StringAttribute{
+										MarkdownDescription: "UUID of a container or VM scale set to use as a backend. The load balancer auto-discovers the current set of replicas and reconciles their addresses periodically.",
 										Optional:            true,
 									},
 									"port": schema.Int64Attribute{
@@ -271,12 +276,19 @@ func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel
 			if b.ContainerID != nil {
 				bm.ContainerID = types.StringValue(*b.ContainerID)
 				bm.VMID = types.StringNull()
+				bm.ScaleSetID = types.StringNull()
 			} else if b.VMID != nil {
 				bm.VMID = types.StringValue(*b.VMID)
 				bm.ContainerID = types.StringNull()
+				bm.ScaleSetID = types.StringNull()
+			} else if b.ScaleSetID != nil {
+				bm.ScaleSetID = types.StringValue(*b.ScaleSetID)
+				bm.ContainerID = types.StringNull()
+				bm.VMID = types.StringNull()
 			} else {
 				bm.ContainerID = types.StringNull()
 				bm.VMID = types.StringNull()
+				bm.ScaleSetID = types.StringNull()
 			}
 			lm.Backends = append(lm.Backends, bm)
 		}
@@ -347,6 +359,9 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 			} else if !bPlan.VMID.IsNull() && !bPlan.VMID.IsUnknown() && bPlan.VMID.ValueString() != "" {
 				v := bPlan.VMID.ValueString()
 				bReq.VMID = &v
+			} else if !bPlan.ScaleSetID.IsNull() && !bPlan.ScaleSetID.IsUnknown() && bPlan.ScaleSetID.ValueString() != "" {
+				v := bPlan.ScaleSetID.ValueString()
+				bReq.ScaleSetID = &v
 			}
 			createdB, err := r.client.AddLBBackend(ctx, final.ID, createdL.ID, bReq)
 			if err != nil {

@@ -49,7 +49,6 @@ output "mongo_uri" {
 - `vpc_id` - (Required, Forces new resource) UUID of the VPC for internal network connectivity.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet where the database endpoint is accessible.
 - `plan` - (Required, Forces new resource) Instance plan controlling CPU and memory. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
-- `tier` - (Required, Forces new resource) Service tier. One of: `dev` (1 replica, no HA), `prod` (3 replicas, HA).
 
 ### Optional
 
