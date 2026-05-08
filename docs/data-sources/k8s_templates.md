@@ -41,5 +41,5 @@ resource "ccp_k8s_node_pool" "workers" {
   - `display_name` - Display name shown in the console.
   - `k8s_version` - Kubernetes version baked into the template.
   - `region` - Region in which the template lives.
-  - `vmid` - Proxmox VMID of the template (admin-internal, may be null).
+  - `vmid` - Internal template ID (admin-only field, may be null).
   - `built_at` - Timestamp at which the template was last built.
