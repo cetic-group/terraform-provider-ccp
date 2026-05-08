@@ -2,12 +2,12 @@
 page_title: "ccp_qemu_templates Data Source - cetic-cloud-platform"
 subcategory: "Catalogs"
 description: |-
-  Lists active QEMU/VM templates available on CETIC Cloud.
+  Lists active virtual machine templates available on CETIC Cloud.
 ---
 
 # ccp_qemu_templates (Data Source)
 
-Lists active QEMU/VM templates from the CETIC Cloud catalog (admin-managed). Internal `ccks-*` images for managed Kubernetes nodes are excluded — only client-usable templates are returned.
+Lists active virtual machine templates from the CETIC Cloud catalog (admin-managed). Internal `ccks-*` images for managed Kubernetes nodes are excluded — only client-usable templates are returned.
 
 ## Example Usage
 

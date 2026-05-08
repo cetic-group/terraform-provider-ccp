@@ -19,17 +19,18 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.6 (preview)**
+> **Status — v0.7.1**
 >
-> **29 resources + 6 data sources** implemented. Highlights : containers
-> (instance + scale set + snapshot), VMs (instance + scale set + snapshot),
-> K8s clusters + node pools, **DB instances PG / MySQL / Valkey / FerretDB**,
-> public IPs, VPCs / VNets / firewall / IP reservations / VPC + VNet
-> peering, load balancers, block volumes, object buckets + S3 keys,
-> SSH/API keys, organizations + members, support tickets, quota requests.
-> Catalog data sources (`ccp_lxc_templates`, `ccp_qemu_templates`,
-> `ccp_db_plans`, `ccp_db_engine_versions`) avoid hardcoding identifiers.
-> Full roadmap in [`NOTES.md`](./NOTES.md).
+> **30 resources + 7 data sources** implemented. Highlights : containers
+> (instance + scale set + snapshot), virtual machines (instance + scale
+> set + snapshot), managed Kubernetes clusters + node pools, **managed
+> databases — PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) /
+> MongoDB-compatible (FerretDB v2)**, public IPs, VPCs / VNets / firewall
+> / private IP reservations / VPC peering, load balancers, block volumes,
+> object storage buckets + S3 keys, SSH/API keys, organizations + members,
+> custom templates (snapshot a running instance into a reusable template),
+> support tickets, quota requests. Catalog data sources avoid hardcoding
+> identifiers. Full roadmap in [`NOTES.md`](./NOTES.md).
 
 ---
 
@@ -55,7 +56,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.3"
+      version = "~> 0.7.1"
     }
   }
 }
@@ -86,13 +87,14 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Network | `ccp_vnet_firewall_rule` | Per-VNet rules. |
 | Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` / `ccp_vpc_peering` | IP reservations + peering intra/inter-VPC. |
 | Network | `ccp_public_ip` / `ccp_ipaas_pool` | Public IPs + BYOIP edge pools. |
-| Network | `ccp_load_balancer` | HAProxy + Keepalived pair. |
-| Compute | `ccp_container_instance` / `ccp_container_scale_set` / `ccp_container_snapshot` | LXC. |
-| Compute | `ccp_vm_instance` / `ccp_vm_scale_set` / `ccp_vm_snapshot` | QEMU. |
-| Compute | `ccp_k8s_cluster` / `ccp_k8s_node_pool` | Managed K8s (CCKS). |
-| Storage | `ccp_block_volume` | Ceph RBD. `size_gb` can grow, attach/detach via `attached_to_*`. |
-| Storage | `ccp_object_bucket` / `ccp_object_storage_key` | Ceph RGW S3 buckets + scoped subuser keys. |
-| Database | `ccp_db_pg_instance` / `ccp_db_mysql_instance` / `ccp_db_valkey_instance` / `ccp_db_ferretdb_instance` | Managed PostgreSQL / MariaDB Galera / Valkey / FerretDB v2 + DocumentDB. |
+| Network | `ccp_load_balancer` | Highly available with floating VIP, automatic failover. |
+| Compute | `ccp_container_instance` / `ccp_container_scale_set` / `ccp_container_snapshot` | Linux containers — fast boot, low overhead. |
+| Compute | `ccp_vm_instance` / `ccp_vm_scale_set` / `ccp_vm_snapshot` | Full virtual machines — kernel isolation. |
+| Compute | `ccp_k8s_cluster` / `ccp_k8s_node_pool` | Managed Kubernetes clusters with auto-scaling node pools. |
+| Compute | `ccp_custom_template` | Snapshot a running container/VM into a reusable template scoped to your organization. |
+| Storage | `ccp_block_volume` | Resizable block storage. `size_gb` can grow; attach/detach via `attached_to_*`. |
+| Storage | `ccp_object_bucket` / `ccp_object_storage_key` | S3-compatible object storage buckets + scoped access keys. |
+| Database | `ccp_db_pg_instance` / `ccp_db_mysql_instance` / `ccp_db_valkey_instance` / `ccp_db_ferretdb_instance` | Managed PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) / MongoDB-compatible (FerretDB v2). |
 | Support | `ccp_support_ticket` / `ccp_quota_request` | Ticketing + quota self-service. |
 
 ## Data sources
@@ -101,10 +103,11 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 |---|---|
 | `ccp_regions` | Active regions (RNN/PAR/ABJ). |
 | `ccp_organizations` | Orgs accessible to the current API key's tenant. |
-| `ccp_lxc_templates` | LXC template catalog (resolve `key` for `ccp_container_instance.template`). |
-| `ccp_qemu_templates` | VM template catalog (resolve `key` for `ccp_vm_instance.template`). |
-| `ccp_db_plans` | DB plan catalog, filterable by `engine`. |
-| `ccp_db_engine_versions` | Active DB engine versions, filterable by `engine`. |
+| `ccp_lxc_templates` | Container template catalog (resolve `key` for `ccp_container_instance.template`). |
+| `ccp_qemu_templates` | Virtual machine template catalog (resolve `key` for `ccp_vm_instance.template`). |
+| `ccp_k8s_templates` | Kubernetes node OS template catalog. |
+| `ccp_db_plans` | Database plan catalog, filterable by `engine`. |
+| `ccp_db_engine_versions` | Active database engine versions, filterable by `engine`. |
 
 ## Multi-organization
 

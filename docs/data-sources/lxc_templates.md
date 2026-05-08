@@ -2,12 +2,12 @@
 page_title: "ccp_lxc_templates Data Source - cetic-cloud-platform"
 subcategory: "Catalogs"
 description: |-
-  Lists active LXC container templates available on CETIC Cloud.
+  Lists active container templates available on CETIC Cloud.
 ---
 
 # ccp_lxc_templates (Data Source)
 
-Lists active LXC container templates from the CETIC Cloud catalog (admin-managed). Use this to resolve a template `key` (e.g. `ubuntu-24.04`) at plan-time instead of hardcoding it in `ccp_container_instance.template`.
+Lists active container templates from the CETIC Cloud catalog (admin-managed). Use this to resolve a template `key` (e.g. `ubuntu-24.04`) at plan-time instead of hardcoding it in `ccp_container_instance.template`.
 
 ## Example Usage
 
@@ -34,7 +34,7 @@ resource "ccp_container_instance" "web" {
 
 ## Attributes Reference
 
-- `templates` - List of active LXC templates.
+- `templates` - List of active container templates.
   - `key` - Template key (used in `ccp_container_instance.template`).
   - `display_name` - Human-readable template name.
   - `is_default` - Whether this template is the default suggestion in the console.
