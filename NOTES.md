@@ -63,7 +63,7 @@ invited but not owner) appear after the owned ones.
 ## API caveats discovered
 
 Things that surprised us while wiring this up. All confirmed against the
-production API on `api.in.techledger.io`.
+production API on `api.cloud.cetic-group.com`.
 
 - **SSH keys — no GET single endpoint.** `GET /v1/ssh-keys/{id}` doesn't exist.
   The client does `GET /v1/ssh-keys` and filters client-side by ID. Fine for

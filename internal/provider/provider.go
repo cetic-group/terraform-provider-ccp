@@ -72,7 +72,7 @@ func (p *ccpProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *
 		MarkdownDescription: "The CETIC Cloud Platform (ccp) provider deploys infrastructure on CETIC Cloud — the sovereign cloud by CETIC Group.",
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "CETIC Cloud API base URL. Defaults to `https://api.in.techledger.io`. Falls back to `CCP_API_URL` env var.",
+				MarkdownDescription: "CETIC Cloud API base URL. Defaults to `https://api.cloud.cetic-group.com`. Falls back to `CCP_API_URL` env var.",
 				Optional:            true,
 			},
 			"api_key": schema.StringAttribute{

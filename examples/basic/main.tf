@@ -2,7 +2,7 @@
 #
 # Prerequisites:
 #   export CCP_API_KEY="ccp_live_..."   (required, scope >= write)
-#   export CCP_API_URL="..."            (optional, defaults to https://api.in.techledger.io)
+#   export CCP_API_URL="..."            (optional, defaults to https://api.cloud.cetic-group.com)
 #
 # Note: ccp_vpc and ccp_vnet are provisioned asynchronously by
 # the CCP SDN backend. The provider polls the resource until it
@@ -19,7 +19,7 @@ terraform {
 
 provider "ccp" {
   api_key  = "ccp_live_..."       # or via CCP_API_KEY env var
-  endpoint = "https://api.in.techledger.io"  # or via CCP_API_URL
+  endpoint = "https://api.cloud.cetic-group.com"  # or via CCP_API_URL
 }
 
 # ---------------------------------------------------------------------------
