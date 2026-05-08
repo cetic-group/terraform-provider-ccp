@@ -2,14 +2,34 @@
 
 Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 
-> **Status — v0.3 (preview)**
+> **`provider "ccp"` and `provider "cetic-cloud-platform"` are the SAME provider.**
 >
-> **8 resources + 2 data sources** are implemented: `ccp_ssh_key`,
-> `ccp_vpc`, `ccp_vnet`, `ccp_container_instance`,
-> `ccp_block_volume`, `ccp_public_ip`, `ccp_object_bucket`,
-> `ccp_vm_instance`, plus the `ccp_regions` and
-> `ccp_organizations` data sources. The full roadmap (load balancers,
-> databases, K8s, blockchain…) lives in [`NOTES.md`](./NOTES.md).
+> The provider is published on the Terraform Registry as
+> `cetic-group/cetic-cloud-platform`. The local name you choose in
+> `required_providers` determines the HCL block name :
+>
+> - If you alias to `ccp` (recommended — shorter), you write `provider "ccp"`.
+> - If you skip the alias, the default local name is `cetic-cloud-platform`,
+>   so you write `provider "cetic-cloud-platform"`.
+>
+> **All examples in this README and on the Registry use `ccp`** — copy the
+> `required_providers` block in section 3 below as-is to keep them working
+> without modification.
+>
+> Resources always start with the prefix `ccp_` regardless of which local
+> name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
+
+> **Status — v0.6 (preview)**
+>
+> **29 resources + 6 data sources** implemented. Highlights : containers
+> (instance + scale set + snapshot), VMs (instance + scale set + snapshot),
+> K8s clusters + node pools, **DB instances PG / MySQL / Valkey / FerretDB**,
+> public IPs, VPCs / VNets / firewall / IP reservations / VPC + VNet
+> peering, load balancers, block volumes, object buckets + S3 keys,
+> SSH/API keys, organizations + members, support tickets, quota requests.
+> Catalog data sources (`ccp_lxc_templates`, `ccp_qemu_templates`,
+> `ccp_db_plans`, `ccp_db_engine_versions`) avoid hardcoding identifiers.
+> Full roadmap in [`NOTES.md`](./NOTES.md).
 
 ---
 
@@ -56,23 +76,35 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 
 ## Resources
 
-| Name                          | Status | Notes                                                       |
-|-------------------------------|--------|-------------------------------------------------------------|
-| `ccp_ssh_key`           | ready  | No update — all changes force replacement.                  |
-| `ccp_vpc`               | ready  | Async create/delete, polls until `active`.                  |
-| `ccp_vnet`              | ready  | Nested under VPC. PATCH supports `name`, `snat`.            |
-| `ccp_container_instance`| ready  | LXC. Async, polls until `running` + IP. All fields replace. |
-| `ccp_block_volume`      | ready  | Ceph RBD. `size_gb` can grow, attach/detach via `attached_to_*`. |
-| `ccp_public_ip`         | ready  | Allocate by region, attach to container/VM via `attached_to_*`. |
-| `ccp_object_bucket`     | ready  | Ceph RGW S3. `is_public` mutable, master S3 creds in state (sensitive). |
-| `ccp_vm_instance`       | ready  | QEMU VM. Async, polls until `running`. PATCH supports `name` + `tags`. |
+| Category | Name | Notes |
+|---|---|---|
+| Identity | `ccp_ssh_key` | No update — all changes force replacement. |
+| Identity | `ccp_api_key` | API token mgmt. |
+| Identity | `ccp_organization` / `ccp_org_member` | Multi-tenant orgs + member roles. |
+| Network | `ccp_vpc` | Async create/delete, polls until `active`. |
+| Network | `ccp_vnet` | Nested under VPC. PATCH supports `name`, `snat`. |
+| Network | `ccp_vnet_firewall_rule` | Per-VNet rules. |
+| Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` / `ccp_vpc_peering` | IP reservations + peering intra/inter-VPC. |
+| Network | `ccp_public_ip` / `ccp_ipaas_pool` | Public IPs + BYOIP edge pools. |
+| Network | `ccp_load_balancer` | HAProxy + Keepalived pair. |
+| Compute | `ccp_container_instance` / `ccp_container_scale_set` / `ccp_container_snapshot` | LXC. |
+| Compute | `ccp_vm_instance` / `ccp_vm_scale_set` / `ccp_vm_snapshot` | QEMU. |
+| Compute | `ccp_k8s_cluster` / `ccp_k8s_node_pool` | Managed K8s (CCKS). |
+| Storage | `ccp_block_volume` | Ceph RBD. `size_gb` can grow, attach/detach via `attached_to_*`. |
+| Storage | `ccp_object_bucket` / `ccp_object_storage_key` | Ceph RGW S3 buckets + scoped subuser keys. |
+| Database | `ccp_db_pg_instance` / `ccp_db_mysql_instance` / `ccp_db_valkey_instance` / `ccp_db_ferretdb_instance` | Managed PostgreSQL / MariaDB Galera / Valkey / FerretDB v2 + DocumentDB. |
+| Support | `ccp_support_ticket` / `ccp_quota_request` | Ticketing + quota self-service. |
 
 ## Data sources
 
-| Name                       | Status | Notes                                                          |
-|----------------------------|--------|----------------------------------------------------------------|
-| `ccp_regions`        | ready  | Lists active regions (RNN/PAR/ABJ).                            |
-| `ccp_organizations`  | ready  | Lists orgs accessible to the current API key's tenant.         |
+| Name | Notes |
+|---|---|
+| `ccp_regions` | Active regions (RNN/PAR/ABJ). |
+| `ccp_organizations` | Orgs accessible to the current API key's tenant. |
+| `ccp_lxc_templates` | LXC template catalog (resolve `key` for `ccp_container_instance.template`). |
+| `ccp_qemu_templates` | VM template catalog (resolve `key` for `ccp_vm_instance.template`). |
+| `ccp_db_plans` | DB plan catalog, filterable by `engine`. |
+| `ccp_db_engine_versions` | Active DB engine versions, filterable by `engine`. |
 
 ## Multi-organization
 
