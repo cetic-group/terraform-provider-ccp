@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8stemplates"
@@ -176,5 +177,9 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dbplans.New,
 		dbengineversions.New,
 		k8stemplates.New,
+		dbcredentials.NewPG,
+		dbcredentials.NewMySQL,
+		dbcredentials.NewFerretdb,
+		dbcredentials.NewValkey,
 	}
 }

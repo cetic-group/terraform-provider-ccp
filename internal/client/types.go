@@ -364,6 +364,7 @@ type LBBackend struct {
 	ID          string  `json:"id"`
 	ContainerID *string `json:"container_id,omitempty"`
 	VMID        *string `json:"vm_instance_id,omitempty"`
+	ScaleSetID  *string `json:"scale_set_id,omitempty"`
 	Port        int     `json:"port"`
 	Weight      int     `json:"weight"`
 }
@@ -378,6 +379,7 @@ type LBListenerCreateRequest struct {
 type LBBackendCreateRequest struct {
 	ContainerID *string `json:"container_id,omitempty"`
 	VMID        *string `json:"vm_instance_id,omitempty"`
+	ScaleSetID  *string `json:"scale_set_id,omitempty"`
 	Port        int     `json:"port"`
 	Weight      int     `json:"weight,omitempty"`
 }

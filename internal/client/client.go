@@ -271,6 +271,20 @@ func (c *Client) DeleteVNet(ctx context.Context, vpcID, vnetID string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/vpcs/"+vpcID+"/vnets/"+vnetID, nil, nil)
 }
 
+// SetVNetIsolation toggles VNet isolation via the dedicated firewall endpoint.
+// The base PATCH /vnets endpoint does not accept `isolated`.
+func (c *Client) SetVNetIsolation(ctx context.Context, vnetID string, isolated bool) error {
+	body := map[string]bool{"isolated": isolated}
+	return c.do(ctx, http.MethodPut, "/v1/vnets/"+vnetID+"/firewall/isolation", body, nil)
+}
+
+// DoRaw exposes the internal HTTP helper for callers that need to hit an
+// endpoint not yet wrapped by a typed method (e.g. dynamic datasources).
+// Prefer typed wrappers when available.
+func (c *Client) DoRaw(ctx context.Context, method, path string, body any, out any) error {
+	return c.do(ctx, method, path, body, out)
+}
+
 // ─── Regions ─────────────────────────────────────────────────────────────────
 
 func (c *Client) ListRegions(ctx context.Context) ([]Region, error) {

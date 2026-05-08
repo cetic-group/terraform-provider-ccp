@@ -235,10 +235,9 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"isolated": schema.BoolAttribute{
-				MarkdownDescription: "Whether VNet isolation (firewall) is enabled. Managed via " +
-					"the dedicated VNet firewall API; reflected here for convenience but not " +
-					"settable through this resource.",
-				Computed: true,
+				MarkdownDescription: "Whether VNet isolation is enabled. When `true`, the global firewall switch on this VNet is on — DROP applies by default to inter-VNet traffic and ACCEPT rules from `ccp_vnet_firewall_rule` are required to allow specific flows. The provider toggles this via the dedicated `PUT /v1/vnets/{id}/firewall/isolation` endpoint after the VNet is created (mutable in place).",
+				Optional:            true,
+				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
@@ -378,6 +377,19 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
+	// If the user requested isolation=true at create-time, toggle it via the
+	// dedicated firewall endpoint (the base POST /vnets does not accept it).
+	if !plan.Isolated.IsNull() && !plan.Isolated.IsUnknown() && plan.Isolated.ValueBool() && !final.Isolated {
+		if err := r.client.SetVNetIsolation(ctx, final.ID, true); err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to enable VNet isolation",
+				fmt.Sprintf("VNet %s was created but the isolation toggle failed: %s", final.ID, err.Error()),
+			)
+			return
+		}
+		plan.Isolated = types.BoolValue(true)
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -448,6 +460,17 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	vpcID := state.VPCID.ValueString()
 	id := state.ID.ValueString()
+
+	// Toggle isolation via the dedicated endpoint when it changes.
+	if !plan.Isolated.Equal(state.Isolated) && !plan.Isolated.IsNull() && !plan.Isolated.IsUnknown() {
+		if err := r.client.SetVNetIsolation(ctx, id, plan.Isolated.ValueBool()); err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to toggle VNet isolation",
+				fmt.Sprintf("Cloud Lake API error for vnet=%s: %s", id, err.Error()),
+			)
+			return
+		}
+	}
 
 	if hasChange {
 		if _, err := r.client.UpdateVNet(ctx, vpcID, id, updateReq); err != nil {

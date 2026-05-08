@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -43,6 +44,8 @@ type cssResourceModel struct {
 	Plan             types.String `tfsdk:"plan"`
 	Template         types.String `tfsdk:"template"`
 	VnetID           types.String `tfsdk:"vnet_id"`
+	SSHKeyIDs        types.List   `tfsdk:"ssh_key_ids"`
+	UserData         types.String `tfsdk:"user_data"`
 	MinInstances     types.Int64  `tfsdk:"min_instances"`
 	MaxInstances     types.Int64  `tfsdk:"max_instances"`
 	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
@@ -92,6 +95,18 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				MarkdownDescription: "UUID of the VNet to join. Forces replacement.",
 				Optional:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"ssh_key_ids": schema.ListAttribute{
+				MarkdownDescription: "List of SSH key UUIDs injected into every replica at boot via cloud-init. Write-only — the API does not return this field on read, so changes force replacement of the whole scale set.",
+				ElementType:         types.StringType,
+				Optional:            true,
+				PlanModifiers:       []planmodifier.List{listplanmodifier.RequiresReplace(), listplanmodifier.UseStateForUnknown()},
+			},
+			"user_data": schema.StringAttribute{
+				MarkdownDescription: "Cloud-init user-data injected into every replica at boot. Write-only — the API does not return this field on read, so changes force replacement.",
+				Optional:            true,
+				Sensitive:           true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 			},
 			"min_instances": schema.Int64Attribute{
 				MarkdownDescription: "Minimum container count (0-50).",
@@ -194,6 +209,15 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 		v := plan.VnetID.ValueString()
 		createReq.VnetID = &v
 	}
+	if !plan.SSHKeyIDs.IsNull() && !plan.SSHKeyIDs.IsUnknown() {
+		keys := []string{}
+		plan.SSHKeyIDs.ElementsAs(ctx, &keys, false)
+		createReq.SSHKeyIDs = keys
+	}
+	if !plan.UserData.IsNull() && !plan.UserData.IsUnknown() {
+		v := plan.UserData.ValueString()
+		createReq.UserData = &v
+	}
 	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
 		tags := []string{}
 		plan.Tags.ElementsAs(ctx, &tags, false)
@@ -209,6 +233,9 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}
+	// Write-only fields — preserve from plan (server doesn't echo them back).
+	state.SSHKeyIDs = plan.SSHKeyIDs
+	state.UserData = plan.UserData
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -231,6 +258,9 @@ func (r *cssResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}
+	// Write-only fields — preserve from existing state (server doesn't echo them).
+	newState.SSHKeyIDs = state.SSHKeyIDs
+	newState.UserData = state.UserData
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -281,6 +311,10 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}
+	// Write-only fields — preserve from plan (which equals state since they
+	// are RequiresReplace and an Update means they didn't change).
+	newState.SSHKeyIDs = plan.SSHKeyIDs
+	newState.UserData = plan.UserData
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
