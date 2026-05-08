@@ -91,7 +91,7 @@ func (p *ccpProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *
 	}
 }
 
-var apiKeyPattern = regexp.MustCompile(`^cl_(live|test)_[A-Za-z0-9_-]{20,}$`)
+var apiKeyPattern = regexp.MustCompile(`^ccp_(live|test)_[A-Za-z0-9_-]{20,}$`)
 
 func (p *ccpProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var data providerModel
@@ -123,7 +123,7 @@ func (p *ccpProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		resp.Diagnostics.AddAttributeWarning(
 			path.Root("api_key"),
 			"API key format looks unusual",
-			"Expected `ccp_live_<token>` or `cl_test_<token>`. Continuing — but if you see 401 errors check the key.",
+			"Expected `ccp_live_<token>` or `ccp_test_<token>`. Continuing — but if you see 401 errors check the key.",
 		)
 	}
 
