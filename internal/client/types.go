@@ -1075,3 +1075,40 @@ type VnetFirewallRuleCreateRequest struct {
 	Enabled    bool    `json:"enabled"`
 	Position   int     `json:"position,omitempty"`
 }
+
+// LxcTemplate represents an LXC container template (admin-managed catalog).
+// GET /v1/templates
+type LxcTemplate struct {
+	Key         string `json:"key"`
+	DisplayName string `json:"display_name"`
+	IsDefault   bool   `json:"is_default"`
+}
+
+// QemuTemplate represents a QEMU/VM template (admin-managed catalog).
+// GET /v1/qemu-templates
+type QemuTemplate struct {
+	Key         string `json:"key"`
+	DisplayName string `json:"display_name"`
+	IsDefault   bool   `json:"is_default"`
+}
+
+// DbPlan represents a database plan (per engine).
+// GET /v1/db/plans?engine=<engine>
+type DbPlan struct {
+	Key            string   `json:"key"`
+	Name           *string  `json:"name,omitempty"`
+	Engine         string   `json:"engine"`
+	CPUMillicores  int      `json:"cpu_millicores"`
+	MemoryMB       int      `json:"memory_mb"`
+	PriceEURMonth  *float64 `json:"price_eur_month,omitempty"`
+	IsDefault      bool     `json:"is_default"`
+}
+
+// DbEngineVersion represents an active engine version exposed to clients.
+// GET /v1/db/engine-versions?engine=<engine>
+type DbEngineVersion struct {
+	Engine    string  `json:"engine"`
+	Version   string  `json:"version"`
+	Label     *string `json:"label,omitempty"`
+	IsDefault bool    `json:"is_default"`
+}

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -1332,4 +1333,54 @@ func Poll(ctx context.Context, interval, timeout time.Duration, fn PollFunc) err
 		case <-time.After(interval):
 		}
 	}
+}
+
+// ListLxcTemplates returns the LXC template catalog (active templates only).
+// GET /v1/templates — no auth required (public catalog).
+func (c *Client) ListLxcTemplates(ctx context.Context) ([]LxcTemplate, error) {
+	var out []LxcTemplate
+	if err := c.do(ctx, http.MethodGet, "/v1/templates", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListQemuTemplates returns the QEMU/VM template catalog (filtered to client-usable
+// templates, excludes ccks-* internal kubernetes images).
+// GET /v1/qemu-templates — no auth required.
+func (c *Client) ListQemuTemplates(ctx context.Context) ([]QemuTemplate, error) {
+	var out []QemuTemplate
+	if err := c.do(ctx, http.MethodGet, "/v1/qemu-templates", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListDbPlans returns the DB plan catalog. If engine != "", filters to that engine.
+// GET /v1/db/plans?engine=<engine>
+func (c *Client) ListDbPlans(ctx context.Context, engine string) ([]DbPlan, error) {
+	path := "/v1/db/plans"
+	if engine != "" {
+		path += "?engine=" + url.QueryEscape(engine)
+	}
+	var out []DbPlan
+	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListDbEngineVersions returns the DB engine version catalog. If engine != "",
+// filters to that engine.
+// GET /v1/db/engine-versions?engine=<engine>
+func (c *Client) ListDbEngineVersions(ctx context.Context, engine string) ([]DbEngineVersion, error) {
+	path := "/v1/db/engine-versions"
+	if engine != "" {
+		path += "?engine=" + url.QueryEscape(engine)
+	}
+	var out []DbEngineVersion
+	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

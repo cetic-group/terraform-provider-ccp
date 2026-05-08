@@ -6,7 +6,11 @@ import (
 	"regexp"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/lxctemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/qemutemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/regions"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/apikey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/blockvolume"
@@ -164,5 +168,9 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 	return []func() datasource.DataSource{
 		regions.New,
 		organizations.New,
+		lxctemplates.New,
+		qemutemplates.New,
+		dbplans.New,
+		dbengineversions.New,
 	}
 }
