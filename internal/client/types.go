@@ -1112,3 +1112,43 @@ type DbEngineVersion struct {
 	Label     *string `json:"label,omitempty"`
 	IsDefault bool    `json:"is_default"`
 }
+
+// K8sTemplate represents a Kubernetes node OS template (admin-managed catalog).
+// GET /v1/k8s/templates
+type K8sTemplate struct {
+	OsKey       string  `json:"os_key"`
+	OsLabel     string  `json:"os_label"`
+	DisplayName string  `json:"display_name"`
+	K8sVersion  string  `json:"k8s_version"`
+	Region      string  `json:"region"`
+	VMID        *int    `json:"vmid,omitempty"`
+	BuiltAt     *string `json:"built_at,omitempty"`
+}
+
+// CustomTemplate represents a tenant-owned reusable template (snapshot from
+// a container or VM, usable as base image for new instances).
+// GET/POST/PATCH/DELETE /v1/custom-templates
+type CustomTemplate struct {
+	ID                 string  `json:"id"`
+	Name               string  `json:"name"`
+	Description        *string `json:"description,omitempty"`
+	TemplateType       string  `json:"template_type"`
+	Region             string  `json:"region"`
+	Status             string  `json:"status"`
+	ErrorMessage       *string `json:"error_message,omitempty"`
+	DiskGB             *int    `json:"disk_gb,omitempty"`
+	SourceInstanceID   *string `json:"source_instance_id,omitempty"`
+	SourceInstanceType *string `json:"source_instance_type,omitempty"`
+	CreatedAt          string  `json:"created_at"`
+	UpdatedAt          string  `json:"updated_at"`
+}
+
+type CustomTemplateCreateRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+}
+
+type CustomTemplateUpdateRequest struct {
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+}

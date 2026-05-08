@@ -1384,3 +1384,71 @@ func (c *Client) ListDbEngineVersions(ctx context.Context, engine string) ([]DbE
 	}
 	return out, nil
 }
+
+// ListK8sTemplates returns the K8s node OS template catalog.
+// GET /v1/k8s/templates
+func (c *Client) ListK8sTemplates(ctx context.Context) ([]K8sTemplate, error) {
+	var out []K8sTemplate
+	if err := c.do(ctx, http.MethodGet, "/v1/k8s/templates", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListCustomTemplates returns the tenant's custom templates.
+// GET /v1/custom-templates
+func (c *Client) ListCustomTemplates(ctx context.Context) ([]CustomTemplate, error) {
+	var out []CustomTemplate
+	if err := c.do(ctx, http.MethodGet, "/v1/custom-templates", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetCustomTemplate returns a single custom template by id.
+// GET /v1/custom-templates/{id}
+func (c *Client) GetCustomTemplate(ctx context.Context, id string) (*CustomTemplate, error) {
+	var out CustomTemplate
+	if err := c.do(ctx, http.MethodGet, "/v1/custom-templates/"+id, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreateCustomTemplateFromContainer triggers async snapshot of the given container
+// into a new custom template.
+// POST /v1/custom-templates/from-container/{container_id}
+func (c *Client) CreateCustomTemplateFromContainer(ctx context.Context, containerID string, req CustomTemplateCreateRequest) (*CustomTemplate, error) {
+	var out CustomTemplate
+	if err := c.do(ctx, http.MethodPost, "/v1/custom-templates/from-container/"+containerID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreateCustomTemplateFromVm triggers async snapshot of the given VM into a new
+// custom template.
+// POST /v1/custom-templates/from-vm/{vm_id}
+func (c *Client) CreateCustomTemplateFromVm(ctx context.Context, vmID string, req CustomTemplateCreateRequest) (*CustomTemplate, error) {
+	var out CustomTemplate
+	if err := c.do(ctx, http.MethodPost, "/v1/custom-templates/from-vm/"+vmID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateCustomTemplate updates name / description (only).
+// PATCH /v1/custom-templates/{id}
+func (c *Client) UpdateCustomTemplate(ctx context.Context, id string, req CustomTemplateUpdateRequest) (*CustomTemplate, error) {
+	var out CustomTemplate
+	if err := c.do(ctx, http.MethodPatch, "/v1/custom-templates/"+id, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteCustomTemplate removes a custom template.
+// DELETE /v1/custom-templates/{id}
+func (c *Client) DeleteCustomTemplate(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/custom-templates/"+id, nil, nil)
+}

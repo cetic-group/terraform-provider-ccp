@@ -8,6 +8,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8stemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/lxctemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/qemutemplates"
@@ -17,6 +18,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerinstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerscaleset"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containersnapshot"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/customtemplate"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/dbferretdbinstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/dbmysqlinstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/dbpginstance"
@@ -161,6 +163,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		vmsnapshot.New,
 		vnetipresv.New,
 		vnetfirewallrule.New,
+		customtemplate.New,
 	}
 }
 
@@ -172,5 +175,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		qemutemplates.New,
 		dbplans.New,
 		dbengineversions.New,
+		k8stemplates.New,
 	}
 }
