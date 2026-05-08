@@ -20,7 +20,6 @@ Internal notes for contributors. Audience: the next dev picking this up.
 - `ccp_vnet_firewall_rule` — Per-VNet rules. Position-ordered.
 - `ccp_vnet_ip_reservation` — Reserve a single IP or a range (`ip` + `range_end`).
 - `ccp_vnet_peering` — Intra-VPC, between two VNets.
-- `ccp_vpc_peering` — Inter-VPC, same region only.
 - `ccp_public_ip` — Allocate / attach via `attached_to_*` / detach / release.
 - `ccp_ipaas_pool` — **admin only** — BYOIP routed pools.
 - `ccp_load_balancer` — Highly available with floating VIP, automatic failover. Multi-listener, backends nested.

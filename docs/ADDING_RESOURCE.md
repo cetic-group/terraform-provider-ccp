@@ -330,7 +330,6 @@ func (r *myResourceResource) ImportState(ctx context.Context, req resource.Impor
 | Moyenne | `ccp_db_pg_instance` | `/v1/db/pg` | + variantes mysql/redis/mongo |
 | Moyenne | `ccp_k8s_cluster` | `/v1/k8s/clusters` | + sub `ccp_k8s_node_pool` |
 | Moyenne | `ccp_vnet_peering` | `/v1/vnet-peerings` | |
-| Moyenne | `ccp_vpc_peering` | `/v1/vpcs/{id}/peerings` | |
 | Basse | `ccp_organization` | `/v1/orgs` | |
 | Basse | `ccp_api_key` | `/v1/api-keys` | Token retourné une seule fois — gérer côté state |
 | Basse | `ccp_org_member` | `/v1/members` | |

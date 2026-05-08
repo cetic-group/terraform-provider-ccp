@@ -19,7 +19,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.8.1**
+> **Status — v0.9.0**
 >
 > **30 resources + 11 data sources** implemented. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
@@ -56,7 +56,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.8.1"
+      version = "~> 0.9.0"
     }
   }
 }
@@ -85,7 +85,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Network | `ccp_vpc` | Async create/delete, polls until `active`. |
 | Network | `ccp_vnet` | Nested under VPC. PATCH supports `name`, `snat`. |
 | Network | `ccp_vnet_firewall_rule` | Per-VNet rules. |
-| Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` / `ccp_vpc_peering` | IP reservations + peering intra/inter-VPC. |
+| Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` | IP reservations + peering intra/inter-VPC. |
 | Network | `ccp_public_ip` / `ccp_ipaas_pool` | Public IPs + BYOIP edge pools. |
 | Network | `ccp_load_balancer` | Highly available with floating VIP, automatic failover. |
 | Compute | `ccp_container_instance` / `ccp_container_scale_set` / `ccp_container_snapshot` | Linux containers — fast boot, low overhead. |
