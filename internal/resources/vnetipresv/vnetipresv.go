@@ -35,7 +35,7 @@ type resvModel struct {
 	IP          types.String `tfsdk:"ip"`
 	RangeEnd    types.String `tfsdk:"range_end"`
 	Description types.String `tfsdk:"description"`
-	Count       types.Int64  `tfsdk:"count"`
+	IPCount     types.Int64  `tfsdk:"ip_count"`
 	Kind        types.String `tfsdk:"kind"`
 	CreatedAt   types.String `tfsdk:"created_at"`
 }
@@ -75,9 +75,9 @@ func (r *resvResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Optional:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"count": schema.Int64Attribute{
+			"ip_count": schema.Int64Attribute{
 				Computed:            true,
-				MarkdownDescription: "Nombre d'IPs couvertes par la réservation.",
+				MarkdownDescription: "Nombre d'IPs couvertes par la réservation. Renommé depuis `count` dans v0.5.4 (collision avec le meta-argument Terraform).",
 			},
 			"kind": schema.StringAttribute{
 				Computed:            true,
@@ -109,7 +109,7 @@ func stateFrom(v *client.VnetIpReservation) resvModel {
 		VnetID:    types.StringValue(v.VnetID),
 		Name:      types.StringValue(v.Name),
 		IP:        types.StringValue(v.IP),
-		Count:     types.Int64Value(int64(v.Count)),
+		IPCount:   types.Int64Value(int64(v.Count)),
 		Kind:      types.StringValue(v.Kind),
 		CreatedAt: types.StringValue(v.CreatedAt),
 	}
