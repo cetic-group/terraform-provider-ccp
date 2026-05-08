@@ -8,6 +8,32 @@ description: |-
 
 The **CETIC Cloud Platform** (CCP) provider lets you manage infrastructure resources on [CETIC Cloud](https://console.cloud.cetic-group.com) — a sovereign cloud offering containers, virtual machines, Kubernetes as a Service, managed databases (PostgreSQL, Valkey, MariaDB, FerretDB), block and object storage, load balancers, and advanced VPC networking.
 
+## Provider name
+
+The provider source is `cetic-group/cetic-cloud-platform`. We recommend
+declaring it with the **local name `ccp`** (shorter, used throughout this
+doc and in all examples):
+
+```hcl
+terraform {
+  required_providers {
+    ccp = {
+      source  = "cetic-group/cetic-cloud-platform"
+      version = "~> 1.0"
+    }
+  }
+}
+```
+
+After this declaration you reference it as `provider "ccp"` and resources
+as `ccp_vpc`, `ccp_container_instance`, etc. (the resource prefix `ccp_`
+is fixed by the provider — independent of the local name you chose).
+
+If you skip the alias and use the default name (the last segment of the
+source path), you'd write `provider "cetic-cloud-platform"`. Both work
+but **all examples in this documentation use `ccp`** — copy the
+`required_providers` block above to keep them as-is.
+
 ## Authentication
 
 The provider authenticates using an API key. Generate one from the CETIC Cloud console at **Settings → API Keys**.
@@ -26,7 +52,7 @@ provider "ccp" {
 }
 ```
 
-## Provider Configuration
+## Full provider block
 
 ```hcl
 terraform {
@@ -39,8 +65,8 @@ terraform {
 }
 
 provider "ccp" {
-  api_key  = var.ccp_api_key        # or env CCP_API_KEY
-  endpoint = "https://api.in.techledger.io"  # optional, env CCP_API_URL
+  api_key  = var.ccp_api_key                # or env CCP_API_KEY
+  endpoint = "https://api.cloud.cetic-group.com"  # optional, env CCP_API_URL
 }
 
 variable "ccp_api_key" {
@@ -55,14 +81,17 @@ variable "ccp_api_key" {
 | Argument | Environment Variable | Required | Description |
 |---|---|---|---|
 | `api_key` | `CCP_API_KEY` | Yes | API key prefixed `ccp_live_`. Generate in console → Settings → API Keys. |
-| `endpoint` | `CCP_API_URL` | No | Override the API base URL. Defaults to the CETIC Cloud production endpoint. |
+| `endpoint` | `CCP_API_URL` | No | Override the API base URL. Defaults to `https://api.cloud.cetic-group.com`. |
 
 ## Example: Full Stack
 
-The following example creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP.
+The following example creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP. Assumes you've declared the `required_providers` block above (otherwise replace `ccp` with `cetic-cloud-platform`).
 
 ```hcl
-provider "ccp" {}
+# Suppose `terraform { required_providers { ccp = { ... } } }` already declared.
+provider "ccp" {
+  api_key = var.ccp_api_key
+}
 
 # Identity
 
