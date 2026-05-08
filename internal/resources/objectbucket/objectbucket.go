@@ -170,7 +170,7 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"endpoint_url": schema.StringAttribute{
 				MarkdownDescription: "Public S3 endpoint URL for the bucket's region " +
-					"(e.g. `https://s3.in.techledger.io`). Null until the bucket " +
+					"(e.g. `https://s3-rnn.cloud.cetic-group.com`). Null until the bucket " +
 					"reaches `active`.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{

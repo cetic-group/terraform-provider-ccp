@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultEndpoint = "https://api.in.techledger.io"
+	defaultEndpoint = "https://api.cloud.cetic-group.com"
 	defaultTimeout  = 30 * time.Second
 	userAgent       = "terraform-provider-ccp"
 )
@@ -35,7 +35,7 @@ type Client struct {
 }
 
 // New builds a Client. Endpoint should be the base URL without /v1 suffix
-// (e.g. "https://api.in.techledger.io"). The client will append /v1 itself.
+// (e.g. "https://api.cloud.cetic-group.com"). The client will append /v1 itself.
 //
 // apiKey must be a `ccp_live_...` API key. JWTs are also accepted but the
 // provider only documents API keys.

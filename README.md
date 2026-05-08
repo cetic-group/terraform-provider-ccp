@@ -25,7 +25,7 @@ and are shown **only once** at creation.
 
 ```bash
 export CCP_API_KEY="ccp_live_..."
-export CCP_API_URL="https://api.in.techledger.io"   # optional, this is the default
+export CCP_API_URL="https://api.cloud.cetic-group.com"   # optional, this is the default
 ```
 
 ### 3. Declare the provider
@@ -42,6 +42,12 @@ terraform {
 
 provider "ccp" {}
 ```
+
+> **Provider name** — the registry source is `cetic-group/cetic-cloud-platform`.
+> All examples in this README use the **local alias `ccp`** (declared in
+> `required_providers` above). Without aliasing, the default local name is
+> `cetic-cloud-platform` — both work, but copy the `required_providers`
+> block as-is to keep examples consistent.
 
 A full working example (SSH key, VPC, two VNets, region listing) lives in
 [`examples/basic/main.tf`](./examples/basic/main.tf).
@@ -119,12 +125,12 @@ output "accessible_orgs" {
 | Argument   | Env var       | Default                       | Description                    |
 |------------|---------------|-------------------------------|--------------------------------|
 | `api_key`  | `CCP_API_KEY`  | _(required)_                          | API key, format `ccp_live_*`.        |
-| `endpoint` | `CCP_API_URL` | `https://api.in.techledger.io`   | Base URL of the CETIC Cloud API.    |
+| `endpoint` | `CCP_API_URL` | `https://api.cloud.cetic-group.com`   | Base URL of the CETIC Cloud API.    |
 
 ```hcl
 provider "ccp" {
   # api_key  = "ccp_live_..."             # prefer the env var
-  # endpoint = "https://api.in.techledger.io"
+  # endpoint = "https://api.cloud.cetic-group.com"
 }
 ```
 
