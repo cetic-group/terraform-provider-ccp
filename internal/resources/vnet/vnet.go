@@ -371,6 +371,12 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		final = fresh
 	}
 
+	// Capture the user's isolation intent BEFORE applyVNetToModel runs, since
+	// it overwrites plan.Isolated with the backend value (always false right
+	// after create — the dedicated /firewall/isolation endpoint hasn't been
+	// called yet).
+	wantIsolated := !plan.Isolated.IsNull() && !plan.Isolated.IsUnknown() && plan.Isolated.ValueBool()
+
 	diags = applyVNetToModel(ctx, final, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -379,7 +385,7 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	// If the user requested isolation=true at create-time, toggle it via the
 	// dedicated firewall endpoint (the base POST /vnets does not accept it).
-	if !plan.Isolated.IsNull() && !plan.Isolated.IsUnknown() && plan.Isolated.ValueBool() && !final.Isolated {
+	if wantIsolated && !final.Isolated {
 		if err := r.client.SetVNetIsolation(ctx, final.ID, true); err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to enable VNet isolation",
