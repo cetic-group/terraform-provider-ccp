@@ -11,7 +11,7 @@ Manages an L3 peering connection between two VNets — same tenant, **either int
 
 ~> **Note:** CETIC Cloud doesn't expose a "VPC peering" abstraction that would federate all VNets of two VPCs in one resource. To peer multiple VNet couples, declare one `ccp_vnet_peering` per couple.
 
-~> **Order normalization:** the backend stores `vnet_a_id < vnet_b_id` (canonical order). Pass the UUIDs in any order — the provider normalizes.
+~> **Order normalization:** the backend stores `vnet_a_id < vnet_b_id` (canonical order). Pass the UUIDs in any order — the provider normalizes them at plan time. Swapping `vnet_a_id` and `vnet_b_id` in HCL while keeping the same VNet pair is a no-op (no replace).
 
 ## Example Usage
 
@@ -36,9 +36,9 @@ resource "ccp_vnet_peering" "web_to_data" {
 
 ### Required
 
-- `name` - Human-readable name for the peering (2-100 chars).
-- `vnet_a_id` - UUID of one VNet. Forces replacement.
-- `vnet_b_id` - UUID of the other VNet. Must be different from `vnet_a_id`. Forces replacement.
+- `name` - Human-readable name for the peering (2-100 chars). Forces replacement.
+- `vnet_a_id` - UUID of one VNet. Order doesn't matter — provider normalizes `a < b` at plan time. Changing the actual VNet pair forces replacement.
+- `vnet_b_id` - UUID of the other VNet. Must be different from `vnet_a_id`. Changing the actual VNet pair forces replacement.
 
 ### Optional
 
