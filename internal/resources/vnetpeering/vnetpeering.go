@@ -27,7 +27,6 @@ var (
 	_ resource.Resource                = (*peerResource)(nil)
 	_ resource.ResourceWithConfigure   = (*peerResource)(nil)
 	_ resource.ResourceWithImportState = (*peerResource)(nil)
-	_ resource.ResourceWithModifyPlan  = (*peerResource)(nil)
 )
 
 func New() resource.Resource { return &peerResource{} }
@@ -63,12 +62,14 @@ func (r *peerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"vnet_a_id": schema.StringAttribute{
-				MarkdownDescription: "UUID of one VNet (order doesn't matter — provider normalizes a < b at plan time).",
+				MarkdownDescription: "UUID of one VNet. Order is free at create-time (provider canonicalizes a < b before sending to the API), but once stored, swapping `vnet_a_id` and `vnet_b_id` in HCL forces a replace.",
 				Required:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"vnet_b_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the other VNet (different from vnet_a_id, can be in another VPC).",
 				Required:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"tags": schema.ListAttribute{
 				ElementType: types.StringType,
@@ -138,8 +139,12 @@ func (r *peerResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	plan.ID = types.StringValue(created.ID)
-	plan.VnetAID = types.StringValue(created.VnetAID)
-	plan.VnetBID = types.StringValue(created.VnetBID)
+	// Intentionally NOT overwriting plan.VnetAID / plan.VnetBID with the
+	// canonical values returned by the API: Terraform requires Required
+	// attributes to keep the value the user wrote in HCL, otherwise it
+	// fails with "Provider produced invalid plan" / "Provider produced
+	// inconsistent result after apply". State preserves the user's order;
+	// the API only sees the canonical pair.
 	plan.Status = types.StringValue(created.Status)
 	plan.CreatedAt = types.StringValue(created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 
@@ -165,8 +170,16 @@ func (r *peerResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 	state.Name = types.StringValue(got.Name)
-	state.VnetAID = types.StringValue(got.VnetAID)
-	state.VnetBID = types.StringValue(got.VnetBID)
+	// Preserve the user's chosen order if the API reports the same pair.
+	// The API always returns canonical (a < b); state may have either order
+	// (whatever the user originally wrote). Overwriting unconditionally
+	// would create perpetual drift for users who happen to write b > a.
+	sa, sb := canonicalOrder(state.VnetAID.ValueString(), state.VnetBID.ValueString())
+	if sa != got.VnetAID || sb != got.VnetBID {
+		// Genuine drift — the pair changed out-of-band. Adopt the API's view.
+		state.VnetAID = types.StringValue(got.VnetAID)
+		state.VnetBID = types.StringValue(got.VnetBID)
+	}
 	state.Status = types.StringValue(got.Status)
 	state.CreatedAt = types.StringValue(got.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 
@@ -179,57 +192,6 @@ func (r *peerResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 func (r *peerResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
 	resp.Diagnostics.AddError("Update not supported",
 		"VNet peering attributes force replacement.")
-}
-
-// ModifyPlan normalizes (vnet_a_id, vnet_b_id) to canonical order (a < b) at
-// plan time so:
-//   - the plan matches what Create returns from the backend (no
-//     "Provider produced inconsistent result after apply" error);
-//   - swapping a/b in HCL while keeping the same pair is a no-op (no replace);
-//   - changing the actual pair triggers a forced replace via resp.RequiresReplace.
-func (r *peerResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	// Destroy: no plan to modify.
-	if req.Plan.Raw.IsNull() {
-		return
-	}
-
-	var plan peerResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Both UUIDs must be known to canonicalize.
-	if plan.VnetAID.IsUnknown() || plan.VnetBID.IsUnknown() ||
-		plan.VnetAID.IsNull() || plan.VnetBID.IsNull() {
-		return
-	}
-
-	a, b := canonicalOrder(plan.VnetAID.ValueString(), plan.VnetBID.ValueString())
-	if a != plan.VnetAID.ValueString() || b != plan.VnetBID.ValueString() {
-		plan.VnetAID = types.StringValue(a)
-		plan.VnetBID = types.StringValue(b)
-		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	// Force replace if the canonical pair differs from prior state. State is
-	// already canonical (Create/Read both write canonical), so we compare directly.
-	if !req.State.Raw.IsNull() {
-		var state peerResourceModel
-		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if state.VnetAID.ValueString() != a || state.VnetBID.ValueString() != b {
-			resp.RequiresReplace = append(resp.RequiresReplace,
-				path.Root("vnet_a_id"),
-				path.Root("vnet_b_id"),
-			)
-		}
-	}
 }
 
 func (r *peerResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
