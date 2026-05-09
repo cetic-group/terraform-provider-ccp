@@ -147,6 +147,51 @@ examples/                    # Exemples auto-testés (acceptance tests)
 - Les exemples HCL doivent compiler sans modif (sont vérifiés par `tflint` / `terraform validate` côté repo modules).
 - Les noms de champs dans la doc doivent matcher exactement les `tfsdk:"..."` du code Go. Tout désalignement est un bug.
 
+## Pièges Terraform plugin framework — vécus en prod
+
+Trois erreurs récurrentes à connaître quand on écrit/modifie un `Create()` ou un `ModifyPlan()` :
+
+### 1. "Provider produced inconsistent result after apply"
+
+Cause typique : on écrase `plan.<RequiredField>` avec la valeur retournée par l'API à la fin de `Create()`, et cette valeur diffère de ce que l'utilisateur a écrit en HCL (canonicalisation, normalisation, swap, etc.).
+
+→ **Pour les attributs `Required`, ne jamais réécrire le plan avec une valeur backend qui peut différer du config.** Appliquer la transformation au moment de construire la requête API, pas au moment d'écrire le state. Préserver l'ordre/format de l'utilisateur.
+
+Exemple historique : `ccp_vnet_peering` v0.9.0 — `canonicalOrder(a, b)` était appliqué au state, le state stockait `(min, max)`, mais le plan avait `(a, b)` user → mismatch → erreur. Fix v0.9.3 : envoyer la canonical à l'API mais laisser plan/state intacts.
+
+### 2. "Provider produced invalid plan"
+
+Cause typique : un `ModifyPlan()` modifie la valeur planifiée d'un attribut **`Required`**, donc la planned value diffère du config value.
+
+→ **`ModifyPlan` ne peut pas changer la valeur d'un attribut `Required`.** Il peut :
+- Changer la valeur d'un attribut `Computed` ou `Optional+Computed`.
+- Ajouter à `resp.RequiresReplace` pour forcer un destroy+create.
+- Émettre des diagnostics.
+
+Si tu veux normaliser un input utilisateur, fais-le côté client API (Create) en gardant le plan inchangé, OU bien valide-le strictement via un `Validator` au lieu de réécrire.
+
+Exemple historique : `ccp_vnet_peering` v0.9.1 — `ModifyPlan` swappait les UUIDs en canonical ; Terraform a refusé. Reverté en v0.9.3.
+
+### 3. `applyXToModel(api, &plan)` écrase l'intent utilisateur
+
+Plusieurs resources ont un helper qui mappe la struct API vers le model Terraform en écrasant tous les champs (`dst.Foo = types.BoolValue(src.Foo)` etc.). Si tu appelles ce helper **avant** de relire l'intent utilisateur sur un champ Optional+Computed (ex. `isolated`, `enabled`), le plan se retrouve avec la valeur backend (souvent `false` juste après création) et la logique conditionnelle qui suit teste contre la valeur écrasée → silent skip.
+
+→ **Capturer l'intent utilisateur dans une variable locale AVANT d'appeler `applyXToModel`.** Exemple :
+
+```go
+wantIsolated := !plan.Isolated.IsNull() && !plan.Isolated.IsUnknown() && plan.Isolated.ValueBool()
+
+diags = applyVNetToModel(ctx, final, &plan)
+// plan.Isolated est maintenant écrasée à false (valeur API)
+
+if wantIsolated && !final.Isolated {
+    r.client.SetVNetIsolation(ctx, final.ID, true)
+    plan.Isolated = types.BoolValue(true) // remettre la valeur user pour le state
+}
+```
+
+Exemple historique : `ccp_vnet` Create avec `isolated = true` → état final `isolated = false`, "inconsistent result". Fix v0.9.2.
+
 ## Mots réservés Terraform
 
 Ne **jamais** utiliser comme nom d'attribut :
