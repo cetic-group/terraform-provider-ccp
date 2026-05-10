@@ -19,14 +19,15 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.9.3**
+> **Status — v0.10.0**
 >
-> **30 resources + 11 data sources** implemented. Highlights : containers
+> **33 resources + 12 data sources** implemented. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
 > set + snapshot), managed Kubernetes clusters + node pools, **managed
 > databases — PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) /
-> MongoDB-compatible (FerretDB v2)**, public IPs, VPCs / VNets / firewall
-> / private IP reservations / VPC peering, load balancers, block volumes,
+> MongoDB-compatible (FerretDB v2)**, **CETIC Container Registry (CCR) +
+> users + ACLs (new in v0.10.0)**, public IPs, VPCs / VNets / firewall /
+> private IP reservations / VPC peering, load balancers, block volumes,
 > object storage buckets + S3 keys, SSH/API keys, organizations + members,
 > custom templates (snapshot a running instance into a reusable template),
 > support tickets, quota requests. Catalog data sources avoid hardcoding
@@ -56,7 +57,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.9.3"
+      version = "~> 0.10.0"
     }
   }
 }
@@ -95,6 +96,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Storage | `ccp_block_volume` | Resizable block storage. `size_gb` can grow; attach/detach via `attached_to_*`. |
 | Storage | `ccp_object_bucket` / `ccp_object_storage_key` | S3-compatible object storage buckets + scoped access keys. |
 | Database | `ccp_db_pg_instance` / `ccp_db_mysql_instance` / `ccp_db_valkey_instance` / `ccp_db_ferretdb_instance` | Managed PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) / MongoDB-compatible (FerretDB v2). |
+| Registry | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` | Per-tenant CETIC Container Registry (Distribution + cesanta JWT). `admin_password` and user `password` returned once at create. |
 | Support | `ccp_support_ticket` / `ccp_quota_request` | Ticketing + quota self-service. |
 
 ## Data sources
@@ -112,6 +114,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | `ccp_db_mysql_credentials` | Admin credentials of a MySQL-compatible instance (sensitive). |
 | `ccp_db_ferretdb_credentials` | Admin credentials of a FerretDB v2 instance (sensitive). |
 | `ccp_db_valkey_credentials` | Admin password of a Valkey (Redis-compatible) instance (sensitive). |
+| `ccp_registry` | Look up a CETIC Container Registry by `id` or by `(name, region)`. |
 
 ## Multi-organization
 

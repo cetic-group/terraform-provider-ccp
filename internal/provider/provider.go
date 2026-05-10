@@ -14,6 +14,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/qemutemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/regions"
+	dsregistry "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registry"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/apikey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/blockvolume"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerinstance"
@@ -34,6 +35,9 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/organization"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/publicip"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/quotarequest"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registry"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registryacl"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registryuser"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/sshkey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/supportticket"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vminstance"
@@ -163,6 +167,9 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		vnetipresv.New,
 		vnetfirewallrule.New,
 		customtemplate.New,
+		registry.New,
+		registryuser.New,
+		registryacl.New,
 	}
 }
 
@@ -179,5 +186,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dbcredentials.NewMySQL,
 		dbcredentials.NewFerretdb,
 		dbcredentials.NewValkey,
+		dsregistry.New,
 	}
 }
