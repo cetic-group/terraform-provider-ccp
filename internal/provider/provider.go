@@ -9,6 +9,8 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
+	dsiampolicydocument "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/iampolicydocument"
+	dsiamrole "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/iamrole"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8stemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/lxctemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
@@ -25,6 +27,8 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/dbmysqlinstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/dbpginstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/dbvalkeyinstance"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/iamrole"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/iamroleassignment"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/ipaaspool"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/k8scluster"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/k8snodepool"
@@ -38,6 +42,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registry"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registryacl"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registryuser"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/serviceaccount"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/sshkey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/supportticket"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vminstance"
@@ -170,6 +175,9 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		registry.New,
 		registryuser.New,
 		registryacl.New,
+		iamrole.New,
+		iamroleassignment.New,
+		serviceaccount.New,
 	}
 }
 
@@ -187,5 +195,7 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dbcredentials.NewFerretdb,
 		dbcredentials.NewValkey,
 		dsregistry.New,
+		dsiamrole.New,
+		dsiampolicydocument.New,
 	}
 }
