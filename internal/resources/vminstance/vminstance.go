@@ -1,8 +1,8 @@
 // Package vminstance implements the ccp_vm_instance Terraform resource.
 //
-// A VM instance in Cloud Lake is a Proxmox QEMU virtual machine cloned from a
+// A VM instance in CETIC Cloud is a Proxmox QEMU virtual machine cloned from a
 // pre-existing template (Ubuntu/Debian cloud images) and configured at first
-// boot via cloud-init (sshkeys, user_data, root password). The Cloud Lake API
+// boot via cloud-init (sshkeys, user_data, root password). The CETIC Cloud API
 // supports an in-place PATCH that mutates only `name` and `tags`; every other
 // user-settable attribute (`region`, `plan`, `template`, `vnet_id`,
 // `ssh_key_ids`, `user_data`, `public_ip_id`, `root_password`) forces
@@ -97,7 +97,7 @@ type vmInstanceResourceModel struct {
 // and hyphens, 1..100 chars.
 var nameValidatorPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-]{1,100}$`)
 
-// uuidPattern is a permissive RFC 4122 matcher for Cloud Lake resource IDs.
+// uuidPattern is a permissive RFC 4122 matcher for CETIC Cloud resource IDs.
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Polling parameters.
@@ -113,7 +113,7 @@ const (
 )
 
 // defaultTemplate is applied when the user does not specify one. Matches the
-// Cloud Lake catalogue default.
+// CETIC Cloud catalogue default.
 const defaultTemplate = "ubuntu-24.04"
 
 func (r *vmInstanceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -122,7 +122,7 @@ func (r *vmInstanceResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake VM instance (QEMU). Only `name` and `tags` " +
+		MarkdownDescription: "Manages a CETIC Cloud VM instance (QEMU). Only `name` and `tags` " +
 			"are mutable in place via the API's PATCH endpoint; every other user-settable " +
 			"attribute forces replacement. Creation is asynchronous: the provider polls until " +
 			"the VM reaches the `running` state with a resolved IP address (or up to 10 minutes).",
@@ -146,7 +146,7 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "Cloud Lake region. One of `RNN` (Rennes, France), " +
+				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
 					"`PAR` (Paris, France), or `ABJ` (Abidjan, Côte d'Ivoire). Forces replacement.",
 				Required: true,
 				Validators: []validator.String{
@@ -170,7 +170,7 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			"template": schema.StringAttribute{
 				MarkdownDescription: "Template key (e.g. `ubuntu-24.04`, `debian-12`). Must " +
-					"match an active template registered in the Cloud Lake catalogue. " +
+					"match an active template registered in the CETIC Cloud catalogue. " +
 					"Defaults to `ubuntu-24.04`. Forces replacement.",
 				Optional: true,
 				Computed: true,
@@ -406,13 +406,13 @@ func (r *vmInstanceResource) Create(ctx context.Context, req resource.CreateRequ
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"VM creation conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create VM",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -516,7 +516,7 @@ func (r *vmInstanceResource) Read(ctx context.Context, req resource.ReadRequest,
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read VM",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", state.ID.ValueString(), err.Error()),
 		)
 		return
 	}
@@ -588,13 +588,13 @@ func (r *vmInstanceResource) Update(ctx context.Context, req resource.UpdateRequ
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"VM update conflicts with current state",
-					fmt.Sprintf("Cloud Lake rejected the PATCH call for VM %s: %s", id, err.Error()),
+					fmt.Sprintf("CETIC Cloud rejected the PATCH call for VM %s: %s", id, err.Error()),
 				)
 				return
 			}
 			resp.Diagnostics.AddError(
 				"Failed to update VM",
-				fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 			)
 			return
 		}
@@ -636,13 +636,13 @@ func (r *vmInstanceResource) Delete(ctx context.Context, req resource.DeleteRequ
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete VM",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return
 	}
 
 	// Poll until GetVMInstance returns 404. If the timeout elapses, warn but
-	// let Terraform remove the resource from state — Cloud Lake is still
+	// let Terraform remove the resource from state — CETIC Cloud is still
 	// converging asynchronously and blocking the apply would be worse.
 	pollErr := client.Poll(ctx, deletePollInterval, deletePollTimeout, func(ctx context.Context) (bool, error) {
 		_, err := r.client.GetVMInstance(ctx, id)

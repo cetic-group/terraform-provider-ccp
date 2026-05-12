@@ -47,7 +47,7 @@ func (r *ticketResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *ticketResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Open a Cloud Lake support ticket. Useful for monitoring → auto " +
+		MarkdownDescription: "Open a CETIC Cloud support ticket. Useful for monitoring → auto " +
 			"ticket creation. The body is set at creation time only (replies via API/console). " +
 			"Destroying the resource does NOT close the ticket — close it manually.",
 		Attributes: map[string]schema.Attribute{

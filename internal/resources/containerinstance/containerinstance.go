@@ -1,7 +1,7 @@
 // Package containerinstance implements the ccp_container_instance
 // Terraform resource.
 //
-// A container instance in Cloud Lake is a Proxmox LXC container provisioned
+// A container instance in CETIC Cloud is a Proxmox LXC container provisioned
 // from a template (Ubuntu/Debian/...). The API exposes no PATCH endpoint, so
 // every user-settable attribute (`name`, `region`, `plan`, `template`,
 // `vnet_id`, `ssh_key_ids`, `user_data`, `public_ip_id`, `root_password`,
@@ -94,7 +94,7 @@ type containerInstanceResourceModel struct {
 // and hyphens, 1..100 chars.
 var nameValidatorPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-]{1,100}$`)
 
-// uuidPattern is a permissive RFC 4122 matcher for Cloud Lake resource IDs.
+// uuidPattern is a permissive RFC 4122 matcher for CETIC Cloud resource IDs.
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Polling parameters.
@@ -113,7 +113,7 @@ func (r *containerInstanceResource) Metadata(_ context.Context, req resource.Met
 
 func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake container instance (LXC). The API has no " +
+		MarkdownDescription: "Manages a CETIC Cloud container instance (LXC). The API has no " +
 			"in-place update endpoint, so every user-settable attribute forces replacement. " +
 			"Creation is asynchronous: the provider polls until the container reaches the " +
 			"`running` state with a resolved IP address (or up to 5 minutes).",
@@ -139,7 +139,7 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "Cloud Lake region. One of `RNN` (Rennes, France), " +
+				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
 					"`PAR` (Paris, France), or `ABJ` (Abidjan, Côte d'Ivoire).",
 				Required: true,
 				Validators: []validator.String{
@@ -162,7 +162,7 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 			},
 			"template": schema.StringAttribute{
 				MarkdownDescription: "Template key (e.g. `ubuntu-24.04`, `debian-12`). Must " +
-					"match an active template registered in the Cloud Lake catalogue.",
+					"match an active template registered in the CETIC Cloud catalogue.",
 				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -388,13 +388,13 @@ func (r *containerInstanceResource) Create(ctx context.Context, req resource.Cre
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"Container creation conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create container",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -500,7 +500,7 @@ func (r *containerInstanceResource) Read(ctx context.Context, req resource.ReadR
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read container",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", state.ID.ValueString(), err.Error()),
 		)
 		return
 	}
@@ -552,13 +552,13 @@ func (r *containerInstanceResource) Delete(ctx context.Context, req resource.Del
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete container",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return
 	}
 
 	// Poll until GetContainer returns 404. If the timeout elapses, warn but
-	// let Terraform remove the resource from state — Cloud Lake is still
+	// let Terraform remove the resource from state — CETIC Cloud is still
 	// converging asynchronously and blocking the apply would be worse.
 	pollErr := client.Poll(ctx, deletePollInterval, deletePollTimeout, func(ctx context.Context) (bool, error) {
 		_, err := r.client.GetContainer(ctx, id)

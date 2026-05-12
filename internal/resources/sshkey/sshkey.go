@@ -4,7 +4,7 @@
 // DELETE returns 204, and there is no PATCH/PUT endpoint. Both `name` and
 // `public_key` therefore force replacement on change.
 //
-// The Cloud Lake API exposes no GET-by-id endpoint; the typed client emulates
+// The CETIC Cloud API exposes no GET-by-id endpoint; the typed client emulates
 // it via list-and-filter and surfaces a 404 APIError when the key is gone —
 // callers detect that with client.IsNotFound for standard drift handling.
 package sshkey
@@ -64,9 +64,9 @@ func (r *sshKeyResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *sshKeyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages an SSH public key registered with Cloud Lake. " +
+		MarkdownDescription: "Manages an SSH public key registered with CETIC Cloud. " +
 			"Keys are injected into containers (via cloud-init / authorized_keys) and VMs " +
-			"(via cloud-init `sshkeys`). The Cloud Lake API has no update endpoint, so any " +
+			"(via cloud-init `sshkeys`). The CETIC Cloud API has no update endpoint, so any " +
 			"change to `name` or `public_key` forces replacement.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -150,13 +150,13 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"SSH key already exists",
-				fmt.Sprintf("Cloud Lake rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create SSH key",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -185,7 +185,7 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read SSH key",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", state.ID.ValueString(), err.Error()),
 		)
 		return
 	}
@@ -225,7 +225,7 @@ func (r *sshKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete SSH key",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", state.ID.ValueString(), err.Error()),
 		)
 		return
 	}

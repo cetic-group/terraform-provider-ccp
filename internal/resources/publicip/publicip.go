@@ -1,6 +1,6 @@
 // Package publicip implements the ccp_public_ip Terraform resource.
 //
-// A public IP in Cloud Lake is allocated from a per-region pool (either a
+// A public IP in CETIC Cloud is allocated from a per-region pool (either a
 // classic OPNsense/Orange pool or an `ipaas_routed` pool that announces a
 // BYOIP prefix via FRR/BGP from a Scaleway edge). Allocation and release are
 // synchronous — the API returns 201 with the full PublicIP record and 204 on
@@ -70,7 +70,7 @@ type publicIPResourceModel struct {
 	CreatedAt        types.String `tfsdk:"created_at"`
 }
 
-// uuidPattern is a permissive RFC 4122 matcher for Cloud Lake resource IDs.
+// uuidPattern is a permissive RFC 4122 matcher for CETIC Cloud resource IDs.
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Polling parameters.
@@ -90,7 +90,7 @@ func (r *publicIPResource) Metadata(_ context.Context, req resource.MetadataRequ
 
 func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake public IP address. The IP is " +
+		MarkdownDescription: "Manages a CETIC Cloud public IP address. The IP is " +
 			"allocated from a region pool (classic Orange/OPNsense pool or an " +
 			"`ipaas_routed` BYOIP pool), and can be attached to a container or " +
 			"VM instance via `attached_to_id` + `attached_to_type`. Load-balancer " +
@@ -105,7 +105,7 @@ func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "Cloud Lake region. One of `RNN` (Rennes, France), " +
+				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
 					"`PAR` (Paris, France), or `ABJ` (Abidjan, Côte d'Ivoire). " +
 					"Forces replacement on change.",
 				Required: true,
@@ -250,13 +250,13 @@ func (r *publicIPResource) Create(ctx context.Context, req resource.CreateReques
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"Public IP allocation conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the allocate call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the allocate call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to allocate public IP",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -302,7 +302,7 @@ func (r *publicIPResource) Read(ctx context.Context, req resource.ReadRequest, r
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read public IP",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s",
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s",
 				state.ID.ValueString(), err.Error()),
 		)
 		return
@@ -439,14 +439,14 @@ func (r *publicIPResource) Delete(ctx context.Context, req resource.DeleteReques
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"Public IP release conflicts with current state",
-				fmt.Sprintf("Cloud Lake refused to release IP %s (likely still attached): %s",
+				fmt.Sprintf("CETIC Cloud refused to release IP %s (likely still attached): %s",
 					id, err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to release public IP",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return
 	}
@@ -473,7 +473,7 @@ func (r *publicIPResource) attachAndPoll(ctx context.Context, id, resourceID, re
 		if client.IsConflict(err) {
 			diags.AddError(
 				"Public IP attachment conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the attach call for IP %s: %s. "+
+				fmt.Sprintf("CETIC Cloud rejected the attach call for IP %s: %s. "+
 					"This usually means the IP is already attached, or the target "+
 					"resource already has a public IP attached.",
 					id, err.Error()),
@@ -482,7 +482,7 @@ func (r *publicIPResource) attachAndPoll(ctx context.Context, id, resourceID, re
 		}
 		diags.AddError(
 			"Failed to attach public IP",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s. Note that IPaaS-routed "+
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s. Note that IPaaS-routed "+
 				"pools require the target VNet to have `snat=false` (a 422 here "+
 				"surfaces that mismatch).", id, err.Error()),
 		)
@@ -507,14 +507,14 @@ func (r *publicIPResource) detachAndPoll(ctx context.Context, id string) diag.Di
 		if client.IsConflict(err) {
 			diags.AddError(
 				"Public IP detach conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the detach call for IP %s: %s",
+				fmt.Sprintf("CETIC Cloud rejected the detach call for IP %s: %s",
 					id, err.Error()),
 			)
 			return diags
 		}
 		diags.AddError(
 			"Failed to detach public IP",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return diags
 	}

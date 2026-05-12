@@ -1,6 +1,6 @@
 // Package vpc implements the ccp_vpc Terraform resource.
 //
-// A VPC in Cloud Lake is a Proxmox SDN zone (vxlan, with a per-VPC NAT GW LXC
+// A VPC in CETIC Cloud is a Proxmox SDN zone (vxlan, with a per-VPC NAT GW LXC
 // provisioned lazily on first VNet creation). The API exposes no PATCH
 // endpoint, so every user-settable attribute (`name`, `region`, `tags`) forces
 // replacement on change.
@@ -90,7 +90,7 @@ func (r *vpcResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake VPC. A VPC is a regional layer-3 boundary " +
+		MarkdownDescription: "Manages a CETIC Cloud VPC. A VPC is a regional layer-3 boundary " +
 			"(backed by a Proxmox SDN VXLAN zone and a per-VPC NAT gateway). The API has no " +
 			"in-place update endpoint, so any change to `name`, `region`, or `tags` forces " +
 			"replacement. Creation is asynchronous: the provider polls until the VPC reaches " +
@@ -118,7 +118,7 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "Cloud Lake region. One of `RNN` (Rennes, France), " +
+				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
 					"`PAR` (Paris, France), or `ABJ` (Abidjan, Côte d'Ivoire).",
 				Required: true,
 				Validators: []validator.String{
@@ -217,13 +217,13 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"VPC creation conflicts with an existing resource",
-				fmt.Sprintf("Cloud Lake rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create VPC",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -238,7 +238,7 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		resp.Diagnostics.AddError(
 			"VPC entered error state during provisioning",
 			fmt.Sprintf("VPC %s reported status `error` immediately after creation. "+
-				"Check the Cloud Lake console or backoffice for the underlying cause.", created.ID),
+				"Check the CETIC Cloud console or backoffice for the underlying cause.", created.ID),
 		)
 		return
 	default:
@@ -259,7 +259,7 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		if pollErr != nil {
 			resp.Diagnostics.AddError(
 				"VPC failed to reach active state",
-				fmt.Sprintf("Cloud Lake VPC %s did not become active within %s: %s",
+				fmt.Sprintf("CETIC Cloud VPC %s did not become active within %s: %s",
 					created.ID, createPollTimeout, pollErr.Error()),
 			)
 			return
@@ -303,7 +303,7 @@ func (r *vpcResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read VPC",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", state.ID.ValueString(), err.Error()),
 		)
 		return
 	}
@@ -347,13 +347,13 @@ func (r *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete VPC",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return
 	}
 
 	// Poll until GetVPC returns 404. If the timeout elapses, warn but let
-	// Terraform remove the resource from state — Cloud Lake is still
+	// Terraform remove the resource from state — CETIC Cloud is still
 	// converging asynchronously and blocking the apply would be worse.
 	pollErr := client.Poll(ctx, deletePollInterval, deletePollTimeout, func(ctx context.Context) (bool, error) {
 		_, err := r.client.GetVPC(ctx, id)
@@ -369,7 +369,7 @@ func (r *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 		resp.Diagnostics.AddWarning(
 			"VPC deletion did not complete within the timeout",
 			fmt.Sprintf("VPC %s was scheduled for deletion but did not disappear within %s: %s. "+
-				"Terraform will remove the resource from state; the Cloud Lake backend should "+
+				"Terraform will remove the resource from state; the CETIC Cloud backend should "+
 				"finish the teardown asynchronously.", id, deletePollTimeout, pollErr.Error()),
 		)
 	}

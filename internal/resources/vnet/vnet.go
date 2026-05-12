@@ -1,6 +1,6 @@
 // Package vnet implements the ccp_vnet Terraform resource.
 //
-// A VNet in Cloud Lake is a Proxmox SDN VXLAN VNet nested under a VPC, with
+// A VNet in CETIC Cloud is a Proxmox SDN VXLAN VNet nested under a VPC, with
 // IPAM allocations served by the per-VPC NAT GW LXC. Most fields are
 // immutable post-create (CIDR, DHCP range, parent VPC) and force replacement
 // on change. Only `name` and `snat` are mutable via the PATCH endpoint.
@@ -115,7 +115,7 @@ func (r *vnetResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake VNet inside a VPC. A VNet is a Proxmox SDN " +
+		MarkdownDescription: "Manages a CETIC Cloud VNet inside a VPC. A VNet is a Proxmox SDN " +
 			"VXLAN VNet with its own CIDR and (optional) DHCP range, served by the per-VPC " +
 			"NAT gateway. Only `name` and `snat` can be updated in place; changes to `vpc_id`, " +
 			"`cidr`, `dhcp_start`, `dhcp_end`, or `tags` force replacement. Creation is " +
@@ -310,13 +310,13 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"VNet creation conflicts with an existing resource",
-				fmt.Sprintf("Cloud Lake rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create VNet",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -331,7 +331,7 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError(
 			"VNet entered error state during provisioning",
 			fmt.Sprintf("VNet %s reported status `error` immediately after creation. "+
-				"Check the Cloud Lake console or backoffice for the underlying cause.", created.ID),
+				"Check the CETIC Cloud console or backoffice for the underlying cause.", created.ID),
 		)
 		return
 	default:
@@ -352,7 +352,7 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		if pollErr != nil {
 			resp.Diagnostics.AddError(
 				"VNet failed to reach active state",
-				fmt.Sprintf("Cloud Lake VNet %s did not become active within %s: %s",
+				fmt.Sprintf("CETIC Cloud VNet %s did not become active within %s: %s",
 					created.ID, createPollTimeout, pollErr.Error()),
 			)
 			return
@@ -418,7 +418,7 @@ func (r *vnetResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read VNet",
-			fmt.Sprintf("Cloud Lake API error for vpc=%s vnet=%s: %s",
+			fmt.Sprintf("CETIC Cloud API error for vpc=%s vnet=%s: %s",
 				state.VPCID.ValueString(), state.ID.ValueString(), err.Error()),
 		)
 		return
@@ -472,7 +472,7 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		if err := r.client.SetVNetIsolation(ctx, id, plan.Isolated.ValueBool()); err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to toggle VNet isolation",
-				fmt.Sprintf("Cloud Lake API error for vnet=%s: %s", id, err.Error()),
+				fmt.Sprintf("CETIC Cloud API error for vnet=%s: %s", id, err.Error()),
 			)
 			return
 		}
@@ -486,7 +486,7 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"VNet update conflicts with current state",
-					fmt.Sprintf("Cloud Lake rejected the update for vnet %s: %s. "+
+					fmt.Sprintf("CETIC Cloud rejected the update for vnet %s: %s. "+
 						"For `snat=false`, ensure no IPaaS routed public IPs remain attached "+
 						"to instances in this VNet before retrying.", id, err.Error()),
 				)
@@ -494,7 +494,7 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 			}
 			resp.Diagnostics.AddError(
 				"Failed to update VNet",
-				fmt.Sprintf("Cloud Lake API error for vpc=%s vnet=%s: %s", vpcID, id, err.Error()),
+				fmt.Sprintf("CETIC Cloud API error for vpc=%s vnet=%s: %s", vpcID, id, err.Error()),
 			)
 			return
 		}
@@ -507,7 +507,7 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to read VNet after update",
-			fmt.Sprintf("Cloud Lake API error for vpc=%s vnet=%s: %s", vpcID, id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for vpc=%s vnet=%s: %s", vpcID, id, err.Error()),
 		)
 		return
 	}
@@ -542,7 +542,7 @@ func (r *vnetResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"VNet delete blocked by attached resources",
-				fmt.Sprintf("Cloud Lake refused to delete vnet %s: %s. "+
+				fmt.Sprintf("CETIC Cloud refused to delete vnet %s: %s. "+
 					"Detach any containers, VMs, or load balancers using this VNet, then retry.",
 					id, err.Error()),
 			)
@@ -550,13 +550,13 @@ func (r *vnetResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete VNet",
-			fmt.Sprintf("Cloud Lake API error for vpc=%s vnet=%s: %s", vpcID, id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for vpc=%s vnet=%s: %s", vpcID, id, err.Error()),
 		)
 		return
 	}
 
 	// Poll until GetVNet returns 404. If the timeout elapses, warn but let
-	// Terraform remove the resource from state — Cloud Lake is still
+	// Terraform remove the resource from state — CETIC Cloud is still
 	// converging asynchronously and blocking the apply would be worse.
 	pollErr := client.Poll(ctx, deletePollInterval, deletePollTimeout, func(ctx context.Context) (bool, error) {
 		_, err := r.client.GetVNet(ctx, vpcID, id)
@@ -572,7 +572,7 @@ func (r *vnetResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		resp.Diagnostics.AddWarning(
 			"VNet deletion did not complete within the timeout",
 			fmt.Sprintf("VNet %s was scheduled for deletion but did not disappear within %s: %s. "+
-				"Terraform will remove the resource from state; the Cloud Lake backend should "+
+				"Terraform will remove the resource from state; the CETIC Cloud backend should "+
 				"finish the teardown asynchronously.", id, deletePollTimeout, pollErr.Error()),
 		)
 	}

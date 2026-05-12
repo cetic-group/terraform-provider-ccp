@@ -135,7 +135,7 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "Cloud Lake region. One of `RNN` (Rennes, France), " +
+				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
 					"`PAR` (Paris, France), or `ABJ` (Abidjan, Côte d'Ivoire).",
 				Required: true,
 				Validators: []validator.String{
@@ -278,7 +278,7 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		case client.IsConflict(err):
 			resp.Diagnostics.AddError(
 				"Object bucket name already exists in this region",
-				fmt.Sprintf("Cloud Lake rejected the create call with a 409 conflict. "+
+				fmt.Sprintf("CETIC Cloud rejected the create call with a 409 conflict. "+
 					"Bucket names must be unique within a region. Underlying error: %s",
 					err.Error()),
 			)
@@ -288,7 +288,7 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 			// errors land here — surface the API detail directly.
 			resp.Diagnostics.AddError(
 				"Failed to create object bucket",
-				fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 			)
 			return
 		}
@@ -353,7 +353,7 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read object bucket",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s",
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s",
 				state.ID.ValueString(), err.Error()),
 		)
 		return
@@ -410,7 +410,7 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 	if !plan.Tags.Equal(state.Tags) {
 		resp.Diagnostics.AddError(
 			"Object bucket tags cannot be updated in place",
-			"The Cloud Lake API does not expose an endpoint to mutate bucket "+
+			"The CETIC Cloud API does not expose an endpoint to mutate bucket "+
 				"tags. Changing `tags` should force replacement; reaching this "+
 				"branch indicates a provider bug — please report it.",
 		)
@@ -426,14 +426,14 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"Object bucket update conflicts with current state",
-					fmt.Sprintf("Cloud Lake rejected the PATCH for bucket %s: %s",
+					fmt.Sprintf("CETIC Cloud rejected the PATCH for bucket %s: %s",
 						id, err.Error()),
 				)
 				return
 			}
 			resp.Diagnostics.AddError(
 				"Failed to update object bucket",
-				fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 			)
 			return
 		}
@@ -484,13 +484,13 @@ func (r *objectBucketResource) Delete(ctx context.Context, req resource.DeleteRe
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"Object bucket deletion conflicts with current state",
-				fmt.Sprintf("Cloud Lake refused to delete bucket %s: %s", id, err.Error()),
+				fmt.Sprintf("CETIC Cloud refused to delete bucket %s: %s", id, err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete object bucket",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return
 	}
@@ -512,7 +512,7 @@ func (r *objectBucketResource) Delete(ctx context.Context, req resource.DeleteRe
 			"Object bucket deletion did not complete within the timeout",
 			fmt.Sprintf("Bucket %s was scheduled for deletion but did not disappear "+
 				"within %s: %s. Terraform will remove the resource from state; the "+
-				"Cloud Lake backend should finish the teardown asynchronously.",
+				"CETIC Cloud backend should finish the teardown asynchronously.",
 				id, deletePollTimeout, pollErr.Error()),
 		)
 	}

@@ -44,7 +44,7 @@ func (r *orgResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (r *orgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Cloud Lake organization (logical workspace for resources, members, billing). " +
+		MarkdownDescription: "CETIC Cloud organization (logical workspace for resources, members, billing). " +
 			"The default org of a tenant is created automatically and cannot be managed by Terraform.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

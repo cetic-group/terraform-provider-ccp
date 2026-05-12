@@ -128,7 +128,7 @@ production API on `api.cloud.cetic-group.com`.
 - **Database `tier` attribute.** Computed — derived by the API from `replicas`
   (1 → `dev`, 3 → `prod`). Don't try to set it directly; set `replicas` instead.
 - **Database `admin_password` not exposed by the resource.** The API stores it
-  separately under Lake Secrets. To retrieve, use `GET /v1/db/<engine>/{id}/credentials`
+  separately under CCP Secrets. To retrieve, use `GET /v1/db/<engine>/{id}/credentials`
   via CLI / API. A `ccp_db_<engine>_credentials` data source is on the roadmap.
 - **Load balancer — `backend.scale_set_id` not yet supported.** Currently only
   `container_id` and `vm_instance_id` are valid backends. Scale-set-as-backend

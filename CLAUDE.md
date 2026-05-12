@@ -192,6 +192,29 @@ if wantIsolated && !final.Isolated {
 
 Exemple historique : `ccp_vnet` Create avec `isolated = true` → état final `isolated = false`, "inconsistent result". Fix v0.9.2.
 
+### 4. `ValidateConfig` fire au `terraform validate` sur des Optional+Computed+Default
+
+Cause typique : un `ValidateConfig` checke `!cfg.X.IsNull() && !cfg.Y.IsNull() && !xSet && !ySet` pour catcher "les 2 explicitement false". Au `terraform validate`, **avant que les PlanModifiers ne s'exécutent**, les attributs `Optional+Computed` avec `booldefault.StaticBool(...)` sont **Unknown**, pas Null. La condition gating considère donc Unknown comme une valeur concrète, calcule `xSet = false` et `ySet = false`, et déclenche l'erreur — alors qu'aucun consumer ne pourrait raisonnablement écrire `false` partout en plan-time (les defaults `true` s'appliqueront).
+
+→ **Dans `ValidateConfig`, early-return si EITHER attribut est Null OU Unknown.** Le plan-time enforcement (resource logic + API CHECK constraint) reste actif sur les valeurs concrètes.
+
+```go
+func (r *xResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+    var cfg xResourceModel
+    resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+    if resp.Diagnostics.HasError() { return }
+    // Skip when either side is unresolved — defaults may not have been applied yet.
+    if cfg.A.IsNull() || cfg.A.IsUnknown() || cfg.B.IsNull() || cfg.B.IsUnknown() {
+        return
+    }
+    if !cfg.A.ValueBool() && !cfg.B.ValueBool() {
+        resp.Diagnostics.AddError("invariant violated", "...")
+    }
+}
+```
+
+Exemple historique : `ccp_registry.ValidateConfig` v0.11.0 → tout `make validate` sur `cetic-cloud-terraform-modules` cassait pour les consumers qui n'explicitaient pas `expose_public`/`expose_private`. Fix v0.11.1.
+
 ## Mots réservés Terraform
 
 Ne **jamais** utiliser comme nom d'attribut :

@@ -61,7 +61,7 @@ func (r *vmssResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake VM Scale Set — a pool of identical VMs " +
+		MarkdownDescription: "Manages a CETIC Cloud VM Scale Set — a pool of identical VMs " +
 			"with min/max bounds and `desired_instances` for hot scaling. Auto-repair re-creates failed containers " +
 			"when enabled.",
 		Attributes: map[string]schema.Attribute{

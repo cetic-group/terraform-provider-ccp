@@ -1,6 +1,6 @@
 # Adding a new Terraform resource
 
-This guide explains, step-by-step, how to add a new Cloud Lake resource to the
+This guide explains, step-by-step, how to add a new CETIC Cloud resource to the
 Terraform provider. The process is mechanical — most of the time is spent on
 the API client + struct mapping, not on Terraform internals.
 
@@ -194,7 +194,7 @@ func (r *myResourceResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *myResourceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
     resp.Schema = schema.Schema{
-        MarkdownDescription: "Manages a Cloud Lake MyResource.",
+        MarkdownDescription: "Manages a CETIC Cloud MyResource.",
         Attributes: map[string]schema.Attribute{
             "id": schema.StringAttribute{
                 Computed: true,

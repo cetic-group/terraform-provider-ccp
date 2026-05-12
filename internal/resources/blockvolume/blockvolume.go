@@ -1,7 +1,7 @@
 // Package blockvolume implements the ccp_block_volume Terraform
 // resource.
 //
-// A block volume in Cloud Lake is a Ceph RBD image that can be attached to
+// A block volume in CETIC Cloud is a Ceph RBD image that can be attached to
 // either a container instance or a VM instance. Provisioning, deletion,
 // attach, detach and resize are all asynchronous on the API side: the
 // endpoints return 201/202 with a transient status (`creating`, `deleting`,
@@ -81,7 +81,7 @@ type blockVolumeResourceModel struct {
 // and hyphens, 1..100 chars.
 var nameValidatorPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-]{1,100}$`)
 
-// uuidPattern is a permissive RFC 4122 matcher for Cloud Lake resource IDs.
+// uuidPattern is a permissive RFC 4122 matcher for CETIC Cloud resource IDs.
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Polling parameters.
@@ -106,7 +106,7 @@ func (r *blockVolumeResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Cloud Lake block volume (Ceph RBD). " +
+		MarkdownDescription: "Manages a CETIC Cloud block volume (Ceph RBD). " +
 			"Volumes can be attached to a container or VM instance via " +
 			"`attached_to_id` + `attached_to_type`. The size can be grown in " +
 			"place but never shrunk. Provisioning, attach, detach and resize " +
@@ -135,7 +135,7 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "Cloud Lake region. One of `RNN` (Rennes, France), " +
+				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
 					"`PAR` (Paris, France), or `ABJ` (Abidjan, Côte d'Ivoire).",
 				Required: true,
 				Validators: []validator.String{
@@ -287,13 +287,13 @@ func (r *blockVolumeResource) Create(ctx context.Context, req resource.CreateReq
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"Block volume creation conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create block volume",
-			fmt.Sprintf("Cloud Lake API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
 		)
 		return
 	}
@@ -320,7 +320,7 @@ func (r *blockVolumeResource) Create(ctx context.Context, req resource.CreateReq
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"Block volume attachment conflicts with current state",
-					fmt.Sprintf("Cloud Lake rejected the attach call for volume %s: %s",
+					fmt.Sprintf("CETIC Cloud rejected the attach call for volume %s: %s",
 						created.ID, err.Error()),
 				)
 				return
@@ -379,7 +379,7 @@ func (r *blockVolumeResource) Read(ctx context.Context, req resource.ReadRequest
 		}
 		resp.Diagnostics.AddError(
 			"Failed to read block volume",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s",
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s",
 				state.ID.ValueString(), err.Error()),
 		)
 		return
@@ -441,14 +441,14 @@ func (r *blockVolumeResource) Update(ctx context.Context, req resource.UpdateReq
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"Block volume resize conflicts with current state",
-					fmt.Sprintf("Cloud Lake rejected the resize call for volume %s: %s",
+					fmt.Sprintf("CETIC Cloud rejected the resize call for volume %s: %s",
 						id, err.Error()),
 				)
 				return
 			}
 			resp.Diagnostics.AddError(
 				"Failed to resize block volume",
-				fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 			)
 			return
 		}
@@ -555,14 +555,14 @@ func (r *blockVolumeResource) Delete(ctx context.Context, req resource.DeleteReq
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
 				"Block volume deletion conflicts with current state",
-				fmt.Sprintf("Cloud Lake refused to delete volume %s (likely still attached): %s",
+				fmt.Sprintf("CETIC Cloud refused to delete volume %s (likely still attached): %s",
 					id, err.Error()),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete block volume",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return
 	}
@@ -608,14 +608,14 @@ func (r *blockVolumeResource) attachAndPoll(ctx context.Context, id, resourceID,
 		if client.IsConflict(err) {
 			diags.AddError(
 				"Block volume attachment conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the attach call for volume %s: %s",
+				fmt.Sprintf("CETIC Cloud rejected the attach call for volume %s: %s",
 					id, err.Error()),
 			)
 			return diags
 		}
 		diags.AddError(
 			"Failed to attach block volume",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return diags
 	}
@@ -639,14 +639,14 @@ func (r *blockVolumeResource) detachAndPoll(ctx context.Context, id string) diag
 		if client.IsConflict(err) {
 			diags.AddError(
 				"Block volume detach conflicts with current state",
-				fmt.Sprintf("Cloud Lake rejected the detach call for volume %s: %s",
+				fmt.Sprintf("CETIC Cloud rejected the detach call for volume %s: %s",
 					id, err.Error()),
 			)
 			return diags
 		}
 		diags.AddError(
 			"Failed to detach block volume",
-			fmt.Sprintf("Cloud Lake API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 		)
 		return diags
 	}
