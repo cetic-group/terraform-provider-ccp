@@ -4,6 +4,20 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] — 2026-05-12
+
+### Fixed
+
+- **`ccp_registry` ValidateConfig** — the `at least one exposure must be
+  enabled` check fired spuriously during `terraform validate` of any
+  consumer (modules, landing-zones) that omitted `expose_public` /
+  `expose_private` to take the defaults. Both attributes are
+  Optional+Computed with `booldefault.StaticBool(...)` — at validate-time
+  (before PlanModifiers apply), the framework surfaces them as Unknown.
+  The validator now skips when either value is Null or Unknown; plan-time
+  enforcement (resource logic) and the API CHECK constraint remain in
+  place. Affects callers of `cetic-cloud-terraform-modules` v0.5.0+.
+
 ## [0.11.0] — 2026-05-11
 
 ### Added — IAM Roles v1

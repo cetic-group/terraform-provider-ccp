@@ -174,16 +174,29 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 
 // ValidateConfig enforces the "at least one exposure mode" invariant at
 // plan-time, mirroring the API validator (mig 132 CHECK constraint).
+//
+// Both `expose_public` and `expose_private` are Optional+Computed with
+// `booldefault.StaticBool(...)`. During `terraform validate` (before
+// PlanModifiers run), they can surface as Unknown rather than the
+// declared defaults. We MUST skip the check when EITHER value is Null
+// OR Unknown, otherwise the validator fires spuriously on every
+// `terraform validate` invocation of a module/landing-zone consuming
+// this resource with default flags. Plan-time enforcement still kicks
+// in once values are concretised, and the API CHECK constraint is the
+// final source of truth.
 func (r *registryResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var cfg registryResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	pubSet := !cfg.ExposePublic.IsNull() && !cfg.ExposePublic.IsUnknown() && cfg.ExposePublic.ValueBool()
-	privSet := !cfg.ExposePrivate.IsNull() && !cfg.ExposePrivate.IsUnknown() && cfg.ExposePrivate.ValueBool()
-	// Si les 2 sont explicitement set à false (pas null/unknown) → erreur
-	if !cfg.ExposePublic.IsNull() && !cfg.ExposePrivate.IsNull() && !pubSet && !privSet {
+	// Skip when either side is unresolved — defaults may not have been
+	// applied yet at validate-time.
+	if cfg.ExposePublic.IsNull() || cfg.ExposePublic.IsUnknown() ||
+		cfg.ExposePrivate.IsNull() || cfg.ExposePrivate.IsUnknown() {
+		return
+	}
+	if !cfg.ExposePublic.ValueBool() && !cfg.ExposePrivate.ValueBool() {
 		resp.Diagnostics.AddError(
 			"At least one exposure must be enabled",
 			"`expose_public` and `expose_private` cannot both be false.",
