@@ -46,6 +46,7 @@ type cssResourceModel struct {
 	VnetID           types.String `tfsdk:"vnet_id"`
 	SSHKeyIDs        types.List   `tfsdk:"ssh_key_ids"`
 	UserData         types.String `tfsdk:"user_data"`
+	RootPassword     types.String `tfsdk:"root_password"`
 	MinInstances     types.Int64  `tfsdk:"min_instances"`
 	MaxInstances     types.Int64  `tfsdk:"max_instances"`
 	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
@@ -107,6 +108,19 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Optional:            true,
 				Sensitive:           true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
+			},
+			"root_password": schema.StringAttribute{
+				MarkdownDescription: "Root password injected into every replica at first boot. " +
+					"**Required** (CCP API ≥ v1.4.0 enforces a non-empty password, 8-128 chars). " +
+					"Sensitive: never returned by the API after creation. Forces replacement on change.",
+				Required:  true,
+				Sensitive: true,
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(8, 128),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"min_instances": schema.Int64Attribute{
 				MarkdownDescription: "Minimum container count (0-50).",
@@ -218,6 +232,9 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 		v := plan.UserData.ValueString()
 		createReq.UserData = &v
 	}
+	// root_password est Required → toujours présent dans le plan
+	rp := plan.RootPassword.ValueString()
+	createReq.RootPassword = &rp
 	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
 		tags := []string{}
 		plan.Tags.ElementsAs(ctx, &tags, false)
@@ -236,6 +253,7 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 	// Write-only fields — preserve from plan (server doesn't echo them back).
 	state.SSHKeyIDs = plan.SSHKeyIDs
 	state.UserData = plan.UserData
+	state.RootPassword = plan.RootPassword
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -261,6 +279,7 @@ func (r *cssResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	// Write-only fields — preserve from existing state (server doesn't echo them).
 	newState.SSHKeyIDs = state.SSHKeyIDs
 	newState.UserData = state.UserData
+	newState.RootPassword = state.RootPassword
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 

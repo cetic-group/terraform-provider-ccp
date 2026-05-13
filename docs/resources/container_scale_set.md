@@ -15,15 +15,16 @@ Manages a container scale set — a group of identical container instances that 
 
 ```hcl
 resource "ccp_container_scale_set" "api_workers" {
-  name         = "api-workers"
-  region       = "RNN"
-  plan         = "small"
-  template     = "ubuntu-24.04"
-  vnet_id      = ccp_vnet.web.id
-  replicas     = 3
-  min_replicas = 2
-  max_replicas = 10
-  tags         = ["api", "env:prod"]
+  name          = "api-workers"
+  region        = "RNN"
+  plan          = "small"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.web.id
+  replicas      = 3
+  min_replicas  = 2
+  max_replicas  = 10
+  root_password = var.lxcss_root_password  # sensible — préférer une variable
+  tags          = ["api", "env:prod"]
 }
 ```
 
@@ -37,6 +38,7 @@ resource "ccp_container_scale_set" "api_workers" {
 - `template` - (Required, Forces new resource) Template key for the container OS image (e.g. `ubuntu-24.04`).
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach all containers to.
 - `replicas` - (Required) Desired number of container replicas.
+- `root_password` - (Required, Sensitive, Forces new resource) Root password injected at first boot on every container of the scale set. Length 8–128 chars. Mark the value as sensitive and prefer passing it via a TF variable, environment, or secret backend.
 
 ### Optional
 

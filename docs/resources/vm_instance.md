@@ -20,13 +20,14 @@ resource "ccp_ssh_key" "ops" {
 }
 
 resource "ccp_vm_instance" "app" {
-  name        = "app-server"
-  region      = "RNN"
-  plan        = "medium"
-  template    = "ubuntu-24.04"
-  vnet_id     = ccp_vnet.web.id
-  ssh_key_ids = [ccp_ssh_key.ops.id]
-  tags        = ["app", "env:prod"]
+  name          = "app-server"
+  region        = "RNN"
+  plan          = "medium"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.web.id
+  root_password = var.vm_root_password  # sensible — préférer une variable
+  ssh_key_ids   = [ccp_ssh_key.ops.id]
+  tags          = ["app", "env:prod"]
 
   user_data = <<-EOF
     #cloud-config
@@ -48,6 +49,7 @@ resource "ccp_vm_instance" "app" {
 - `plan` - (Required) Instance plan controlling vCPU, RAM, and disk. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
 - `template` - (Required, Forces new resource) VM template key (e.g. `ubuntu-24.04`, `debian-12`). Available templates are listed in the console under **Compute → Templates**.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach the VM to.
+- `root_password` - (Required, Sensitive, Forces new resource) Root password injected via cloud-init. Length 8–128 chars. Mark the value as sensitive (`sensitive = true` on the variable) and prefer passing it via a TF variable, environment, or secret backend.
 
 ### Optional
 

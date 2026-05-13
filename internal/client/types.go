@@ -437,6 +437,7 @@ type ContainerScaleSetCreateRequest struct {
 	VnetID           *string  `json:"vnet_id,omitempty"`
 	SSHKeyIDs        []string `json:"ssh_key_ids,omitempty"`
 	UserData         *string  `json:"user_data,omitempty"`
+	RootPassword     *string  `json:"root_password,omitempty"`
 	MinInstances     int      `json:"min_instances"`
 	MaxInstances     int      `json:"max_instances"`
 	DesiredInstances int      `json:"desired_instances"`
@@ -492,6 +493,7 @@ type VMScaleSetCreateRequest struct {
 	VnetID           *string  `json:"vnet_id,omitempty"`
 	SSHKeyIDs        []string `json:"ssh_key_ids,omitempty"`
 	UserData         *string  `json:"user_data,omitempty"`
+	RootPassword     *string  `json:"root_password,omitempty"`
 	MinInstances     int      `json:"min_instances"`
 	MaxInstances     int      `json:"max_instances"`
 	DesiredInstances int      `json:"desired_instances"`

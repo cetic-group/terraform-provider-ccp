@@ -19,7 +19,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.11.0**
+> **Status — v0.12.0**
 >
 > **35+ resources + 14 data sources** implemented. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
@@ -27,7 +27,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > databases — PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) /
 > MongoDB-compatible (FerretDB v2)**, CETIC Container Registry (CCR) +
 > users + ACLs, **IAM Roles + role assignments + service accounts (new in
-> v0.11.0)** with helper `ccp_iam_policy_document` data source for
+> v0.12.0)** with helper `ccp_iam_policy_document` data source for
 > AWS-style HCL→JSON, public IPs, VPCs / VNets / firewall /
 > private IP reservations / VPC peering, load balancers, block volumes,
 > object storage buckets + S3 keys, SSH/API keys, organizations + members,
@@ -59,7 +59,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.11.0"
+      version = "~> 0.12.0"
     }
   }
 }

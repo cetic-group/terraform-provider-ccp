@@ -46,6 +46,7 @@ type vmssResourceModel struct {
 	VnetID           types.String `tfsdk:"vnet_id"`
 	SSHKeyIDs        types.List   `tfsdk:"ssh_key_ids"`
 	UserData         types.String `tfsdk:"user_data"`
+	RootPassword     types.String `tfsdk:"root_password"`
 	MinInstances     types.Int64  `tfsdk:"min_instances"`
 	MaxInstances     types.Int64  `tfsdk:"max_instances"`
 	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
@@ -107,6 +108,19 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Optional:            true,
 				Sensitive:           true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
+			},
+			"root_password": schema.StringAttribute{
+				MarkdownDescription: "Root password injected into every replica at first boot. " +
+					"**Required** (CCP API ≥ v1.4.0 enforces a non-empty password, 8-128 chars). " +
+					"Sensitive: never returned by the API after creation. Forces replacement on change.",
+				Required:  true,
+				Sensitive: true,
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(8, 128),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"min_instances": schema.Int64Attribute{
 				MarkdownDescription: "Minimum container count (0-50).",
@@ -218,6 +232,9 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 		v := plan.UserData.ValueString()
 		createReq.UserData = &v
 	}
+	// root_password est Required → toujours présent dans le plan
+	rp := plan.RootPassword.ValueString()
+	createReq.RootPassword = &rp
 	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
 		tags := []string{}
 		plan.Tags.ElementsAs(ctx, &tags, false)
@@ -235,6 +252,9 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 	state.SSHKeyIDs = plan.SSHKeyIDs
 	state.UserData = plan.UserData
+	// API ne renvoie pas root_password sur read (sensible) ; conserver la
+	// valeur du plan dans le state pour pas que le diff montre un retrait.
+	state.RootPassword = plan.RootPassword
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -259,6 +279,9 @@ func (r *vmssResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	}
 	newState.SSHKeyIDs = state.SSHKeyIDs
 	newState.UserData = state.UserData
+	// API ne renvoie pas root_password (sensible) ; conserver l'ancienne
+	// valeur du state pour éviter un drift.
+	newState.RootPassword = state.RootPassword
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 

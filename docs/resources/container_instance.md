@@ -20,13 +20,14 @@ resource "ccp_ssh_key" "ops" {
 }
 
 resource "ccp_container_instance" "web" {
-  name        = "web-01"
-  region      = "RNN"
-  plan        = "small"
-  template    = "ubuntu-24.04"
-  vnet_id     = ccp_vnet.web.id
-  ssh_key_ids = [ccp_ssh_key.ops.id]
-  tags        = ["web", "env:prod"]
+  name          = "web-01"
+  region        = "RNN"
+  plan          = "small"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.web.id
+  root_password = var.container_root_password  # sensible — préférer une variable
+  ssh_key_ids   = [ccp_ssh_key.ops.id]
+  tags          = ["web", "env:prod"]
 
   user_data = <<-EOF
     #!/bin/bash
@@ -46,6 +47,7 @@ resource "ccp_container_instance" "web" {
 - `plan` - (Required) Instance plan controlling CPU, RAM, and disk. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
 - `template` - (Required, Forces new resource) Template key for the container OS image (e.g. `ubuntu-24.04`, `debian-12`). Available templates are listed in the console under **Compute → Templates**.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach the container to.
+- `root_password` - (Required, Sensitive, Forces new resource) Root password injected at first boot. Length 8–128 chars. Mark the value as sensitive (`sensitive = true` on the variable) and prefer passing it via a TF variable, environment, or secret backend.
 
 ### Optional
 
