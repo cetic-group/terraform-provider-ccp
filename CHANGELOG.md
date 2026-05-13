@@ -4,6 +4,30 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] — 2026-05-13
+
+### Added — Secret Manager v1
+
+- **`ccp_secret`** resource — manages an encrypted key/value blob in the
+  CETIC Cloud Secret Manager. `data` is `Sensitive` and persisted in the
+  Terraform state (the API never re-emits plaintext outside the
+  audit-logged reveal endpoint, so drift on `data` is **not** detected by
+  the provider). `name` is immutable (force replacement); `description`
+  and `tags` are mutable in place via `PATCH`; changing `data` triggers
+  a server-side rotation (`POST /v1/secrets/{id}/rotate`) and bumps the
+  `version` counter. Secrets are K8s-type agnostic — the type is
+  specified in the `CCPSecret` CRD when syncing to K8s.
+- **`ccp_secret`** data source — looks up secret metadata by `id` or
+  `name`. **Never returns plaintext `data`** — data sources never reveal
+  secrets on this platform.
+
+### Changed
+
+- Unified `tags` attribute (was `labels` map) to align with other
+  resources (`ccp_object_bucket`, `ccp_vm_instance`, `ccp_block_volume`,
+  …). Tags are now a `list(string)` (e.g. `["env:prod", "team:platform"]`)
+  rather than a `map(string)`.
+
 ## [0.11.1] — 2026-05-12
 
 ### Fixed
