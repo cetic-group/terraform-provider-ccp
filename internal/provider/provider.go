@@ -17,6 +17,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/qemutemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/regions"
 	dsregistry "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registry"
+	dssecret "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/secret"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/apikey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/blockvolume"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerinstance"
@@ -42,6 +43,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registry"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registryacl"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registryuser"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/secret"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/serviceaccount"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/sshkey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/supportticket"
@@ -178,6 +180,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		iamrole.New,
 		iamroleassignment.New,
 		serviceaccount.New,
+		secret.New,
 	}
 }
 
@@ -197,5 +200,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsregistry.New,
 		dsiamrole.New,
 		dsiampolicydocument.New,
+		dssecret.New,
 	}
 }
