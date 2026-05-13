@@ -223,11 +223,15 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				},
 			},
 			"root_password": schema.StringAttribute{
-				MarkdownDescription: "Optional root password set at first boot. Sensitive: " +
+				MarkdownDescription: "Root password set at first boot. **Required** (CCP " +
+					"API ≥ v1.4.0 enforces a non-empty password, 8-128 chars). Sensitive: " +
 					"never returned by the API after creation (use `has_root_password` to " +
 					"check whether one is set). Forces replacement.",
-				Optional:  true,
+				Required:  true,
 				Sensitive: true,
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(8, 128),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
