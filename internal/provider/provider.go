@@ -7,6 +7,8 @@ import (
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
 	dsapplicationgateway "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/applicationgateway"
+	dspricing "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/pricing"
+	dspromocodes "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/promocodes"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
@@ -26,6 +28,8 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwtargetgroupmember"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/applicationgateway"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/blockvolume"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/budget"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/commit"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerinstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerscaleset"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containersnapshot"
@@ -192,6 +196,8 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		iamroleassignment.New,
 		serviceaccount.New,
 		secret.New,
+		budget.New,
+		commit.New,
 	}
 }
 
@@ -213,5 +219,7 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsiampolicydocument.New,
 		dssecret.New,
 		dsapplicationgateway.New,
+		dspricing.New,
+		dspromocodes.New,
 	}
 }
