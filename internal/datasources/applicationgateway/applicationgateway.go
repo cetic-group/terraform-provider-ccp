@@ -53,6 +53,8 @@ type appgwDSModel struct {
 	VpcID                 types.String       `tfsdk:"vpc_id"`
 	VnetID                types.String       `tfsdk:"vnet_id"`
 	PublicIPID            types.String       `tfsdk:"public_ip_id"`
+	PublicIPAddress       types.String       `tfsdk:"public_ip_address"`
+	PublicIPStatus        types.String       `tfsdk:"public_ip_status"`
 	VIPAddress            types.String       `tfsdk:"vip_address"`
 	Status                types.String       `tfsdk:"status"`
 	ErrorMessage          types.String       `tfsdk:"error_message"`
@@ -94,6 +96,8 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 			"vpc_id":                   schema.StringAttribute{Computed: true},
 			"vnet_id":                  schema.StringAttribute{Computed: true},
 			"public_ip_id":             schema.StringAttribute{Computed: true},
+			"public_ip_address":        schema.StringAttribute{Computed: true},
+			"public_ip_status":         schema.StringAttribute{Computed: true},
 			"vip_address":              schema.StringAttribute{Computed: true},
 			"status":                   schema.StringAttribute{Computed: true},
 			"error_message":            schema.StringAttribute{Computed: true},
@@ -232,6 +236,16 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		state.PublicIPID = types.StringValue(*found.PublicIPID)
 	} else {
 		state.PublicIPID = types.StringNull()
+	}
+	if found.PublicIPAddress != nil {
+		state.PublicIPAddress = types.StringValue(*found.PublicIPAddress)
+	} else {
+		state.PublicIPAddress = types.StringNull()
+	}
+	if found.PublicIPStatus != nil {
+		state.PublicIPStatus = types.StringValue(*found.PublicIPStatus)
+	} else {
+		state.PublicIPStatus = types.StringNull()
 	}
 	if found.VIPAddress != nil {
 		state.VIPAddress = types.StringValue(*found.VIPAddress)

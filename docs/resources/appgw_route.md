@@ -55,11 +55,11 @@ resource "ccp_appgw_route" "api_admin" {
   cors_credentials = true
 
   basic_auth_user {
-    username = "admin"
+    user     = "admin"
     password = var.admin_password
   }
   basic_auth_user {
-    username = "ops"
+    user     = "ops"
     password = var.ops_password
   }
 
@@ -98,7 +98,7 @@ resource "ccp_appgw_route" "api_admin" {
 - `cors_credentials` - (Optional, default `false`) When `true`, sends `Access-Control-Allow-Credentials: true`.
 - `waf_preset` - (Optional, default `off`) WAF preset enforced on this route. One of: `off`, `permissive`, `strict`.
 - `header_match` - (Optional, nested block) Match a request header. Each block adds an AND condition.
-- `basic_auth_user` - (Optional, nested block) User credential pair for HTTP Basic authentication. Setting at least one user enables basic auth for the route.
+- `basic_auth_user` - (Optional, nested block) User credential pair for HTTP Basic authentication. Declaring at least one block enables basic auth for the route. **Omitting** the block entirely on `terraform apply` preserves the existing basic auth configuration; passing an **empty list** (no blocks where some were declared previously) explicitly clears it.
 
 ## Nested Block — `header_match`
 
@@ -108,8 +108,8 @@ resource "ccp_appgw_route" "api_admin" {
 
 ## Nested Block — `basic_auth_user`
 
-- `username` - (Required) Username (1-64 chars).
-- `password` - (Required, **Sensitive**) Plaintext password — hashed server-side before storage.
+- `user` - (Required) Username (1-64 chars). Maps to the `user` field on the API.
+- `password` - (Required, **Sensitive**) Plaintext password (1-128 chars). The platform bcrypts each value and stores the list as an encrypted Secret Manager entry referenced by `basic_auth_secret_ref`. **The server never echoes plaintext back** — `terraform plan` will appear to want to "re-set" the passwords on every run only if the state file is dropped; otherwise the local state is the source of truth.
 
 ## Attributes Reference
 

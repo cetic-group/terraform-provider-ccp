@@ -34,10 +34,10 @@ func TestApiHeaderMatches_DefaultsOpToEq(t *testing.T) {
 
 func TestApiBasicAuthUsers_Roundtrip(t *testing.T) {
 	in := []basicAuthUserModel{
-		{Username: types.StringValue("admin"), Password: types.StringValue("hunter2")},
+		{User: types.StringValue("admin"), Password: types.StringValue("hunter2")},
 	}
 	out := apiBasicAuthUsers(in)
-	if len(out) != 1 || out[0].Username != "admin" || out[0].Password != "hunter2" {
+	if len(out) != 1 || out[0].User != "admin" || out[0].Password != "hunter2" {
 		t.Fatalf("unexpected roundtrip: %+v", out)
 	}
 }
@@ -58,8 +58,8 @@ func TestHeaderMatchesChanged(t *testing.T) {
 }
 
 func TestBasicAuthChanged(t *testing.T) {
-	a := []basicAuthUserModel{{Username: types.StringValue("admin"), Password: types.StringValue("p")}}
-	b := []basicAuthUserModel{{Username: types.StringValue("admin"), Password: types.StringValue("p")}}
+	a := []basicAuthUserModel{{User: types.StringValue("admin"), Password: types.StringValue("p")}}
+	b := []basicAuthUserModel{{User: types.StringValue("admin"), Password: types.StringValue("p")}}
 	if basicAuthChanged(a, b) {
 		t.Fatal("expected no change between equal slices")
 	}
@@ -87,8 +87,17 @@ func TestCreateRoute_SendsAllFields(t *testing.T) {
 				if got.TargetGroupID == "" {
 					t.Errorf("missing target_group_id in request body")
 				}
-				if len(got.BasicAuthUsers) != 1 || got.BasicAuthUsers[0].Username != "admin" {
+				if len(got.BasicAuthUsers) != 1 || got.BasicAuthUsers[0].User != "admin" {
 					t.Errorf("missing/incorrect basic_auth_users: %+v", got.BasicAuthUsers)
+				}
+				// Wire-format guard: ensure we serialize the API contract key
+				// `user` (not the legacy `username` which Pydantic silently
+				// dropped and made the create 422).
+				if !strings.Contains(string(reqBody), "\"user\":\"admin\"") {
+					t.Errorf("expected \"user\":\"admin\" in wire payload, got: %s", string(reqBody))
+				}
+				if strings.Contains(string(reqBody), "\"username\"") {
+					t.Errorf("legacy `username` key leaked into wire payload: %s", string(reqBody))
 				}
 				// Server doesn't echo passwords back — we do.
 				return http.StatusCreated, map[string]any{
@@ -127,7 +136,7 @@ func TestCreateRoute_SendsAllFields(t *testing.T) {
 		PathMatch:     &pathMatch,
 		PathMatchType: &pathType,
 		BasicAuthUsers: []client.AppGWBasicAuthUser{
-			{Username: "admin", Password: "hunter2"},
+			{User: "admin", Password: "hunter2"},
 		},
 	})
 	if err != nil {

@@ -16,6 +16,8 @@ type ApplicationGateway struct {
 	VpcID                 string   `json:"vpc_id"`
 	VnetID                string   `json:"vnet_id"`
 	PublicIPID            *string  `json:"public_ip_id,omitempty"`
+	PublicIPAddress       *string  `json:"public_ip_address,omitempty"`
+	PublicIPStatus        *string  `json:"public_ip_status,omitempty"`
 	VIPAddress            *string  `json:"vip_address,omitempty"`
 	Status                string   `json:"status"`
 	ErrorMessage          *string  `json:"error_message,omitempty"`
@@ -69,12 +71,25 @@ type ApplicationGatewayAttachIPRequest struct {
 	PublicIPID string `json:"public_ip_id"`
 }
 
+// AppGw status enum — kept in sync with `AppGwStatus` on the backend.
+// Valid values: creating | active | error | deleting (NO "updating" —
+// removed server-side in v1.8.x after pipeline rework).
 const (
 	AppGWStatusCreating = "creating"
 	AppGWStatusActive   = "active"
-	AppGWStatusUpdating = "updating"
 	AppGWStatusError    = "error"
 	AppGWStatusDeleting = "deleting"
+)
+
+// Public IP attachment lifecycle exposed via `public_ip_status` on the
+// gateway response (mirrors the AppGw public_ip pattern documented in
+// `apps/api/CLAUDE.md`). Empty when no IP is attached.
+const (
+	AppGWPublicIPStatusAllocated = "allocated"
+	AppGWPublicIPStatusAttaching = "attaching"
+	AppGWPublicIPStatusAttached  = "attached"
+	AppGWPublicIPStatusDetaching = "detaching"
+	AppGWPublicIPStatusError     = "error"
 )
 
 // ─── Listener ───────────────────────────────────────────────────────────────
@@ -189,8 +204,13 @@ type AppGWHeaderMatch struct {
 // AppGWBasicAuthUser is the plaintext credential pair persisted to the
 // Secret Manager when the route enables basic auth. The API receives
 // plaintext and hashes them server-side; we never get them back on Read.
+//
+// Wire format aligns with the backend Pydantic schema
+// (`AppgwBasicAuthUser`): keys are `user` + `password`. The previous
+// `username` JSON tag was silently dropped by Pydantic (extra=ignore)
+// and the missing required `user` field returned 422.
 type AppGWBasicAuthUser struct {
-	Username string `json:"username"`
+	User     string `json:"user"`
 	Password string `json:"password"`
 }
 

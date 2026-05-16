@@ -51,6 +51,8 @@ type appgwResourceModel struct {
 	VpcID                 types.String `tfsdk:"vpc_id"`
 	VnetID                types.String `tfsdk:"vnet_id"`
 	PublicIPID            types.String `tfsdk:"public_ip_id"`
+	PublicIPAddress       types.String `tfsdk:"public_ip_address"`
+	PublicIPStatus        types.String `tfsdk:"public_ip_status"`
 	VIPAddress            types.String `tfsdk:"vip_address"`
 	Status                types.String `tfsdk:"status"`
 	ErrorMessage          types.String `tfsdk:"error_message"`
@@ -115,8 +117,23 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			},
 			"public_ip_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of a `ccp_public_ip` to attach as the public entrypoint. " +
-					"Set to attach, remove to detach.",
+					"Set to attach, remove to detach. Attach/detach is asynchronous — the provider " +
+					"polls until `public_ip_status` stabilises.",
 				Optional: true,
+			},
+			"public_ip_address": schema.StringAttribute{
+				MarkdownDescription: "Public IPv4 address currently bound to the gateway, mirrored from " +
+					"the attached `ccp_public_ip`. Null while no IP is attached.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"public_ip_status": schema.StringAttribute{
+				MarkdownDescription: "Lifecycle of the public IP attachment: `allocated` | `attaching` | " +
+					"`attached` | `detaching` | `error`. Null when no IP is attached. Mirrors the same " +
+					"helper exposed by `ccp_load_balancer`, `ccp_vm_instance` and `ccp_container_instance` " +
+					"(see the platform `public_ip` UX convention, 2026-05-02).",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"vip_address": schema.StringAttribute{
 				MarkdownDescription: "Private virtual IP address within the VNet. Available once status is `active`.",
@@ -124,7 +141,7 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"status": schema.StringAttribute{
-				MarkdownDescription: "Provisioning status: `creating` | `active` | `updating` | `error` | `deleting`.",
+				MarkdownDescription: "Provisioning status: `creating` | `active` | `error` | `deleting`.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
@@ -227,6 +244,16 @@ func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwRe
 		m.PublicIPID = types.StringValue(*gw.PublicIPID)
 	} else {
 		m.PublicIPID = types.StringNull()
+	}
+	if gw.PublicIPAddress != nil {
+		m.PublicIPAddress = types.StringValue(*gw.PublicIPAddress)
+	} else {
+		m.PublicIPAddress = types.StringNull()
+	}
+	if gw.PublicIPStatus != nil {
+		m.PublicIPStatus = types.StringValue(*gw.PublicIPStatus)
+	} else {
+		m.PublicIPStatus = types.StringNull()
 	}
 	if gw.VIPAddress != nil {
 		m.VIPAddress = types.StringValue(*gw.VIPAddress)
@@ -490,8 +517,9 @@ func (r *appgwResource) ImportState(ctx context.Context, req resource.ImportStat
 }
 
 // pollUntilReady polls GetApplicationGateway until status == active, or
-// stops on error/deleting. The caller is expected to retry once on
-// updating (passes through here).
+// stops on error/deleting. The backend only ever surfaces creating →
+// active → error → deleting (no `updating` since v1.8.x — patches are
+// applied in-place and the row stays `active` throughout).
 func pollUntilReady(ctx context.Context, c *client.Client, id string, timeout time.Duration) (*client.ApplicationGateway, error) {
 	deadline := time.Now().Add(timeout)
 	for {

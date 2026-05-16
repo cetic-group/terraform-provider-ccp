@@ -100,8 +100,10 @@ resource "ccp_appgw_route" "api_v1" {
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - UUID of the gateway.
-- `status` - Current status: `creating`, `active`, `updating`, `error`, `deleting`.
+- `status` - Current status. One of: `creating`, `active`, `error`, `deleting`. PATCH operations apply in place and the row stays `active` throughout — there is no `updating` state in v1.
 - `vip_address` - Private virtual IP address within the VNet.
+- `public_ip_address` - Public IPv4 address currently bound to the gateway, mirrored from the attached `ccp_public_ip`. Null while no IP is attached.
+- `public_ip_status` - Lifecycle of the public IP attachment. One of: `allocated`, `attaching`, `attached`, `detaching`, `error`. Null when no IP is attached. The provider polls this field after an attach / detach so `terraform apply` exits only once the asynchronous IPaaS pipeline has converged.
 - `error_message` - Last error message reported by the provisioner. Empty unless `status = error`.
 - `created_at` - RFC 3339 creation timestamp.
 

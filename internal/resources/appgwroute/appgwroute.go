@@ -52,7 +52,7 @@ type headerMatchModel struct {
 }
 
 type basicAuthUserModel struct {
-	Username types.String `tfsdk:"username"`
+	User     types.String `tfsdk:"user"`
 	Password types.String `tfsdk:"password"`
 }
 
@@ -248,20 +248,23 @@ func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			},
 			"basic_auth_user": schema.ListNestedBlock{
 				MarkdownDescription: "User credential pair for HTTP Basic authentication. Multiple users are " +
-					"supported. Setting at least one user enables basic auth for the route.",
+					"supported. Declaring at least one block enables basic auth for the route. Omitting the " +
+					"block entirely preserves the existing basic auth configuration on update; passing an " +
+					"empty list (no blocks) explicitly clears it.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						"username": schema.StringAttribute{
-							MarkdownDescription: "Username (1-64 chars).",
+						"user": schema.StringAttribute{
+							MarkdownDescription: "Username (1-64 chars). Maps to `user` on the API.",
 							Required:            true,
 							Validators:          []validator.String{stringvalidator.LengthBetween(1, 64)},
 						},
 						"password": schema.StringAttribute{
-							MarkdownDescription: "Plaintext password — hashed server-side before storage. " +
-								"**Sensitive**; persists in the Terraform state.",
+							MarkdownDescription: "Plaintext password (1-128 chars) — bcrypt-hashed server-side " +
+								"before storage in the encrypted Secret Manager entry referenced by " +
+								"`basic_auth_secret_ref`. **Sensitive** and persisted in the Terraform state.",
 							Required:   true,
 							Sensitive:  true,
-							Validators: []validator.String{stringvalidator.LengthBetween(1, 256)},
+							Validators: []validator.String{stringvalidator.LengthBetween(1, 128)},
 						},
 					},
 				},
@@ -328,7 +331,7 @@ func apiBasicAuthUsers(in []basicAuthUserModel) []client.AppGWBasicAuthUser {
 	out := make([]client.AppGWBasicAuthUser, 0, len(in))
 	for _, u := range in {
 		out = append(out, client.AppGWBasicAuthUser{
-			Username: u.Username.ValueString(),
+			User:     u.User.ValueString(),
 			Password: u.Password.ValueString(),
 		})
 	}
@@ -634,7 +637,7 @@ func basicAuthChanged(a, b []basicAuthUserModel) bool {
 		return true
 	}
 	for i := range a {
-		if !a[i].Username.Equal(b[i].Username) || !a[i].Password.Equal(b[i].Password) {
+		if !a[i].User.Equal(b[i].User) || !a[i].Password.Equal(b[i].Password) {
 			return true
 		}
 	}

@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.14"
+      version = "~> 0.15"
     }
   }
 }
@@ -107,6 +107,32 @@ resource "ccp_appgw_route" "api_v1" {
   waf_preset         = "permissive"
 }
 
+# Admin route guarded by HTTP Basic auth. Plaintext passwords are bcrypt-
+# hashed server-side into an encrypted Secret Manager entry referenced
+# by `basic_auth_secret_ref` (read-only, Sensitive).
+variable "admin_password" {
+  type      = string
+  sensitive = true
+}
+
+resource "ccp_appgw_route" "admin" {
+  appgw_id        = ccp_application_gateway.web.id
+  listener_id     = ccp_appgw_listener.api.id
+  priority        = 5
+  path_match      = "/admin/"
+  path_match_type = "prefix"
+  target_group_id = ccp_appgw_target_group.api_pool.id
+
+  rate_limit_per_sec = 5
+  allow_cidrs        = ["10.0.0.0/8"]
+  waf_preset         = "strict"
+
+  basic_auth_user {
+    user     = "admin"
+    password = var.admin_password
+  }
+}
+
 # ─── Outputs ───────────────────────────────────────────────────────────────
 
 output "appgw_vip" {
@@ -115,4 +141,15 @@ output "appgw_vip" {
 
 output "appgw_public_ip" {
   value = ccp_public_ip.appgw.ip_address
+}
+
+# `public_ip_status` walks `allocated → attaching → attached` while the
+# IPaaS pipeline converges; the provider blocks on it during apply.
+output "appgw_public_ip_status" {
+  value = ccp_application_gateway.web.public_ip_status
+}
+
+output "appgw_admin_basic_auth_secret_ref" {
+  value     = ccp_appgw_route.admin.basic_auth_secret_ref
+  sensitive = true
 }

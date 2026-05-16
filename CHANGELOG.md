@@ -4,6 +4,74 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] — 2026-05-16
+
+### Added — Application Gateway L7 polish
+
+- **`ccp_application_gateway.public_ip_status`** — new Computed attribute
+  exposing the lifecycle of the public IP attachment (`allocated` |
+  `attaching` | `attached` | `detaching` | `error`, null when no IP is
+  attached). Mirrors the standard `public_ip_status` helper already
+  shipped on `ccp_load_balancer`, `ccp_vm_instance` and
+  `ccp_container_instance` (cf. the platform `public_ip` UX convention,
+  2026-05-02). The provider polls this field during apply so attach /
+  detach blocks until the asynchronous IPaaS pipeline has converged.
+- **`ccp_application_gateway.public_ip_address`** — new Computed
+  attribute mirroring the IPv4 string currently bound to the gateway.
+  Saves users a `data "ccp_public_ip"` round-trip when they just need
+  the address for an output / DNS record.
+- **Data source `ccp_application_gateway`** — same two attributes
+  surfaced for read-only lookups.
+
+### Fixed
+
+- **`ccp_appgw_route.basic_auth_user.user`** — renamed nested block
+  attribute from `username` to `user` and aligned the JSON wire payload
+  with the backend Pydantic schema (`AppgwBasicAuthUser.user`). The
+  previous `"username"` key was silently dropped by Pydantic
+  (`extra=ignore`), the required `user` field was missing, and every
+  `POST /v1/app-gateways/{id}/routes` carrying `basic_auth_users`
+  would have returned 422. **Breaking change for HCL** that declared
+  `basic_auth_user { username = ... }` — rename the attribute to
+  `user` and re-apply. No state migration needed: the platform never
+  stores plaintext (only `basic_auth_secret_ref`), so re-applying the
+  same user/password pair is a no-op server-side.
+- **`AppGwStatus` enum** — removed the `updating` value from
+  `internal/client/appgw_types.go`. The backend pipeline was
+  reworked in v1.8.x to apply PATCHes in place and keep the row
+  `active` throughout. No Go code branched on `AppGWStatusUpdating`
+  but the constant and doc strings (`status`: "creating | active |
+  updating | error | deleting") implied otherwise. Now aligned with
+  the backend `AppGwStatus` literal: `creating | active | error |
+  deleting`. The `pollUntilReady` loop continues to wait through
+  transient intermediate values regardless.
+
+### Changed
+
+- `basic_auth_user` semantics clarified in the resource docs: omitting
+  the block on update preserves the existing configuration; passing an
+  empty list explicitly clears it. The backend
+  `_resolve_basic_auth_ref` helper already implements those three
+  cases — the docs now match.
+- Added wire-format guards in
+  `internal/resources/appgwroute/appgwroute_test.go::TestCreateRoute_SendsAllFields`
+  to assert `"user":"admin"` is on the wire and the legacy `username`
+  key never leaks back in (regression guard against the JSON-tag bug
+  fixed above).
+
+### Notes
+
+- The provider audit also surfaced a mismatch on `ccp_appgw_listener`:
+  the Go schema exposes `custom_domain` but the backend
+  `AppgwListenerCreate` schema has no such field, while ACME-related
+  fields (`acme_challenge`, `acme_dns_provider`,
+  `acme_dns_credentials`) supported by the backend are not yet
+  represented. Tracked as a separate gap — out of scope for this
+  release since it touches the immutable listener identity surface
+  and warrants its own design pass (Sensitive nested attribute for
+  the DNS credentials, `acme_status` polling, dropdown of providers
+  surfaced via `GET /v1/appgw/acme-dns-providers`).
+
 ## [0.14.0] — 2026-05-15
 
 ### Added — Application Gateway v1 (L7)
