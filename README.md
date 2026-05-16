@@ -19,18 +19,22 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.13.0**
+> **Status — v0.15.0**
 >
-> **36+ resources + 15 data sources** implemented. Highlights : containers
+> **41+ resources + 16 data sources** implemented. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
 > set + snapshot), managed Kubernetes clusters + node pools, **managed
 > databases — PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) /
 > MongoDB-compatible (FerretDB v2)**, CETIC Container Registry (CCR) +
 > users + ACLs, **IAM Roles + role assignments + service accounts (v0.12.0)**
 > with helper `ccp_iam_policy_document` data source for AWS-style HCL→JSON,
-> **Secret Manager — `ccp_secret` resource + data source (new in v0.13.0)**
+> **Secret Manager — `ccp_secret` resource + data source (v0.13.0)**
 > with encrypted key/value storage, server-side rotation, and CCKS sync via
-> the `CCPSecret` CRD, public IPs, VPCs / VNets / firewall /
+> the `CCPSecret` CRD, **Application Gateway L7 — `ccp_application_gateway`,
+> `ccp_appgw_listener`, `ccp_appgw_target_group`, `ccp_appgw_target_group_member`,
+> `ccp_appgw_route` + datasource (new in v0.14.0)** with TLS via Let's Encrypt,
+> SNI multi-host, per-route rate limit / IP allow-deny / CORS / basic auth /
+> WAF presets, public IPs, VPCs / VNets / firewall /
 > private IP reservations / VPC peering, load balancers, block volumes,
 > object storage buckets + S3 keys, SSH/API keys, organizations + members,
 > custom templates (snapshot a running instance into a reusable template),
@@ -61,7 +65,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.13.0"
+      version = "~> 0.15.0"
     }
   }
 }
@@ -93,6 +97,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` | IP reservations + peering intra/inter-VPC. |
 | Network | `ccp_public_ip` / `ccp_ipaas_pool` | Public IPs + BYOIP edge pools. |
 | Network | `ccp_load_balancer` | Highly available with floating VIP, automatic failover. |
+| Network | `ccp_application_gateway` / `ccp_appgw_listener` / `ccp_appgw_target_group` / `ccp_appgw_target_group_member` / `ccp_appgw_route` | L7 reverse proxy with TLS, SNI, rate limit, IP allow/deny, CORS, basic auth, WAF presets. |
 | Compute | `ccp_container_instance` / `ccp_container_scale_set` / `ccp_container_snapshot` | Linux containers — fast boot, low overhead. |
 | Compute | `ccp_vm_instance` / `ccp_vm_scale_set` / `ccp_vm_snapshot` | Full virtual machines — kernel isolation. |
 | Compute | `ccp_k8s_cluster` / `ccp_k8s_node_pool` | Managed Kubernetes clusters with auto-scaling node pools. |
@@ -121,6 +126,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | `ccp_db_valkey_credentials` | Admin password of a Valkey (Redis-compatible) instance (sensitive). |
 | `ccp_registry` | Look up a CETIC Container Registry by `id` or by `(name, region)`. |
 | `ccp_secret` | Look up secret metadata by `id` or `name`. Never returns plaintext `data`. |
+| `ccp_application_gateway` | Look up an Application Gateway by `id` or `(name, region)` with embedded listeners / target groups / routes. |
 
 ## Multi-organization
 

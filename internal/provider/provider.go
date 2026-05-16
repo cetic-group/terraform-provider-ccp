@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	dsapplicationgateway "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/applicationgateway"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
@@ -19,6 +20,11 @@ import (
 	dsregistry "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registry"
 	dssecret "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/secret"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/apikey"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwlistener"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwroute"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwtargetgroup"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwtargetgroupmember"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/applicationgateway"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/blockvolume"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerinstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/containerscaleset"
@@ -153,6 +159,11 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		objectbucket.New,
 		vminstance.New,
 		loadbalancer.New,
+		applicationgateway.New,
+		appgwlistener.New,
+		appgwtargetgroup.New,
+		appgwtargetgroupmember.New,
+		appgwroute.New,
 		containerscaleset.New,
 		vmscaleset.New,
 		k8scluster.New,
@@ -201,5 +212,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsiamrole.New,
 		dsiampolicydocument.New,
 		dssecret.New,
+		dsapplicationgateway.New,
 	}
 }
