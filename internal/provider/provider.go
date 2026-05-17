@@ -8,6 +8,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
 	dsapplicationgateway "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/applicationgateway"
 	dspricing "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/pricing"
+	dssupportplan "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/supportplan"
 	dspromocodes "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/promocodes"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
@@ -56,6 +57,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/secret"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/serviceaccount"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/sshkey"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/supportsubscription"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/supportticket"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vminstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/vmscaleset"
@@ -181,6 +183,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		orgmember.New,
 		vnetpeering.New,
 		supportticket.New,
+		supportsubscription.New,
 		ipaaspool.New,
 		quotarequest.New,
 		objectstoragekey.New,
@@ -221,5 +224,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsapplicationgateway.New,
 		dspricing.New,
 		dspromocodes.New,
+		dssupportplan.New,
 	}
 }
