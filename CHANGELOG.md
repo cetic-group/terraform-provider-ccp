@@ -4,6 +4,70 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] — 2026-05-20
+
+### Added — Load Balancer plan tiers
+
+- **`ccp_load_balancer.plan`** — new Optional+Computed attribute (default
+  `"small"`) that controls the capacity of the LB instance pair. Three
+  tiers are exposed by the platform's pricing families v3:
+  - `small`  — 1 vCPU / 512 MB —  4.99 €/month (default, current behaviour)
+  - `medium` — 2 vCPU /   1 GB — 11.99 €/month
+  - `large`  — 4 vCPU /   2 GB — 27.99 €/month
+
+  Validators enforce `OneOf("small", "medium", "large")`. The attribute is
+  immutable — changing the plan carries `RequiresReplace()` since the
+  platform does not support in-place resizing of the LB pair (would
+  require an LXC rebuild). Existing load balancers with no explicit `plan`
+  in HCL continue to default to `small`, matching the API default — no
+  drift, no breaking change.
+
+### Changed
+
+- All `~> 0.16.0` / `~> 0.17.0` version pins in `README.md`, `docs/index.md`
+  and `examples/loadbalancer/main.tf` bumped to `~> 0.18.0`. The
+  `ccp_load_balancer` example now sets `plan = "medium"` to demonstrate
+  the new attribute.
+- `internal/client/types.go::LoadBalancer` gains a `Plan string` field;
+  `LoadBalancerCreateRequest` gains an optional `Plan string` (omitted
+  when empty so the API default applies).
+
+### Notes
+
+- This release pairs with the backend pricing-families-v3 work (LB
+  `compute_plans` + monthly pricing rows for the three tiers).
+- The TF Modules repo bumps its provider constraint to `>= 0.18.0` and
+  surfaces a new `plan` variable on `modules/exposure/load-balancer`
+  (cf. modules `v0.12.0`).
+
+## [0.17.0] — 2026-05-17
+
+### Added — Support plans
+
+- **`ccp_support_subscription`** resource — singleton-per-tenant
+  managing the current support plan (Create = `POST /v1/support/subscribe`,
+  Delete = `POST /v1/support/unsubscribe` which downgrades to the
+  baseline). Read reflects whatever subscription is currently active
+  on the tenant. Cf. CCP backend wave C6.
+- **`ccp_support_plan`** data source — exposes `display_name`,
+  `price_eur_month{,_cents}`, `sla_first_response_hours`,
+  `sla_resolution_hours`, `max_priority`, `channels`, `is_default`,
+  `is_active`, `features` for any of the published plans.
+
+## [0.16.0] — 2026-05-16
+
+### Added — Billing v2
+
+- `ccp_pricing` data source for the live tariff catalog (`compute_plans`,
+  `db_plans`, public IPs, storage, network egress, …) — single round-trip,
+  no hard-coded prices in HCL.
+- `ccp_promo_codes_available` data source listing promo codes the caller
+  is eligible for.
+- `ccp_budget` resource — monthly cap in cents + alert thresholds + hard
+  stop at 100%.
+- `ccp_commit` resource — yearly / monthly engagement with the platform's
+  discount tiers (-10% monthly, -20% yearly).
+
 ## [0.15.0] — 2026-05-16
 
 ### Added — Application Gateway L7 polish
