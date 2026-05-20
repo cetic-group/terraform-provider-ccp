@@ -11,6 +11,8 @@ Manages a load balancer on CETIC Cloud Platform. Each load balancer is highly av
 
 Listeners and their backends are declared as nested blocks and are fully reconciled on every apply.
 
+The capacity of the LB instance pair is controlled by `plan` — `small` (default, 1 vCPU / 512 MB), `medium` (2 vCPU / 1 GB) or `large` (4 vCPU / 2 GB). `plan` is immutable: changing it forces replacement of the load balancer.
+
 ~> **Note:** Load balancer provisioning is asynchronous. The provider polls until the load balancer reaches `active` status, which typically takes 3 to 5 minutes.
 
 ## Example Usage
@@ -23,6 +25,7 @@ resource "ccp_public_ip" "web_lb" {
 resource "ccp_load_balancer" "web" {
   name         = "web-lb"
   region       = "RNN"
+  plan         = "medium"
   vnet_id      = ccp_vnet.web.id
   public_ip_id = ccp_public_ip.web_lb.id
   tags         = ["web", "env:prod"]
@@ -83,6 +86,7 @@ output "lb_vip" {
 
 ### Optional
 
+- `plan` - (Optional, Forces new resource) Capacity plan for the LB instance pair. One of: `small` (default, 1 vCPU / 512 MB, 4.99 €/month), `medium` (2 vCPU / 1 GB, 11.99 €/month) or `large` (4 vCPU / 2 GB, 27.99 €/month). Defaults to `small`. Changing the plan forces replacement — the platform does not support in-place resizing of the LB pair.
 - `public_ip_id` - (Optional) UUID of a public IP to attach to the load balancer. The public IP must be in the same region. Remove to detach.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 - `listener` - (Optional) One or more listener blocks (see [Listener Reference](#listener-reference) below).

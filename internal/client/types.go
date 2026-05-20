@@ -339,6 +339,7 @@ type LoadBalancer struct {
 	ID              string       `json:"id"`
 	Name            string       `json:"name"`
 	Region          string       `json:"region"`
+	Plan            string       `json:"plan"`
 	VnetID          string       `json:"vnet_id"`
 	VIPAddress      *string      `json:"vip_address,omitempty"`
 	PublicIPAddress *string      `json:"public_ip_address,omitempty"`
@@ -387,6 +388,7 @@ type LBBackendCreateRequest struct {
 type LoadBalancerCreateRequest struct {
 	Name       string   `json:"name"`
 	Region     string   `json:"region"`
+	Plan       string   `json:"plan,omitempty"`
 	VnetID     string   `json:"vnet_id"`
 	PublicIPID *string  `json:"public_ip_id,omitempty"`
 	Tags       []string `json:"tags,omitempty"`

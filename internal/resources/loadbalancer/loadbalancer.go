@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -57,6 +58,7 @@ type lbResourceModel struct {
 	ID              types.String      `tfsdk:"id"`
 	Name            types.String      `tfsdk:"name"`
 	Region          types.String      `tfsdk:"region"`
+	Plan            types.String      `tfsdk:"plan"`
 	VnetID          types.String      `tfsdk:"vnet_id"`
 	PublicIPID      types.String      `tfsdk:"public_ip_id"`
 	VIPAddress      types.String      `tfsdk:"vip_address"`
@@ -91,6 +93,19 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				MarkdownDescription: "Region code (RNN, PAR, ABJ). Forces replacement.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"plan": schema.StringAttribute{
+				MarkdownDescription: "Capacity plan: `small` (1 vCPU / 512 MB, default), " +
+					"`medium` (2 vCPU / 1 GB) or `large` (4 vCPU / 2 GB). " +
+					"Changing the plan forces replacement — resizing the underlying " +
+					"LB instance pair in place is not supported.",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("small"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("small", "medium", "large"),
+				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"vnet_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the VNet the load balancer's virtual IP is hosted on. Forces replacement.",
@@ -229,6 +244,7 @@ func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel
 		ID:        types.StringValue(lb.ID),
 		Name:      types.StringValue(lb.Name),
 		Region:    types.StringValue(lb.Region),
+		Plan:      types.StringValue(lb.Plan),
 		VnetID:    types.StringValue(lb.VnetID),
 		Status:    types.StringValue(lb.Status),
 		CreatedAt: types.StringValue(lb.CreatedAt),
@@ -309,6 +325,9 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 		Name:   plan.Name.ValueString(),
 		Region: plan.Region.ValueString(),
 		VnetID: plan.VnetID.ValueString(),
+	}
+	if !plan.Plan.IsNull() && !plan.Plan.IsUnknown() && plan.Plan.ValueString() != "" {
+		createReq.Plan = plan.Plan.ValueString()
 	}
 	if !plan.PublicIPID.IsNull() && !plan.PublicIPID.IsUnknown() {
 		v := plan.PublicIPID.ValueString()

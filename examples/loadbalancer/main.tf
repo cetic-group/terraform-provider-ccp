@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.5"
+      version = "~> 0.18.0"
     }
   }
 }
@@ -33,6 +33,7 @@ resource "ccp_public_ip" "lb" {
 resource "ccp_load_balancer" "demo" {
   name         = "demo-lb"
   region       = "RNN"
+  plan         = "medium" # small (default) | medium | large
   vnet_id      = ccp_vnet.demo.id
   public_ip_id = ccp_public_ip.lb.id
   tags         = ["demo", "terraform-managed"]
