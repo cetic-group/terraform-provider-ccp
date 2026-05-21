@@ -4,6 +4,37 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] — 2026-05-21
+
+### Added — AppGW route `strip_prefix`
+
+- **`ccp_appgw_route.strip_prefix`** — new Optional+Computed attribute
+  (default `false`). When `true` and `path_match` is non-empty in
+  `prefix`/`exact` mode, the gateway strips the `path_match` prefix from
+  the request URL before forwarding to the backend. E.g. with
+  `path_match = "/web-app"` and `strip_prefix = true`, an incoming
+  request to `/web-app/foo` reaches the backend as `/foo`. Ignored when
+  `path_match` is empty or when `path_match_type = "regex"`.
+- `internal/client/appgw_types.go::AppGWRoute` gains a `StripPrefix bool`
+  field; `AppGWRouteCreateRequest` / `AppGWRouteUpdateRequest` gain an
+  optional `StripPrefix *bool` (omitted when nil so the API default
+  applies / a PATCH leaves the value untouched).
+
+### Changed
+
+- All `~> 0.18.0` version pins in `README.md` and `docs/index.md` bumped
+  to `~> 0.19.0`. New HCL example added to `docs/resources/appgw_route.md`
+  illustrating `strip_prefix = true`.
+
+### Notes
+
+- Pairs with the backend migration 171 (CCP) that adds
+  `appgw_routes.strip_prefix BOOLEAN NOT NULL DEFAULT FALSE`.
+- The TF Modules repo bumps its provider constraint to `>= 0.19.0` and
+  exposes `strip_prefix` on `modules/atomic/appgw-route` plus the route
+  schema of `modules/managed/application-gateway` and
+  `modules/exposure/web-app-with-appgw`.
+
 ## [0.18.0] — 2026-05-20
 
 ### Added — Load Balancer plan tiers

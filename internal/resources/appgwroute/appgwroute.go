@@ -78,6 +78,7 @@ type routeResourceModel struct {
 	BasicAuthUsers     []basicAuthUserModel `tfsdk:"basic_auth_user"`
 	BasicAuthSecretRef types.String         `tfsdk:"basic_auth_secret_ref"`
 	WAFPreset          types.String         `tfsdk:"waf_preset"`
+	StripPrefix        types.Bool           `tfsdk:"strip_prefix"`
 }
 
 func (r *routeResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -219,6 +220,14 @@ func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Default:             stringdefault.StaticString("off"),
 				Validators:          []validator.String{stringvalidator.OneOf(appgwvalidators.WAFPresets...)},
 			},
+			"strip_prefix": schema.BoolAttribute{
+				MarkdownDescription: "If `true` and `path_match` is non-empty (prefix or exact mode), strips the `path_match` " +
+					"prefix before forwarding to the backend. E.g. `/web-app/foo` becomes `/foo`. Defaults to `false`. " +
+					"Ignored when `path_match` is empty or when `path_match_type = \"regex\"`.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"header_match": schema.ListNestedBlock{
@@ -355,6 +364,7 @@ func applyToModel(ctx context.Context, rt *client.AppGWRoute, m *routeResourceMo
 	m.PathMatchType = types.StringValue(rt.PathMatchType)
 	m.TargetGroupID = types.StringValue(rt.TargetGroupID)
 	m.WAFPreset = types.StringValue(rt.WAFPreset)
+	m.StripPrefix = types.BoolValue(rt.StripPrefix)
 	m.CORSEnabled = types.BoolValue(rt.CORSEnabled)
 	m.CORSCredentials = types.BoolValue(rt.CORSCredentials)
 	if rt.RateLimitPerSec != nil {
@@ -445,6 +455,10 @@ func (r *routeResource) Create(ctx context.Context, req resource.CreateRequest, 
 		v := plan.WAFPreset.ValueString()
 		createReq.WAFPreset = &v
 	}
+	if !plan.StripPrefix.IsNull() && !plan.StripPrefix.IsUnknown() {
+		v := plan.StripPrefix.ValueBool()
+		createReq.StripPrefix = &v
+	}
 	createReq.MethodMatch = stringsFromList(ctx, plan.MethodMatch)
 	createReq.AllowCIDRs = stringsFromList(ctx, plan.AllowCIDRs)
 	createReq.DenyCIDRs = stringsFromList(ctx, plan.DenyCIDRs)
@@ -529,6 +543,10 @@ func (r *routeResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.WAFPreset.Equal(state.WAFPreset) {
 		v := plan.WAFPreset.ValueString()
 		upd.WAFPreset = &v
+	}
+	if !plan.StripPrefix.Equal(state.StripPrefix) {
+		v := plan.StripPrefix.ValueBool()
+		upd.StripPrefix = &v
 	}
 	if !plan.CORSEnabled.Equal(state.CORSEnabled) {
 		v := plan.CORSEnabled.ValueBool()
