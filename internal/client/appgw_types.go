@@ -235,6 +235,7 @@ type AppGWRoute struct {
 	CORSCredentials    bool               `json:"cors_credentials"`
 	BasicAuthSecretRef *string            `json:"basic_auth_secret_ref,omitempty"`
 	WAFPreset          string             `json:"waf_preset"`
+	StripPrefix        bool               `json:"strip_prefix"`
 	CreatedAt          string             `json:"created_at"`
 	UpdatedAt          string             `json:"updated_at"`
 }
@@ -258,6 +259,7 @@ type AppGWRouteCreateRequest struct {
 	CORSCredentials *bool                `json:"cors_credentials,omitempty"`
 	BasicAuthUsers  []AppGWBasicAuthUser `json:"basic_auth_users,omitempty"`
 	WAFPreset       *string              `json:"waf_preset,omitempty"`
+	StripPrefix     *bool                `json:"strip_prefix,omitempty"`
 }
 
 type AppGWRouteUpdateRequest struct {
@@ -278,4 +280,5 @@ type AppGWRouteUpdateRequest struct {
 	CORSCredentials *bool                 `json:"cors_credentials,omitempty"`
 	BasicAuthUsers  *[]AppGWBasicAuthUser `json:"basic_auth_users,omitempty"`
 	WAFPreset       *string               `json:"waf_preset,omitempty"`
+	StripPrefix     *bool                 `json:"strip_prefix,omitempty"`
 }

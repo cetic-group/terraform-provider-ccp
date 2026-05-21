@@ -26,6 +26,24 @@ resource "ccp_appgw_route" "api_v1" {
 }
 ```
 
+## Example Usage — Prefix-stripped route
+
+When the backend expects requests without the routing prefix (e.g. a sub-app
+mounted at `/web-app` that internally serves `/`), set `strip_prefix = true`
+to have the gateway remove `path_match` from the path before forwarding.
+
+```hcl
+resource "ccp_appgw_route" "web_app" {
+  appgw_id        = ccp_application_gateway.web.id
+  listener_id     = ccp_appgw_listener.public.id
+  priority        = 10
+  path_match      = "/web-app"
+  path_match_type = "prefix"
+  strip_prefix    = true   # /web-app/foo → /foo on the backend
+  target_group_id = ccp_appgw_target_group.web_pool.id
+}
+```
+
 ## Example Usage — Route with full policy stack
 
 ```hcl
@@ -97,6 +115,7 @@ resource "ccp_appgw_route" "api_admin" {
 - `cors_methods` - (Optional) List of methods allowed when `cors_enabled = true`.
 - `cors_credentials` - (Optional, default `false`) When `true`, sends `Access-Control-Allow-Credentials: true`.
 - `waf_preset` - (Optional, default `off`) WAF preset enforced on this route. One of: `off`, `permissive`, `strict`.
+- `strip_prefix` - (Optional, default `false`) When `true` and `path_match` is non-empty (prefix or exact mode), the gateway strips the `path_match` prefix before forwarding to the backend. E.g. with `path_match = "/web-app"` and `strip_prefix = true`, an incoming request to `/web-app/foo` reaches the backend as `/foo`. Ignored when `path_match` is empty or when `path_match_type = "regex"`.
 - `header_match` - (Optional, nested block) Match a request header. Each block adds an AND condition.
 - `basic_auth_user` - (Optional, nested block) User credential pair for HTTP Basic authentication. Declaring at least one block enables basic auth for the route. **Omitting** the block entirely on `terraform apply` preserves the existing basic auth configuration; passing an **empty list** (no blocks where some were declared previously) explicitly clears it.
 

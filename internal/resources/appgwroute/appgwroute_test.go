@@ -119,6 +119,7 @@ func TestCreateRoute_SendsAllFields(t *testing.T) {
 					"cors_methods":     []string{},
 					"cors_credentials": false,
 					"waf_preset":       "off",
+					"strip_prefix":     false,
 					"created_at":       "2026-05-15T10:00:00Z",
 					"updated_at":       "2026-05-15T10:00:00Z",
 				}
@@ -144,6 +145,125 @@ func TestCreateRoute_SendsAllFields(t *testing.T) {
 	}
 	if created.ID != routeID {
 		t.Errorf("expected id %q, got %q", routeID, created.ID)
+	}
+}
+
+func TestCreateRoute_StripPrefixPropagates(t *testing.T) {
+	appgwID := "appgw-1"
+	routeID := "route-1"
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{
+			Method: "POST", Path: "/v1/app-gateways/" + appgwID + "/routes",
+			Status: http.StatusCreated,
+			BodyFn: func(t *testing.T, reqBody []byte) (int, any) {
+				var got client.AppGWRouteCreateRequest
+				if err := json.Unmarshal(reqBody, &got); err != nil {
+					t.Errorf("decode request: %v", err)
+				}
+				if got.StripPrefix == nil || *got.StripPrefix != true {
+					t.Errorf("expected strip_prefix=true in request, got %+v", got.StripPrefix)
+				}
+				if !strings.Contains(string(reqBody), "\"strip_prefix\":true") {
+					t.Errorf("expected \"strip_prefix\":true in wire payload, got: %s", string(reqBody))
+				}
+				return http.StatusCreated, map[string]any{
+					"id":              routeID,
+					"appgw_id":        appgwID,
+					"listener_id":     got.ListenerID,
+					"priority":        10,
+					"path_match":      "/web-app",
+					"path_match_type": "prefix",
+					"header_matches":  []any{},
+					"method_match":    []string{},
+					"target_group_id": got.TargetGroupID,
+					"allow_cidrs":     []string{},
+					"deny_cidrs":      []string{},
+					"request_headers": map[string]string{},
+					"response_headers": map[string]string{},
+					"cors_enabled":     false,
+					"cors_origins":     []string{},
+					"cors_methods":     []string{},
+					"cors_credentials": false,
+					"waf_preset":       "off",
+					"strip_prefix":     true,
+					"created_at":       "2026-05-21T10:00:00Z",
+					"updated_at":       "2026-05-21T10:00:00Z",
+				}
+			},
+		},
+	})
+	defer srv.Close()
+	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+
+	pathMatch := "/web-app"
+	pathType := "prefix"
+	strip := true
+	created, err := c.CreateAppGWRoute(context.Background(), appgwID, client.AppGWRouteCreateRequest{
+		ListenerID:    "listener-1",
+		TargetGroupID: "tg-1",
+		PathMatch:     &pathMatch,
+		PathMatchType: &pathType,
+		StripPrefix:   &strip,
+	})
+	if err != nil {
+		t.Fatalf("CreateAppGWRoute: %v", err)
+	}
+	if !created.StripPrefix {
+		t.Errorf("expected created.StripPrefix=true, got %v", created.StripPrefix)
+	}
+}
+
+func TestUpdateRoute_StripPrefixPatch(t *testing.T) {
+	appgwID := "appgw-1"
+	routeID := "route-1"
+
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{
+			Method: "PATCH", Path: "/v1/app-gateways/" + appgwID + "/routes/" + routeID,
+			Status: http.StatusOK,
+			BodyFn: func(t *testing.T, reqBody []byte) (int, any) {
+				bodyStr := string(reqBody)
+				if !strings.Contains(bodyStr, "\"strip_prefix\":true") {
+					t.Errorf("expected \"strip_prefix\":true in PATCH body, got: %s", bodyStr)
+				}
+				return http.StatusOK, map[string]any{
+					"id":              routeID,
+					"appgw_id":        appgwID,
+					"listener_id":     "listener-1",
+					"priority":        100,
+					"path_match":      "/web-app",
+					"path_match_type": "prefix",
+					"header_matches":  []any{},
+					"method_match":    []string{},
+					"target_group_id": "tg-1",
+					"allow_cidrs":     []string{},
+					"deny_cidrs":      []string{},
+					"request_headers": map[string]string{},
+					"response_headers": map[string]string{},
+					"cors_enabled":     false,
+					"cors_origins":     []string{},
+					"cors_methods":     []string{},
+					"cors_credentials": false,
+					"waf_preset":       "off",
+					"strip_prefix":     true,
+					"created_at":       "2026-05-21T10:00:00Z",
+					"updated_at":       "2026-05-21T10:00:00Z",
+				}
+			},
+		},
+	})
+	defer srv.Close()
+	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+
+	strip := true
+	got, err := c.UpdateAppGWRoute(context.Background(), appgwID, routeID, client.AppGWRouteUpdateRequest{
+		StripPrefix: &strip,
+	})
+	if err != nil {
+		t.Fatalf("UpdateAppGWRoute: %v", err)
+	}
+	if !got.StripPrefix {
+		t.Errorf("expected got.StripPrefix=true, got %v", got.StripPrefix)
 	}
 }
 
@@ -182,6 +302,7 @@ func TestUpdateRoute_PatchesPolicies(t *testing.T) {
 					"cors_methods":     []string{},
 					"cors_credentials": false,
 					"waf_preset":       "strict",
+					"strip_prefix":     false,
 					"created_at":       "2026-05-15T10:00:00Z",
 					"updated_at":       "2026-05-15T10:00:00Z",
 				}
