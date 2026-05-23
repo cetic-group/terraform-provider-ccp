@@ -4,6 +4,48 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] — 2026-05-23
+
+### Added — SSH key scope (visibility levels)
+
+- **`ccp_ssh_key.scope`** — new Optional+Computed attribute (default
+  `"user"`) controlling who can see an SSH key once it is registered:
+  - `user` — visible only to its creator, survives org switches.
+    Any organisation member can create.
+  - `org` — visible inside the currently active organization only.
+    Org `admin`+ or `owner` required to create.
+  - `tenant` — visible across every org of the tenant and every invited
+    member. Tenant `owner` only.
+
+  Validators enforce `OneOf("user", "org", "tenant")`. The attribute is
+  immutable — changing the scope carries `RequiresReplace()` because the
+  CETIC Cloud API has no PATCH endpoint for SSH keys.
+- **`ccp_ssh_key.created_by_tenant_id`** — new Computed (read-only)
+  attribute exposing the UUID of the tenant the key was created from.
+  Null on legacy keys predating the scoping migration.
+
+### Changed
+
+- All `~> 0.19.0` version pins in `README.md` and `docs/index.md`
+  bumped to `~> 0.20.0`. New HCL examples added to
+  `docs/resources/ssh_key.md` for `scope = "org"` and `scope = "tenant"`.
+- `internal/client/types.go::SSHKey` gains `Scope string` and
+  `CreatedByTenantID string` fields with `omitempty` JSON tags;
+  `SSHKeyCreateRequest` gains an optional `Scope string` (omitted when
+  empty so the API default applies — keeps the wire format backwards
+  compatible).
+
+### Notes
+
+- Pairs with the backend migration that adds
+  `ssh_keys.scope ENUM('user','org','tenant') NOT NULL DEFAULT 'user'`
+  and `ssh_keys.created_by_tenant_id UUID NULL`.
+- Backward-compatible — existing HCL with no `scope` declaration keeps
+  working: Terraform materialises the default `"user"` into state on
+  the next apply. No drift, no destroy/recreate of existing keys.
+- The TF Modules repo will bump its provider constraint to `>= 0.20.0`
+  in its next release.
+
 ## [0.19.0] — 2026-05-21
 
 ### Added — AppGW route `strip_prefix`

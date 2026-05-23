@@ -19,7 +19,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.19.0**
+> **Status — v0.20.0**
 >
 > **41+ resources + 16 data sources** implemented. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
@@ -65,7 +65,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.19.0"
+      version = "~> 0.20.0"
     }
   }
 }
@@ -88,7 +88,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 
 | Category | Name | Notes |
 |---|---|---|
-| Identity | `ccp_ssh_key` | No update — all changes force replacement. |
+| Identity | `ccp_ssh_key` | Scope `user` (default) / `org` / `tenant`. No update — all changes force replacement. |
 | Identity | `ccp_api_key` | API token mgmt. |
 | Identity | `ccp_organization` / `ccp_org_member` | Multi-tenant orgs + member roles. |
 | Network | `ccp_vpc` | Async create/delete, polls until `active`. |
