@@ -3,16 +3,27 @@ package client
 import "time"
 
 // SSHKey represents an SSH key resource (synchronous).
+//
+// Scope is one of "user" (visible only to its creator, survives org switches),
+// "org" (visible inside the currently active organization — admin+/owner
+// create) or "tenant" (visible to every org and every invited member of the
+// tenant — owner-only create). Defaults server-side to "user" when omitted.
+// CreatedByTenantID is the UUID of the tenant the key was created from; the
+// field is null on legacy rows predating the scoping migration.
 type SSHKey struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Fingerprint string    `json:"fingerprint"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                string    `json:"id"`
+	Name              string    `json:"name"`
+	Fingerprint       string    `json:"fingerprint"`
+	Scope             string    `json:"scope,omitempty"`
+	CreatedByTenantID string    `json:"created_by_tenant_id,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type SSHKeyCreateRequest struct {
 	Name      string `json:"name"`
 	PublicKey string `json:"public_key"`
+	// Scope is optional — defaults to "user" server-side when empty.
+	Scope string `json:"scope,omitempty"`
 }
 
 // VPC represents a VPC resource. Status: active | deleting | error.

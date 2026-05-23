@@ -1,8 +1,8 @@
 // Package sshkey implements the ccp_ssh_key Terraform resource.
 //
 // SSH keys are simple, synchronous resources: POST returns the full object,
-// DELETE returns 204, and there is no PATCH/PUT endpoint. Both `name` and
-// `public_key` therefore force replacement on change.
+// DELETE returns 204, and there is no PATCH/PUT endpoint. `name`,
+// `public_key` and `scope` therefore all force replacement on change.
 //
 // The CETIC Cloud API exposes no GET-by-id endpoint; the typed client emulates
 // it via list-and-filter and surfaces a 404 APIError when the key is gone —
@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -47,11 +48,13 @@ type sshKeyResource struct {
 // sshKeyResourceModel mirrors the schema below 1-to-1. Tag names must match
 // the schema attribute keys exactly.
 type sshKeyResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	PublicKey   types.String `tfsdk:"public_key"`
-	Fingerprint types.String `tfsdk:"fingerprint"`
-	CreatedAt   types.String `tfsdk:"created_at"`
+	ID                types.String `tfsdk:"id"`
+	Name              types.String `tfsdk:"name"`
+	PublicKey         types.String `tfsdk:"public_key"`
+	Scope             types.String `tfsdk:"scope"`
+	Fingerprint       types.String `tfsdk:"fingerprint"`
+	CreatedByTenantID types.String `tfsdk:"created_by_tenant_id"`
+	CreatedAt         types.String `tfsdk:"created_at"`
 }
 
 // nameValidatorPattern matches the API constraint: alphanumerics, underscore,
@@ -67,7 +70,7 @@ func (r *sshKeyResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		MarkdownDescription: "Manages an SSH public key registered with CETIC Cloud. " +
 			"Keys are injected into containers (via cloud-init / authorized_keys) and VMs " +
 			"(via cloud-init `sshkeys`). The CETIC Cloud API has no update endpoint, so any " +
-			"change to `name` or `public_key` forces replacement.",
+			"change to `name`, `public_key` or `scope` forces replacement.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the SSH key.",
@@ -98,9 +101,34 @@ func (r *sshKeyResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"scope": schema.StringAttribute{
+				MarkdownDescription: "Visibility scope of the key. One of:\n" +
+					"  * `user` — visible only to its creator, survives org switches (default — any member can create).\n" +
+					"  * `org` — visible inside the currently active organization only (admin+/owner can create).\n" +
+					"  * `tenant` — visible across every org and every invited member of the tenant (owner-only).\n\n" +
+					"The CETIC Cloud API does not support mutating the scope of an existing key — any change " +
+					"forces replacement (destroy + recreate).",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("user"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("user", "org", "tenant"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"fingerprint": schema.StringAttribute{
 				MarkdownDescription: "SHA-256 fingerprint computed by the API at creation time.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_by_tenant_id": schema.StringAttribute{
+				MarkdownDescription: "UUID of the tenant the key was created from. " +
+					"Null on legacy keys predating the scoping migration.",
+				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -139,9 +167,18 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	// `scope` is Optional+Computed with a Default of "user", so it should be
+	// Known by the time we land here — but be defensive: only send a non-empty
+	// value, otherwise the backend applies its own default ("user").
+	scope := ""
+	if !plan.Scope.IsNull() && !plan.Scope.IsUnknown() {
+		scope = plan.Scope.ValueString()
+	}
+
 	created, err := r.client.CreateSSHKey(ctx, client.SSHKeyCreateRequest{
 		Name:      plan.Name.ValueString(),
 		PublicKey: plan.PublicKey.ValueString(),
+		Scope:     scope,
 	})
 	if err != nil {
 		// 409 → duplicate fingerprint. Surface the API detail verbatim (it
@@ -165,6 +202,19 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	plan.Name = types.StringValue(created.Name)
 	plan.Fingerprint = types.StringValue(created.Fingerprint)
 	plan.CreatedAt = types.StringValue(created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	// Always reflect the server-side scope: if the user omitted it, the
+	// backend stamps "user" — this materialises the Computed default into
+	// state so the next plan is empty.
+	if created.Scope != "" {
+		plan.Scope = types.StringValue(created.Scope)
+	} else {
+		plan.Scope = types.StringValue("user")
+	}
+	if created.CreatedByTenantID != "" {
+		plan.CreatedByTenantID = types.StringValue(created.CreatedByTenantID)
+	} else {
+		plan.CreatedByTenantID = types.StringNull()
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -193,6 +243,19 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.Name = types.StringValue(got.Name)
 	state.Fingerprint = types.StringValue(got.Fingerprint)
 	state.CreatedAt = types.StringValue(got.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	if got.Scope != "" {
+		state.Scope = types.StringValue(got.Scope)
+	} else {
+		// Legacy rows predating the backend scoping migration return an empty
+		// `scope` — collapse to the default ("user") to keep state coherent
+		// with the Computed schema.
+		state.Scope = types.StringValue("user")
+	}
+	if got.CreatedByTenantID != "" {
+		state.CreatedByTenantID = types.StringValue(got.CreatedByTenantID)
+	} else {
+		state.CreatedByTenantID = types.StringNull()
+	}
 	// public_key is not returned by the API list; preserve whatever is in
 	// state (set on Create or import-then-replace).
 
