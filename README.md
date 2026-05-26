@@ -19,9 +19,9 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > Resources always start with the prefix `ccp_` regardless of which local
 > name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
 
-> **Status — v0.21.0**
+> **Status — v0.22.0**
 >
-> **41+ resources + 16 data sources** implemented. Highlights : containers
+> **41+ resources + 17 data sources** implemented. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
 > set + snapshot), managed Kubernetes clusters + node pools, **managed
 > databases — PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) /
@@ -65,7 +65,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.21.0"
+      version = "~> 0.22.0"
     }
   }
 }
@@ -118,6 +118,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | `ccp_lxc_templates` | Container template catalog (resolve `key` for `ccp_container_instance.template`). |
 | `ccp_qemu_templates` | Virtual machine template catalog (resolve `key` for `ccp_vm_instance.template`). |
 | `ccp_k8s_templates` | Kubernetes node OS template catalog. |
+| `ccp_k8s_cluster` | Look up an existing CCKS cluster by `id` or `(name, region)`. Exposes `tier` + HA proxy fields. |
 | `ccp_db_plans` | Database plan catalog, filterable by `engine`. |
 | `ccp_db_engine_versions` | Active database engine versions, filterable by `engine`. |
 | `ccp_db_pg_credentials` | Admin credentials of a PostgreSQL instance (sensitive). |

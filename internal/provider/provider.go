@@ -15,6 +15,7 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
 	dsiampolicydocument "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/iampolicydocument"
 	dsiamrole "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/iamrole"
+	dsk8scluster "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8scluster"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8stemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/lxctemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
@@ -213,6 +214,7 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dbplans.New,
 		dbengineversions.New,
 		k8stemplates.New,
+		dsk8scluster.New,
 		dbcredentials.NewPG,
 		dbcredentials.NewMySQL,
 		dbcredentials.NewFerretdb,
