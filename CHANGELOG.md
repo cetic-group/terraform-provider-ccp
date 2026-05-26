@@ -4,6 +4,40 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] — 2026-05-26
+
+### Added — `ccp_k8s_cluster` data source
+
+- **`data "ccp_k8s_cluster"`** — new data source to look up an existing
+  CETIC Cloud Kubernetes (CCKS) cluster by `id` or by the unique
+  `(name, region)` pair. Backfills the missing read-side counterpart of
+  the `ccp_k8s_cluster` resource (every other resource in the provider
+  already had one).
+- Exposes every Computed field of the resource counterpart, including
+  the v0.21.0 additions:
+  - `tier` — `dev` / `prod` HA topology selector.
+  - `proxy_secondary_vmid`, `proxy_secondary_node`, `proxy_vip_vnet` —
+    read-only HA proxy fields (null for `tier = "dev"`).
+- Lookup discriminator semantics match the rest of the provider:
+  exactly one of `id` xor `(name + region)` must be set; conflicting
+  combinations or no-match / multiple-match results raise an explicit
+  diagnostic instead of silently picking a row.
+
+### Changed
+
+- All `~> 0.21.0` version pins in `README.md` and `docs/index.md`
+  bumped to `~> 0.22.0`. New `docs/data-sources/k8s_cluster.md` with
+  the standard `Example Usage` / `Argument Reference` /
+  `Attributes Reference` sections and a side-by-side example for both
+  lookup modes.
+
+### Backend dependency
+
+- No new CCP API dependency — the data source reuses
+  `GET /v1/k8s/clusters` and `GET /v1/k8s/clusters/{id}`, both already
+  consumed by the resource. Backward-compatible with any CCP API
+  version that already supports the resource.
+
 ## [0.21.0] — 2026-05-26
 
 ### Added — CCKS HA tier (`dev` / `prod`)
