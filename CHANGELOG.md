@@ -4,6 +4,41 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] — 2026-05-26
+
+### Added — CCKS HA tier (`dev` / `prod`)
+
+- **`ccp_k8s_cluster.tier`** — new Optional+Computed attribute (default
+  `"dev"`) controlling the LXC proxy topology fronting the apiserver:
+  - `dev` — single LXC proxy (SPOF acceptable in dev/staging — current
+    behaviour, preserved as the default for backward compatibility).
+  - `prod` — 2 LXC proxies (primary + secondary) with Keepalived VRRP
+    and a floating VIP, providing HA at the proxy layer.
+
+  Validators enforce `OneOf("dev", "prod")`. The attribute is immutable —
+  changing the tier carries `RequiresReplace()` because the proxy LXC
+  topology is baked at provision time on the backend.
+- **`ccp_k8s_cluster.proxy_secondary_vmid`** — new Computed (read-only)
+  Int64 attribute exposing the Proxmox VMID of the secondary LXC proxy.
+  Null for `tier = "dev"`.
+- **`ccp_k8s_cluster.proxy_secondary_node`** — new Computed (read-only)
+  String attribute exposing the Proxmox node hosting the secondary LXC
+  proxy. Null for `tier = "dev"`.
+- **`ccp_k8s_cluster.proxy_vip_vnet`** — new Computed (read-only) String
+  attribute exposing the Keepalived VRRP floating VIP shared between the
+  LXC proxies. Null for `tier = "dev"`.
+
+### Changed
+
+- All `~> 0.20.0` version pins in `README.md` and `docs/index.md`
+  bumped to `~> 0.21.0`. New HCL example added to
+  `docs/resources/k8s_cluster.md` showcasing `tier = "prod"`.
+
+### Backend dependency
+
+- Requires CCP API ≥ v2.6.9 (`tenant_k8s_clusters.tier` SAEnum +
+  `proxy_secondary_*` + `proxy_vip_vnet` exposed on `GET /v1/k8s/clusters/{id}`).
+
 ## [0.20.0] — 2026-05-23
 
 ### Added — SSH key scope (visibility levels)

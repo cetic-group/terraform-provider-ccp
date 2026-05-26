@@ -553,6 +553,12 @@ type K8sCluster struct {
 	IngressPublicIPID         *string `json:"ingress_public_ip_id,omitempty"`
 	IngressPublicIPAddress    *string `json:"ingress_public_ip_address,omitempty"`
 	IngressInternalIP         *string `json:"ingress_internal_ip,omitempty"`
+	// Tier — `dev` (single LXC proxy) or `prod` (HA Keepalived VRRP + VIP).
+	// Immutable on the backend; provider exposes it as Optional+Computed+ForceNew.
+	Tier               string  `json:"tier"`
+	ProxySecondaryVmid *int64  `json:"proxy_secondary_vmid,omitempty"`
+	ProxySecondaryNode *string `json:"proxy_secondary_node,omitempty"`
+	ProxyVipVnet       *string `json:"proxy_vip_vnet,omitempty"`
 	Status         string    `json:"status"`
 	ErrorMessage   *string   `json:"error_message,omitempty"`
 	Tags           []string  `json:"tags"`
@@ -590,6 +596,9 @@ type K8sClusterCreateRequest struct {
 	// Apiserver IP (optionnel, auto-attaché après provisioning)
 	ApiserverPublicIPID   *string `json:"apiserver_public_ip_id,omitempty"`
 	ApiserverInternalIP   *string `json:"apiserver_internal_ip,omitempty"`
+	// Tier — `dev` (default, single LXC proxy) or `prod` (HA Keepalived VRRP).
+	// Immutable on the backend — changing requires recreate.
+	Tier string `json:"tier,omitempty"`
 }
 
 type K8sClusterUpdateRequest struct {

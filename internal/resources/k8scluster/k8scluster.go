@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -73,6 +74,12 @@ type k8sResourceModel struct {
 	// Apiserver public IP (attach/detach, mutable)
 	PublicIPID      types.String `tfsdk:"public_ip_id"`
 	PublicIPAddress types.String `tfsdk:"public_ip_address"`
+	// Tier (create-time only, immutable)
+	Tier types.String `tfsdk:"tier"`
+	// Proxy HA (read-only, only populated for tier=prod)
+	ProxySecondaryVmid types.Int64  `tfsdk:"proxy_secondary_vmid"`
+	ProxySecondaryNode types.String `tfsdk:"proxy_secondary_node"`
+	ProxyVipVnet       types.String `tfsdk:"proxy_vip_vnet"`
 	// Computed
 	ApiEndpoint types.String `tfsdk:"api_endpoint"`
 	Status      types.String `tfsdk:"status"`
@@ -216,6 +223,43 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			// ── Tier (HA topology) ─────────────────────────────────────────
+			"tier": schema.StringAttribute{
+				MarkdownDescription: "Topologie du proxy LXC fronting l'apiserver. " +
+					"`dev` (défaut) = 1 LXC proxy unique (SPOF acceptable en dev). " +
+					"`prod` = 2 LXC (primary + secondary) avec Keepalived VRRP et VIP flottante (HA). " +
+					"Immutable côté backend — toute modification force la recréation du cluster.",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("dev"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("dev", "prod"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"proxy_secondary_vmid": schema.Int64Attribute{
+				MarkdownDescription: "VMID Proxmox du LXC proxy secondaire (tier `prod` uniquement, sinon null).",
+				Computed:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"proxy_secondary_node": schema.StringAttribute{
+				MarkdownDescription: "Nœud Proxmox hébergeant le LXC proxy secondaire (tier `prod` uniquement, sinon null).",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"proxy_vip_vnet": schema.StringAttribute{
+				MarkdownDescription: "IP virtuelle Keepalived VRRP partagée entre les LXC proxies (tier `prod` uniquement, sinon null).",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			// ── Computed ───────────────────────────────────────────────────
 			"api_endpoint": schema.StringAttribute{
 				MarkdownDescription: "Kubernetes API endpoint (host:port). Available once active.",
@@ -271,6 +315,12 @@ func (r *k8sResource) Configure(_ context.Context, req resource.ConfigureRequest
 }
 
 func stateFromAPI(ctx context.Context, c *client.K8sCluster, currentInitial *initialPoolModel) (k8sResourceModel, []string) {
+	// Tier defaults to "dev" if the API returns it empty — covers legacy rows
+	// predating the HA backend migration so the Computed schema stays coherent.
+	tier := c.Tier
+	if tier == "" {
+		tier = "dev"
+	}
 	m := k8sResourceModel{
 		ID:            types.StringValue(c.ID),
 		Name:          types.StringValue(c.Name),
@@ -291,6 +341,25 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, currentInitial *ini
 		IngressControllerEnabled: types.BoolValue(c.IngressControllerEnabled),
 		IngressControllerScope:   types.StringValue(c.IngressControllerScope),
 		IngressControllerClass:   types.StringValue(c.IngressControllerClass),
+		// Tier
+		Tier: types.StringValue(tier),
+	}
+
+	// Proxy HA fields are only populated for tier=prod; nullable on dev.
+	if c.ProxySecondaryVmid != nil {
+		m.ProxySecondaryVmid = types.Int64Value(*c.ProxySecondaryVmid)
+	} else {
+		m.ProxySecondaryVmid = types.Int64Null()
+	}
+	if c.ProxySecondaryNode != nil {
+		m.ProxySecondaryNode = types.StringValue(*c.ProxySecondaryNode)
+	} else {
+		m.ProxySecondaryNode = types.StringNull()
+	}
+	if c.ProxyVipVnet != nil {
+		m.ProxyVipVnet = types.StringValue(*c.ProxyVipVnet)
+	} else {
+		m.ProxyVipVnet = types.StringNull()
 	}
 
 	// Nullable strings
@@ -356,6 +425,14 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		pool.Replicas = int(plan.InitialPool.Replicas.ValueInt64())
 	}
 
+	// `tier` is Optional+Computed with Default("dev"). Forward whatever the
+	// plan resolved to so the backend sees an explicit value; if the framework
+	// leaves it Unknown/Null (defensive guard), omit and let the API default.
+	tier := ""
+	if !plan.Tier.IsNull() && !plan.Tier.IsUnknown() {
+		tier = plan.Tier.ValueString()
+	}
+
 	createReq := client.K8sClusterCreateRequest{
 		Name:          plan.Name.ValueString(),
 		Region:        plan.Region.ValueString(),
@@ -373,6 +450,8 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		IngressControllerEnabled: plan.IngressControllerEnabled.ValueBool(),
 		IngressControllerScope:   plan.IngressControllerScope.ValueString(),
 		IngressControllerClass:   plan.IngressControllerClass.ValueString(),
+		// Tier (HA topology) — create-time only
+		Tier: tier,
 	}
 	if !plan.DisplayName.IsNull() && !plan.DisplayName.IsUnknown() {
 		v := plan.DisplayName.ValueString()
