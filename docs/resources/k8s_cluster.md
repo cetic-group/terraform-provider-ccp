@@ -26,6 +26,7 @@ resource "ccp_k8s_cluster" "prod" {
   vpc_id                       = ccp_vpc.main.id
   vnet_id                      = ccp_vnet.web.id
   k8s_version                  = "1.31"
+  tier                         = "prod"  # 2 LXC proxies (Keepalived VRRP + VIP), HA
   autoscaler_enabled           = true
   scale_down_delay_after_add   = "10m"
   scale_down_unneeded_time     = "10m"
@@ -62,6 +63,11 @@ output "kubeconfig" {
 
 ### Optional
 
+- `tier` - (Optional, Forces new resource) Topology of the LXC proxy fronting the apiserver. One of:
+    * `dev` (default) — single LXC proxy (SPOF acceptable in dev/staging).
+    * `prod` — 2 LXC proxies (primary + secondary) with Keepalived VRRP and a floating VIP, providing HA at the proxy layer.
+
+    Immutable on the backend — changing `tier` forces destroy + recreate of the cluster.
 - `autoscaler_enabled` - (Optional) Enable the Cluster Autoscaler for this cluster. When enabled, node pools with `autoscaler_enabled = true` will scale automatically. Defaults to `false`.
 - `scale_down_delay_after_add` - (Optional) Duration to wait before scaling down after a scale-up event (e.g. `"10m"`, `"30m"`). Only effective when `autoscaler_enabled = true`.
 - `scale_down_unneeded_time` - (Optional) Duration a node must be unneeded before the autoscaler removes it (e.g. `"10m"`). Only effective when `autoscaler_enabled = true`.
@@ -78,6 +84,9 @@ In addition to all arguments above, the following attributes are exported:
 - `kubeconfig` - (Sensitive) Kubeconfig file content (YAML) for accessing the cluster with `kubectl`. Store securely.
 - `endpoint` - Kubernetes API server endpoint URL (e.g. `https://10.0.1.5:6443`).
 - `public_ip_address` - Public IP address of the API server if `apiserver_public_ip_id` is set, otherwise empty.
+- `proxy_secondary_vmid` - Proxmox VMID of the secondary LXC proxy (only populated for `tier = "prod"`, otherwise null).
+- `proxy_secondary_node` - Proxmox node hosting the secondary LXC proxy (only populated for `tier = "prod"`, otherwise null).
+- `proxy_vip_vnet` - Keepalived VRRP floating VIP shared between the LXC proxies (only populated for `tier = "prod"`, otherwise null).
 
 ## Import
 
