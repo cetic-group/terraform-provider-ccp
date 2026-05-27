@@ -6,23 +6,51 @@ import (
 	"regexp"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	dsapikey "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/apikey"
 	dsapplicationgateway "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/applicationgateway"
-	dspricing "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/pricing"
-	dssupportplan "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/supportplan"
-	dspromocodes "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/promocodes"
+	dsblockvolume "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/blockvolume"
+	dscontainerinstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containerinstance"
+	dscontainerscaleset "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containerscaleset"
+	dscontainersnapshot "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containersnapshot"
+	dscustomtemplate "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/customtemplate"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
+	dsdbferretdbinstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbferretdbinstance"
+	dsdbmysqlinstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbmysqlinstance"
+	dsdbpginstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbpginstance"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbplans"
+	dsdbvalkeyinstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbvalkeyinstance"
 	dsiampolicydocument "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/iampolicydocument"
 	dsiamrole "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/iamrole"
+	dsipaaspool "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/ipaaspool"
 	dsk8scluster "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8scluster"
+	dsk8snodepool "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8snodepool"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8stemplates"
+	dsloadbalancer "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/loadbalancer"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/lxctemplates"
+	dsobjectbucket "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/objectbucket"
+	dsobjectstoragekey "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/objectstoragekey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
+	dspricing "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/pricing"
+	dspromocodes "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/promocodes"
+	dspublicip "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/publicip"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/qemutemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/regions"
 	dsregistry "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registry"
+	dsregistryacl "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registryacl"
+	dsregistryuser "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registryuser"
 	dssecret "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/secret"
+	dsserviceaccount "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/serviceaccount"
+	dssshkey "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/sshkey"
+	dssupportplan "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/supportplan"
+	dsvminstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vminstance"
+	dsvmscaleset "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vmscaleset"
+	dsvmsnapshot "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vmsnapshot"
+	dsvnet "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnet"
+	dsvnetfirewallrule "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnetfirewallrule"
+	dsvnetipresv "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnetipresv"
+	dsvnetpeering "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnetpeering"
+	dsvpc "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vpc"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/apikey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwlistener"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/appgwroute"
@@ -207,6 +235,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 
 func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		// Catalogs / static
 		regions.New,
 		organizations.New,
 		lxctemplates.New,
@@ -214,18 +243,54 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dbplans.New,
 		dbengineversions.New,
 		k8stemplates.New,
+		dspricing.New,
+		dspromocodes.New,
+		dssupportplan.New,
+		// Network
+		dsvpc.New,
+		dsvnet.New,
+		dsvnetpeering.New,
+		dsvnetfirewallrule.New,
+		dsvnetipresv.New,
+		dspublicip.New,
+		dsloadbalancer.New,
+		dsipaaspool.New,
+		dsapplicationgateway.New,
+		// Compute
+		dsvminstance.New,
+		dsvmscaleset.New,
+		dsvmsnapshot.New,
+		dscontainerinstance.New,
+		dscontainerscaleset.New,
+		dscontainersnapshot.New,
+		dscustomtemplate.New,
+		// Storage
+		dsblockvolume.New,
+		dsobjectbucket.New,
+		dsobjectstoragekey.New,
+		// Kubernetes
 		dsk8scluster.New,
+		dsk8snodepool.New,
+		// Database
+		dsdbpginstance.New,
+		dsdbmysqlinstance.New,
+		dsdbvalkeyinstance.New,
+		dsdbferretdbinstance.New,
 		dbcredentials.NewPG,
 		dbcredentials.NewMySQL,
 		dbcredentials.NewFerretdb,
 		dbcredentials.NewValkey,
+		// Container Registry
 		dsregistry.New,
+		dsregistryuser.New,
+		dsregistryacl.New,
+		// IAM / Identity
 		dsiamrole.New,
 		dsiampolicydocument.New,
+		dsserviceaccount.New,
+		dssshkey.New,
+		dsapikey.New,
+		// Secrets
 		dssecret.New,
-		dsapplicationgateway.New,
-		dspricing.New,
-		dspromocodes.New,
-		dssupportplan.New,
 	}
 }
