@@ -1,0 +1,28 @@
+package blockvolume
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client/testutil"
+)
+
+func TestLookupByID(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/volumes/vol-1", Status: http.StatusOK, Body: map[string]any{
+			"id": "vol-1", "name": "data", "region": "RNN", "size_gb": 50, "status": "available",
+			"tags": []string{}, "created_at": "2026-05-25T10:00:00Z", "updated_at": "2026-05-25T10:05:00Z",
+		}},
+	})
+	defer srv.Close()
+	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+	got, err := c.GetBlockVolume(context.Background(), "vol-1")
+	if err != nil {
+		t.Fatalf("GetBlockVolume: %v", err)
+	}
+	if got.SizeGB != 50 {
+		t.Errorf("expected size 50, got %d", got.SizeGB)
+	}
+}

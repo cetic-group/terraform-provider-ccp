@@ -14,7 +14,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   required_providers {
 >     ccp = {
 >       source  = "cetic-group/cetic-cloud-platform"
->       version = "~> 0.23.0"
+>       version = "~> 0.24.0"
 >     }
 >   }
 > }
@@ -26,9 +26,15 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > forces you to set `provider = <local_name>` on every resource block —
 > not recommended.
 
-> **Status — v0.23.0**
+> **Status — v0.24.0**
 >
-> **41+ resources + 17 data sources** implemented. Highlights : containers
+> **41+ resources + 45 data sources** implemented. v0.24.0 adds 28 new
+> singular-lookup data sources covering VPCs, VNets, VNet peerings, VM and
+> container instances/scale sets/snapshots, custom templates, load balancers,
+> public IPs, block volumes, object buckets, object storage keys, K8s node
+> pools, the four DB engines (PostgreSQL / MySQL / Valkey / FerretDB),
+> service accounts, SSH keys, API keys, IPaaS pools, VNet firewall rules
+> and IP reservations, and registry users + ACLs. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
 > set + snapshot), managed Kubernetes clusters + node pools, **managed
 > databases — PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) /
@@ -72,7 +78,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 0.23.0"
+      version = "~> 0.24.0"
     }
   }
 }
