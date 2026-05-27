@@ -632,21 +632,29 @@ const (
 
 // ─── K8s Node Pool (sub-resource du cluster) ────────────────────────────────
 
+// NodePoolTaint represents a Kubernetes taint applied to all nodes of a pool.
+// effect must be one of: NoSchedule, PreferNoSchedule, NoExecute.
+type NodePoolTaint struct {
+	Key    string  `json:"key"`
+	Value  *string `json:"value,omitempty"`
+	Effect string  `json:"effect"`
+}
+
 type K8sNodePool struct {
-	ID                    string                  `json:"id"`
-	ClusterID             string                  `json:"cluster_id"`
-	Name                  string                  `json:"name"`
-	Plan                  string                  `json:"plan"`
-	Replicas              int                     `json:"replicas"`
-	Labels                map[string]string       `json:"labels"`
-	Taints                []map[string]any        `json:"taints"`
-	MinSize               *int                    `json:"min_size,omitempty"`
-	MaxSize               *int                    `json:"max_size,omitempty"`
-	MachineDeploymentName *string                 `json:"machine_deployment_name,omitempty"`
-	Status                string                  `json:"status"`
-	ErrorMessage          *string                 `json:"error_message,omitempty"`
-	CreatedAt             time.Time               `json:"created_at"`
-	UpdatedAt             time.Time               `json:"updated_at"`
+	ID                    string            `json:"id"`
+	ClusterID             string            `json:"cluster_id"`
+	Name                  string            `json:"name"`
+	Plan                  string            `json:"plan"`
+	Replicas              int               `json:"replicas"`
+	Labels                map[string]string `json:"labels"`
+	Taints                []NodePoolTaint   `json:"taints"`
+	MinSize               *int              `json:"min_size,omitempty"`
+	MaxSize               *int              `json:"max_size,omitempty"`
+	MachineDeploymentName *string           `json:"machine_deployment_name,omitempty"`
+	Status                string            `json:"status"`
+	ErrorMessage          *string           `json:"error_message,omitempty"`
+	CreatedAt             time.Time         `json:"created_at"`
+	UpdatedAt             time.Time         `json:"updated_at"`
 }
 
 type K8sNodePoolCreateRequest struct {
@@ -654,7 +662,7 @@ type K8sNodePoolCreateRequest struct {
 	Plan     string            `json:"plan"`
 	Replicas int               `json:"replicas"`
 	Labels   map[string]string `json:"labels,omitempty"`
-	Taints   []map[string]any  `json:"taints,omitempty"`
+	Taints   []NodePoolTaint   `json:"taints,omitempty"`
 	MinSize  *int              `json:"min_size,omitempty"`
 	MaxSize  *int              `json:"max_size,omitempty"`
 }
@@ -662,7 +670,7 @@ type K8sNodePoolCreateRequest struct {
 type K8sNodePoolUpdateRequest struct {
 	Replicas *int              `json:"replicas,omitempty"`
 	Labels   map[string]string `json:"labels,omitempty"`
-	Taints   []map[string]any  `json:"taints,omitempty"`
+	Taints   []NodePoolTaint   `json:"taints,omitempty"`
 	MinSize  *int              `json:"min_size,omitempty"`
 	MaxSize  *int              `json:"max_size,omitempty"`
 }

@@ -9,11 +9,14 @@ import (
 	"fmt"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -28,16 +31,24 @@ func New() resource.Resource { return &poolResource{} }
 type poolResource struct{ client *client.Client }
 
 type poolResourceModel struct {
-	ID         types.String `tfsdk:"id"`
-	ClusterID  types.String `tfsdk:"cluster_id"`
-	Name       types.String `tfsdk:"name"`
-	Plan       types.String `tfsdk:"plan"`
-	Replicas   types.Int64  `tfsdk:"replicas"`
-	MinSize    types.Int64  `tfsdk:"min_size"`
-	MaxSize    types.Int64  `tfsdk:"max_size"`
-	Labels     types.Map    `tfsdk:"labels"`
-	Status     types.String `tfsdk:"status"`
-	CreatedAt  types.String `tfsdk:"created_at"`
+	ID        types.String `tfsdk:"id"`
+	ClusterID types.String `tfsdk:"cluster_id"`
+	Name      types.String `tfsdk:"name"`
+	Plan      types.String `tfsdk:"plan"`
+	Replicas  types.Int64  `tfsdk:"replicas"`
+	MinSize   types.Int64  `tfsdk:"min_size"`
+	MaxSize   types.Int64  `tfsdk:"max_size"`
+	Labels    types.Map    `tfsdk:"labels"`
+	Taints    types.Set    `tfsdk:"taints"`
+	Status    types.String `tfsdk:"status"`
+	CreatedAt types.String `tfsdk:"created_at"`
+}
+
+// taintAttrTypes defines the attr.Type map for a single taint object within the Set.
+var taintAttrTypes = map[string]attr.Type{
+	"key":    types.StringType,
+	"value":  types.StringType,
+	"effect": types.StringType,
 }
 
 func (r *poolResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -74,6 +85,30 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Optional:    true,
 				Computed:    true,
 			},
+			"taints": schema.SetNestedAttribute{
+				Optional: true,
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"key": schema.StringAttribute{
+							Required:            true,
+							MarkdownDescription: "Taint key.",
+						},
+						"value": schema.StringAttribute{
+							Optional:            true,
+							MarkdownDescription: "Taint value (may be empty).",
+						},
+						"effect": schema.StringAttribute{
+							Required:            true,
+							MarkdownDescription: "Taint effect. One of: `NoSchedule`, `PreferNoSchedule`, `NoExecute`.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("NoSchedule", "PreferNoSchedule", "NoExecute"),
+							},
+						},
+					},
+				},
+				MarkdownDescription: "Set of Kubernetes taints applied to all nodes in this pool.",
+			},
 			"status": schema.StringAttribute{
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -98,6 +133,69 @@ func (r *poolResource) Configure(_ context.Context, req resource.ConfigureReques
 	r.client = c
 }
 
+// taintsToSet converts an API []NodePoolTaint slice into a types.Set suitable for TF state.
+func taintsToSet(ctx context.Context, apiTaints []NodePoolTaint) (types.Set, error) {
+	elemType := types.ObjectType{AttrTypes: taintAttrTypes}
+	if len(apiTaints) == 0 {
+		return types.SetValueMust(elemType, []attr.Value{}), nil
+	}
+	elems := make([]attr.Value, 0, len(apiTaints))
+	for _, t := range apiTaints {
+		var valueAttr attr.Value
+		if t.Value != nil {
+			valueAttr = types.StringValue(*t.Value)
+		} else {
+			valueAttr = types.StringNull()
+		}
+		obj, diags := types.ObjectValue(taintAttrTypes, map[string]attr.Value{
+			"key":    types.StringValue(t.Key),
+			"value":  valueAttr,
+			"effect": types.StringValue(t.Effect),
+		})
+		if diags.HasError() {
+			return types.SetNull(elemType), fmt.Errorf("building taint object: %v", diags)
+		}
+		elems = append(elems, obj)
+	}
+	set, diags := types.SetValue(elemType, elems)
+	if diags.HasError() {
+		return types.SetNull(elemType), fmt.Errorf("building taints set: %v", diags)
+	}
+	return set, nil
+}
+
+// setToTaints converts a types.Set from TF state/plan into []NodePoolTaint for API calls.
+func setToTaints(ctx context.Context, s types.Set) ([]NodePoolTaint, error) {
+	if s.IsNull() || s.IsUnknown() {
+		return nil, nil
+	}
+	type taintModel struct {
+		Key    types.String `tfsdk:"key"`
+		Value  types.String `tfsdk:"value"`
+		Effect types.String `tfsdk:"effect"`
+	}
+	var models []taintModel
+	if diags := s.ElementsAs(ctx, &models, false); diags.HasError() {
+		return nil, fmt.Errorf("decoding taints: %v", diags)
+	}
+	taints := make([]client.NodePoolTaint, 0, len(models))
+	for _, m := range models {
+		t := client.NodePoolTaint{
+			Key:    m.Key.ValueString(),
+			Effect: m.Effect.ValueString(),
+		}
+		if !m.Value.IsNull() && !m.Value.IsUnknown() {
+			v := m.Value.ValueString()
+			t.Value = &v
+		}
+		taints = append(taints, t)
+	}
+	return taints, nil
+}
+
+// NodePoolTaint is a local alias kept for package-internal clarity (re-exported from client).
+type NodePoolTaint = client.NodePoolTaint
+
 func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) {
 	m.ID = types.StringValue(p.ID)
 	m.ClusterID = types.StringValue(p.ClusterID)
@@ -118,6 +216,12 @@ func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) 
 	m.CreatedAt = types.StringValue(p.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 	labels, _ := types.MapValueFrom(ctx, types.StringType, p.Labels)
 	m.Labels = labels
+	taints, err := taintsToSet(ctx, p.Taints)
+	if err != nil {
+		// non-fatal: leave previous state intact
+		return
+	}
+	m.Taints = taints
 }
 
 func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -143,6 +247,14 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 		labels := map[string]string{}
 		plan.Labels.ElementsAs(ctx, &labels, false)
 		createReq.Labels = labels
+	}
+	if !plan.Taints.IsNull() && !plan.Taints.IsUnknown() {
+		taints, err := setToTaints(ctx, plan.Taints)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to encode taints", err.Error())
+			return
+		}
+		createReq.Taints = taints
 	}
 	created, err := r.client.CreateK8sNodePool(ctx, plan.ClusterID.ValueString(), createReq)
 	if err != nil {
@@ -208,6 +320,14 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 			plan.Labels.ElementsAs(ctx, &labels, false)
 		}
 		upd.Labels = labels
+	}
+	if !plan.Taints.Equal(state.Taints) {
+		taints, err := setToTaints(ctx, plan.Taints)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to encode taints", err.Error())
+			return
+		}
+		upd.Taints = taints
 	}
 	updated, err := r.client.UpdateK8sNodePool(ctx, state.ClusterID.ValueString(), state.ID.ValueString(), upd)
 	if err != nil {
