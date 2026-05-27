@@ -2,22 +2,29 @@
 
 Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 
-> **`provider "ccp"` and `provider "cetic-cloud-platform"` are the SAME provider.**
+> **Use `ccp` as the local provider name.**
 >
 > The provider is published on the Terraform Registry as
-> `cetic-group/cetic-cloud-platform`. The local name you choose in
-> `required_providers` determines the HCL block name :
+> `cetic-group/cetic-cloud-platform` (the `source` field). In your
+> `required_providers` block, **alias it to `ccp`** so that the resource
+> prefix (`ccp_vpc`, `ccp_vm_instance`, etc.) matches the local name:
 >
-> - If you alias to `ccp` (recommended — shorter), you write `provider "ccp"`.
-> - If you skip the alias, the default local name is `cetic-cloud-platform`,
->   so you write `provider "cetic-cloud-platform"`.
+> ```hcl
+> terraform {
+>   required_providers {
+>     ccp = {
+>       source  = "cetic-group/cetic-cloud-platform"
+>       version = "~> 0.23.0"
+>     }
+>   }
+> }
+> ```
 >
-> **All examples in this README and on the Registry use `ccp`** — copy the
-> `required_providers` block in section 3 below as-is to keep them working
-> without modification.
->
-> Resources always start with the prefix `ccp_` regardless of which local
-> name you picked (e.g. `ccp_vpc`, `ccp_vm_instance`, `ccp_db_pg_instance`).
+> Local names with hyphens (e.g. `cetic-cloud-platform`) are not valid
+> Terraform identifiers and will fail to parse. The resource prefix
+> `ccp_` is fixed by the provider; using any local name other than `ccp`
+> forces you to set `provider = <local_name>` on every resource block —
+> not recommended.
 
 > **Status — v0.23.0**
 >

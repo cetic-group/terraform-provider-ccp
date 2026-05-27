@@ -10,9 +10,8 @@ The **CETIC Cloud Platform** (CCP) provider lets you manage infrastructure resou
 
 ## Provider name
 
-The provider source is `cetic-group/cetic-cloud-platform`. We recommend
-declaring it with the **local name `ccp`** (shorter, used throughout this
-doc and in all examples):
+The provider source is `cetic-group/cetic-cloud-platform` (published on
+the Terraform Registry). **Always declare it with the local name `ccp`** :
 
 ```hcl
 terraform {
@@ -25,14 +24,13 @@ terraform {
 }
 ```
 
-After this declaration you reference it as `provider "ccp"` and resources
-as `ccp_vpc`, `ccp_container_instance`, etc. (the resource prefix `ccp_`
-is fixed by the provider — independent of the local name you chose).
-
-If you skip the alias and use the default name (the last segment of the
-source path), you'd write `provider "cetic-cloud-platform"`. Both work
-but **all examples in this documentation use `ccp`** — copy the
-`required_providers` block above to keep them as-is.
+After this declaration you reference the provider as `provider "ccp"`
+and resources as `ccp_vpc`, `ccp_container_instance`, etc. The resource
+prefix `ccp_` is fixed by the provider; aliasing the local name to
+anything other than `ccp` would force you to add `provider = <name>`
+to every resource block (not recommended). Local names with hyphens
+(e.g. `cetic-cloud-platform`) are not valid Terraform identifiers and
+will fail to parse.
 
 ## Authentication
 
@@ -85,7 +83,7 @@ variable "ccp_api_key" {
 
 ## Example: Full Stack
 
-The following example creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP. Assumes you've declared the `required_providers` block above (otherwise replace `ccp` with `cetic-cloud-platform`).
+The following example creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP. Assumes you've declared the `required_providers` block above (with `ccp` as local name).
 
 ```hcl
 # Suppose `terraform { required_providers { ccp = { ... } } }` already declared.
