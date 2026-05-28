@@ -138,8 +138,8 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 |---|---|
 | `ccp_regions` | Active regions (RNN/PAR/ABJ). |
 | `ccp_organizations` | Orgs accessible to the current API key's tenant. |
-| `ccp_lxc_templates` | Container template catalog (resolve `key` for `ccp_container_instance.template`). |
-| `ccp_qemu_templates` | Virtual machine template catalog (resolve `key` for `ccp_vm_instance.template`). |
+| `ccp_container_templates` | Container template catalog (resolve `key` for `ccp_container_instance.template`). |
+| `ccp_vm_templates` | Virtual machine template catalog (resolve `key` for `ccp_vm_instance.template`). |
 | `ccp_k8s_templates` | Kubernetes node OS template catalog. |
 | `ccp_k8s_cluster` | Look up an existing CCKS cluster by `id` or `(name, region)`. Exposes `tier` + HA proxy fields. |
 | `ccp_db_plans` | Database plan catalog, filterable by `engine`. |
