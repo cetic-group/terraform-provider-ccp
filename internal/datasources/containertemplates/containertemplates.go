@@ -1,4 +1,4 @@
-package lxctemplates
+package containertemplates
 
 import (
 	"context"
@@ -11,37 +11,36 @@ import (
 )
 
 var (
-	_ datasource.DataSource              = &lxcTemplatesDataSource{}
-	_ datasource.DataSourceWithConfigure = &lxcTemplatesDataSource{}
+	_ datasource.DataSource              = &containerTemplatesDataSource{}
+	_ datasource.DataSourceWithConfigure = &containerTemplatesDataSource{}
 )
 
-func New() datasource.DataSource { return &lxcTemplatesDataSource{} }
+func New() datasource.DataSource { return &containerTemplatesDataSource{} }
 
-type lxcTemplatesDataSource struct {
+type containerTemplatesDataSource struct {
 	client *client.Client
 }
 
-type lxcTemplatesModel struct {
-	Templates []lxcTemplateModel `tfsdk:"templates"`
+type containerTemplatesModel struct {
+	Templates []containerTemplateModel `tfsdk:"templates"`
 }
 
-type lxcTemplateModel struct {
+type containerTemplateModel struct {
 	Key         types.String `tfsdk:"key"`
 	DisplayName types.String `tfsdk:"display_name"`
 	IsDefault   types.Bool   `tfsdk:"is_default"`
 }
 
-func (d *lxcTemplatesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "ccp_lxc_templates"
+func (d *containerTemplatesDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "ccp_container_templates"
 }
 
-func (d *lxcTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *containerTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		DeprecationMessage: "Use `ccp_container_templates` instead. `ccp_lxc_templates` exposes the underlying implementation name (LXC) — `ccp_container_templates` is the canonical metier name. Both return the same data. The deprecated alias will be removed in v2.0.0.",
-		Description:        "**Deprecated** — use `ccp_container_templates` instead. Lists active container templates available on CETIC Cloud (admin-managed catalog). Useful for resolving a template `key` (e.g. `ubuntu-24.04`) to use in `ccp_container_instance.template`.",
+		Description: "Lists active container templates available on CETIC Cloud (admin-managed catalog). Useful for resolving a template `key` (e.g. `ubuntu-24.04`) to use in `ccp_container_instance.template`.",
 		Attributes: map[string]schema.Attribute{
 			"templates": schema.ListNestedAttribute{
-				Description: "List of active LXC templates.",
+				Description: "List of active container templates.",
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -64,7 +63,7 @@ func (d *lxcTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 	}
 }
 
-func (d *lxcTemplatesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *containerTemplatesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -79,15 +78,15 @@ func (d *lxcTemplatesDataSource) Configure(_ context.Context, req datasource.Con
 	d.client = c
 }
 
-func (d *lxcTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *containerTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	tpls, err := d.client.ListLxcTemplates(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read LXC templates", err.Error())
+		resp.Diagnostics.AddError("Unable to read container templates", err.Error())
 		return
 	}
-	state := lxcTemplatesModel{Templates: make([]lxcTemplateModel, 0, len(tpls))}
+	state := containerTemplatesModel{Templates: make([]containerTemplateModel, 0, len(tpls))}
 	for _, t := range tpls {
-		state.Templates = append(state.Templates, lxcTemplateModel{
+		state.Templates = append(state.Templates, containerTemplateModel{
 			Key:         types.StringValue(t.Key),
 			DisplayName: types.StringValue(t.DisplayName),
 			IsDefault:   types.BoolValue(t.IsDefault),

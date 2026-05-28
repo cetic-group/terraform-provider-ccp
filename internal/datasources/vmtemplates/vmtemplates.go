@@ -1,4 +1,4 @@
-package qemutemplates
+package vmtemplates
 
 import (
 	"context"
@@ -11,34 +11,33 @@ import (
 )
 
 var (
-	_ datasource.DataSource              = &qemuTemplatesDataSource{}
-	_ datasource.DataSourceWithConfigure = &qemuTemplatesDataSource{}
+	_ datasource.DataSource              = &vmTemplatesDataSource{}
+	_ datasource.DataSourceWithConfigure = &vmTemplatesDataSource{}
 )
 
-func New() datasource.DataSource { return &qemuTemplatesDataSource{} }
+func New() datasource.DataSource { return &vmTemplatesDataSource{} }
 
-type qemuTemplatesDataSource struct {
+type vmTemplatesDataSource struct {
 	client *client.Client
 }
 
-type qemuTemplatesModel struct {
-	Templates []qemuTemplateModel `tfsdk:"templates"`
+type vmTemplatesModel struct {
+	Templates []vmTemplateModel `tfsdk:"templates"`
 }
 
-type qemuTemplateModel struct {
+type vmTemplateModel struct {
 	Key         types.String `tfsdk:"key"`
 	DisplayName types.String `tfsdk:"display_name"`
 	IsDefault   types.Bool   `tfsdk:"is_default"`
 }
 
-func (d *qemuTemplatesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "ccp_qemu_templates"
+func (d *vmTemplatesDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "ccp_vm_templates"
 }
 
-func (d *qemuTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *vmTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		DeprecationMessage: "Use `ccp_vm_templates` instead. `ccp_qemu_templates` exposes the underlying implementation name (QEMU) — `ccp_vm_templates` is the canonical metier name. Both return the same data. The deprecated alias will be removed in v2.0.0.",
-		Description:        "**Deprecated** — use `ccp_vm_templates` instead. Lists active VM templates available on CETIC Cloud (admin-managed catalog, excludes internal `ccks-*` Kubernetes images). Useful for resolving a template `key` (e.g. `ubuntu-24.04-cloud`) to use in `ccp_vm_instance.template`.",
+		Description: "Lists active VM templates available on CETIC Cloud (admin-managed catalog, excludes internal `ccks-*` Kubernetes images). Useful for resolving a template `key` (e.g. `ubuntu-24.04-cloud`) to use in `ccp_vm_instance.template`.",
 		Attributes: map[string]schema.Attribute{
 			"templates": schema.ListNestedAttribute{
 				Description: "List of active VM templates suitable for client VMs / VM scale sets.",
@@ -64,7 +63,7 @@ func (d *qemuTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaR
 	}
 }
 
-func (d *qemuTemplatesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *vmTemplatesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -79,15 +78,15 @@ func (d *qemuTemplatesDataSource) Configure(_ context.Context, req datasource.Co
 	d.client = c
 }
 
-func (d *qemuTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *vmTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	tpls, err := d.client.ListQemuTemplates(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read QEMU templates", err.Error())
+		resp.Diagnostics.AddError("Unable to read VM templates", err.Error())
 		return
 	}
-	state := qemuTemplatesModel{Templates: make([]qemuTemplateModel, 0, len(tpls))}
+	state := vmTemplatesModel{Templates: make([]vmTemplateModel, 0, len(tpls))}
 	for _, t := range tpls {
-		state.Templates = append(state.Templates, qemuTemplateModel{
+		state.Templates = append(state.Templates, vmTemplateModel{
 			Key:         types.StringValue(t.Key),
 			DisplayName: types.StringValue(t.DisplayName),
 			IsDefault:   types.BoolValue(t.IsDefault),

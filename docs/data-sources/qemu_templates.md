@@ -2,35 +2,23 @@
 page_title: "ccp_qemu_templates Data Source - cetic-cloud-platform"
 subcategory: "Catalogs"
 description: |-
-  Lists active virtual machine templates available on CETIC Cloud.
+  Deprecated — use ccp_vm_templates instead.
 ---
 
-# ccp_qemu_templates (Data Source)
+# ccp_qemu_templates (Data Source) — Deprecated
 
-Lists active virtual machine templates from the CETIC Cloud catalog (admin-managed). Internal `ccks-*` images for managed Kubernetes nodes are excluded — only client-usable templates are returned.
+~> **Deprecated.** Use [`ccp_vm_templates`](vm_templates.md) instead. `ccp_qemu_templates` exposes the underlying implementation name (QEMU) rather than the canonical metier name (VM). The two return the same data and have identical schemas. This alias will be removed in v2.0.0 of the provider.
 
-## Example Usage
+## Migration
 
-```hcl
-data "ccp_qemu_templates" "all" {}
+```diff
+- data "ccp_qemu_templates" "available" {}
++ data "ccp_vm_templates" "available" {}
 
-# Pick the default
-locals {
-  default_vm_tpl = one([for t in data.ccp_qemu_templates.all.templates : t if t.is_default])
-}
-
-resource "ccp_vm_instance" "app" {
-  name     = "app-01"
-  region   = "RNN"
-  plan     = "medium"
-  template = local.default_vm_tpl.key
-  vnet_id  = ccp_vnet.web.id
-}
+  resource "ccp_vm_instance" "web" {
+-   template = data.ccp_qemu_templates.available.templates[0].key
++   template = data.ccp_vm_templates.available.templates[0].key
+  }
 ```
 
-## Attributes Reference
-
-- `templates` - List of active VM templates suitable for client VMs / VM scale sets.
-  - `key` - Template key (used in `ccp_vm_instance.template`).
-  - `display_name` - Human-readable template name.
-  - `is_default` - Whether this template is the default suggestion in the console.
+Schema is unchanged — refer to the [`ccp_vm_templates`](vm_templates.md) page for the full reference.

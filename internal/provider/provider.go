@@ -12,6 +12,7 @@ import (
 	dscontainerinstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containerinstance"
 	dscontainerscaleset "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containerscaleset"
 	dscontainersnapshot "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containersnapshot"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/containertemplates"
 	dscustomtemplate "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/customtemplate"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbcredentials"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/dbengineversions"
@@ -46,6 +47,7 @@ import (
 	dsvminstance "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vminstance"
 	dsvmscaleset "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vmscaleset"
 	dsvmsnapshot "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vmsnapshot"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vmtemplates"
 	dsvnet "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnet"
 	dsvnetfirewallrule "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnetfirewallrule"
 	dsvnetipresv "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/vnetipresv"
@@ -76,8 +78,8 @@ import (
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/loadbalancer"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/objectbucket"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/objectstoragekey"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/orgmember"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/organization"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/orgmember"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/publicip"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/quotarequest"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/resources/registry"
@@ -238,6 +240,10 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		// Catalogs / static
 		regions.New,
 		organizations.New,
+		containertemplates.New,
+		vmtemplates.New,
+		// Deprecated aliases kept for backward compat — removed in v2.0.0.
+		// Use ccp_container_templates and ccp_vm_templates instead.
 		lxctemplates.New,
 		qemutemplates.New,
 		dbplans.New,
