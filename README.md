@@ -2,16 +2,11 @@
 
 Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 
-> **Declaring the provider — two equivalent styles.**
+> **Declaring the provider.**
 >
 > The provider is published on the Terraform Registry as
-> `cetic-group/cetic-cloud-platform`. The resource type names use the
-> fixed prefix `ccp_` (e.g. `ccp_vpc`, `ccp_vm_instance`) regardless of
-> the local alias you pick. Two styles work:
->
-> **Style 1 — canonical (matches the Registry's "Use Provider" snippet).**
-> Local name is the full source name; every `resource` / `data` block
-> spells out `provider = cetic-cloud-platform`.
+> `cetic-group/cetic-cloud-platform`. Resource type names use the
+> fixed prefix `ccp_` (e.g. `ccp_vpc`, `ccp_vm_instance`).
 >
 > ```hcl
 > terraform {
@@ -31,38 +26,17 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   region   = "RNN"
 > }
 > ```
->
-> **Style 2 — terse alias** (legacy, still supported). Local name `ccp`
-> matches the resource prefix so the per-resource `provider =` lines can
-> be omitted.
->
-> ```hcl
-> terraform {
->   required_providers {
->     ccp = {
->       source  = "cetic-group/cetic-cloud-platform"
->       version = "~> 1.1"
->     }
->   }
-> }
->
-> provider "ccp" {}
->
-> resource "ccp_vpc" "main" {
->   name   = "production"
->   region = "RNN"
-> }
-> ```
 
-> **Status — v1.0.0**
+> **Status — v1.1.0**
 >
-> v1.0.0 changes the provider's reported TypeName from `ccp` to
-> `cetic-cloud-platform` so the Terraform Registry's auto-generated
-> "Use Provider" snippet works as-is. **Resource type names are unchanged
-> (`ccp_vpc`, `ccp_vm_instance`, …)** — both `cetic-cloud-platform`
-> (canonical) and `ccp` (terse alias) local names continue to work, so
-> existing configurations require no migration. See [docs/index.md](./docs/index.md#quick-start)
-> for the two equivalent styles.
+> v1.0.0 renamed the provider's TypeName to `cetic-cloud-platform` so the
+> Terraform Registry's "Use Provider" snippet works as-is. v1.0.1 fixed a
+> perma-diff on `ccp_public_ip.attached_to_id` when the IP was managed
+> via another resource. v1.1.0 adds plan-time SNAT egress validation on
+> compute resources with `user_data`, and makes `public_ip_id` mutable
+> on `ccp_vm_instance` / `ccp_container_instance` (no more recreate).
+> Resource type names use the fixed prefix `ccp_*` regardless of the
+> local alias you pick.
 >
 > **41+ resources + 45 data sources** implemented. v0.24.0 adds 28 new
 > singular-lookup data sources covering VPCs, VNets, VNet peerings, VM and
@@ -122,14 +96,11 @@ terraform {
 provider "cetic-cloud-platform" {}
 ```
 
-> **Two valid styles, identical resource type names.** The snippet above
-> matches the Terraform Registry's "Use Provider" suggestion. Every
-> `resource` / `data` block must then carry
-> `provider = cetic-cloud-platform`. If you prefer omitting that line on
-> every block, declare the provider with the local alias `ccp`
-> (terser; resource prefix `ccp_*` matches the alias so auto-resolution
-> kicks in). The two styles share the same resource type names and
-> resulting state.
+> The snippet above matches the Terraform Registry's "Use Provider"
+> suggestion. Every `resource` / `data` block then carries
+> `provider = cetic-cloud-platform`. Resource type names use the fixed
+> prefix `ccp_*` regardless of the local alias chosen in
+> `required_providers`.
 
 A full working example (SSH key, VPC, two VNets, region listing) lives in
 [`examples/basic/main.tf`](./examples/basic/main.tf).

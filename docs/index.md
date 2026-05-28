@@ -37,37 +37,6 @@ resource "ccp_vpc" "main" {
 }
 ```
 
-### Backward-compatible alias
-
-Older configurations declared the provider with the local name `ccp`, which
-also matched the resource prefix and avoided the per-resource `provider =`
-attribute. **This still works** — the provider exports the same resource
-type names regardless of the local alias used:
-
-```hcl
-terraform {
-  required_providers {
-    ccp = {
-      source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 1.1"
-    }
-  }
-}
-
-provider "ccp" {
-  api_key = var.ccp_api_key
-}
-
-resource "ccp_vpc" "main" {
-  name   = "production"
-  region = "RNN"
-}
-```
-
-If you prefer this terser form (no explicit `provider =` on every
-resource), use the `ccp` local name. The two styles are functionally
-equivalent; pick whichever you find more readable.
-
 ## Authentication
 
 The provider authenticates using an API key. Generate one from the CETIC Cloud console at **Settings → API Keys**.
@@ -215,11 +184,6 @@ output "app_private_ip" {
   value = ccp_vm_instance.app.ip_address
 }
 ```
-
-The same example with the `ccp` local-name alias (no per-resource
-`provider =` lines) is equally valid — swap the `required_providers` and
-`provider` blocks for their `ccp` variants and remove the
-`provider = cetic-cloud-platform` lines.
 
 ## Regions
 
