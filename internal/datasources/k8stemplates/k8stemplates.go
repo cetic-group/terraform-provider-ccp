@@ -36,7 +36,7 @@ type k8sTemplateModel struct {
 }
 
 func (d *k8sTemplatesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_k8s_templates"
+	resp.TypeName = "ccp_k8s_templates"
 }
 
 func (d *k8sTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

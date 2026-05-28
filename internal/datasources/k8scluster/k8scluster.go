@@ -65,7 +65,7 @@ type k8sClusterDSModel struct {
 }
 
 func (d *k8sClusterDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_k8s_cluster"
+	resp.TypeName = "ccp_k8s_cluster"
 }
 
 func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
