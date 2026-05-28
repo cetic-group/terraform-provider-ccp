@@ -178,7 +178,7 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"ingress_controller_class": schema.StringAttribute{
-				MarkdownDescription: "`incluster` (Cilium IPAM) ou `managed` (LB CETIC Cloud LXC). Mutable.",
+				MarkdownDescription: "Implémentation de l'ingress : `incluster` (ingress controller Cilium déployé dans le cluster, IP gérée en interne — aucun load balancer additionnel) ou `managed` (load balancer dédié CETIC Cloud, paire HA avec bascule automatique). Mutable.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("incluster"),
@@ -225,9 +225,9 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			// ── Tier (HA topology) ─────────────────────────────────────────
 			"tier": schema.StringAttribute{
-				MarkdownDescription: "Topologie du proxy LXC fronting l'apiserver. " +
-					"`dev` (défaut) = 1 LXC proxy unique (SPOF acceptable en dev). " +
-					"`prod` = 2 LXC (primary + secondary) avec Keepalived VRRP et VIP flottante (HA). " +
+				MarkdownDescription: "Topologie du frontal apiserver. " +
+					"`dev` (défaut) = frontal unique (SPOF acceptable en dev). " +
+					"`prod` = frontal redondé (primary + secondary) avec bascule automatique sur une adresse flottante, HA au niveau du plan de contrôle. " +
 					"Immutable côté backend — toute modification force la recréation du cluster.",
 				Optional: true,
 				Computed: true,
@@ -240,21 +240,21 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"proxy_secondary_vmid": schema.Int64Attribute{
-				MarkdownDescription: "VMID Proxmox du LXC proxy secondaire (tier `prod` uniquement, sinon null).",
+				MarkdownDescription: "Identifiant interne du frontal apiserver secondaire (tier `prod` uniquement, sinon null). Read-only — exposé pour observabilité.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
 			"proxy_secondary_node": schema.StringAttribute{
-				MarkdownDescription: "Nœud Proxmox hébergeant le LXC proxy secondaire (tier `prod` uniquement, sinon null).",
+				MarkdownDescription: "Placement interne du frontal apiserver secondaire (tier `prod` uniquement, sinon null). Read-only — exposé pour observabilité.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"proxy_vip_vnet": schema.StringAttribute{
-				MarkdownDescription: "IP virtuelle Keepalived VRRP partagée entre les LXC proxies (tier `prod` uniquement, sinon null).",
+				MarkdownDescription: "Adresse flottante sur le VNet partagée entre les frontaux apiserver primary+secondary (tier `prod` uniquement, sinon null). C'est l'IP que le kubeconfig pointe en mode HA.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
