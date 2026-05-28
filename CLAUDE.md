@@ -7,31 +7,40 @@
 
 ---
 
-## Convention release — **ALIGNER DOC + README À CHAQUE TAG**
+## Convention release — **BUMP AVANT TAG, JAMAIS L'INVERSE**
 
-À chaque release du provider (`vX.Y.Z`), **mettre à jour systématiquement** :
+⚠️ **Règle critique** : avant `git tag` qui déclenche goreleaser et publie sur le Registry, **toujours** bumper les contraintes `version = "~> X.Y"` dans **TOUS les exemples HCL** du repo. Le Registry rend ces exemples verbatim — un tag avec exemples stale verrouille les copy-paste users sur l'ancienne version sans qu'ils s'en rendent compte. Voir mémoire `feedback-tf-provider-bump-version-examples-before-tag` (incident 2026-05-28 : 5 tags `v1.1.3 → v2.0.0` poussés sans bump, hotfix `v2.0.1` pour rattraper).
 
-1. **`docs/index.md`** — exemples du provider doivent référencer la nouvelle version :
+À chaque release du provider (`vX.Y.Z`), **mettre à jour systématiquement AVANT le tag** :
+
+1. **`docs/index.md`** — typiquement 2-3 occurrences :
    ```hcl
    required_providers {
-     ccp = {
+     cetic-cloud-platform = {                   # local name canonique depuis v1.0.0
        source  = "cetic-group/cetic-cloud-platform"
-       version = "~> X.Y.Z"   # ← bump à la version qu'on tag
+       version = "~> X.Y"   # ← bump à la version qu'on tag
      }
    }
    ```
-   Mettre à jour **toutes** les occurrences (il y en a typiquement 2-3 dans le doc).
+   Local name canonique = `cetic-cloud-platform` (matche le snippet "Use Provider"
+   du Registry). NE PAS revenir à l'alias `ccp` dans les exemples primaires.
 
-2. **`README.md`** — exemples + badges + section "Installation" : aligner sur `~> X.Y` (compat majeure) ou `>= X.Y.Z` (lock à la min).
+2. **`README.md`** — section "Installation" + exemples + badges : aligner sur `~> X.Y` (compat majeure) ou `>= X.Y.Z` (lock à la min).
 
-3. **`docs/resources/*.md`** et **`docs/data-sources/*.md`** — si une resource/datasource a été ajoutée ou modifiée dans cette release, sa doc doit refléter le schema final. Particulièrement vérifier :
+3. **`examples/**/main.tf`** — chaque répertoire `examples/` a sa contrainte. Bumper en masse :
+   ```bash
+   OLD="~> 2.0"; NEW="~> 2.1"
+   grep -rln "version = \"$OLD\"" examples/ | xargs sed -i "s|version = \"$OLD\"|version = \"$NEW\"|g"
+   ```
+
+4. **`docs/resources/*.md`** et **`docs/data-sources/*.md`** — si une resource/datasource a été ajoutée ou modifiée dans cette release, sa doc doit refléter le schema final. Particulièrement vérifier :
    - Les attributs Required vs Optional vs Computed sont fidèles au code Go (`internal/resources/<r>/<r>.go::Schema()`)
    - Les exemples HCL utilisent les bons noms de champs (pas `label` quand le code dit `name`, etc.)
    - Les "Notes" mentionnent toute breaking change
 
-4. **`internal/provider/version.go`** (si présent) — le provider expose sa version au Registry via ce constant.
+5. **`internal/provider/version.go`** (si présent) — le provider expose sa version au Registry via ce constant.
 
-5. **`.goreleaser.yml`** — pas de modif systématique mais vérifier que les binaires sont bien build pour les 6 plateformes (linux/macos/windows × amd64/arm64).
+6. **`.goreleaser.yml`** — pas de modif systématique mais vérifier que les binaires sont bien build pour les 6 plateformes (linux/macos/windows × amd64/arm64).
 
 ### Workflow git pour tagger une release
 
@@ -71,6 +80,20 @@ Après release du provider, **mettre à jour** dans `cetic-cloud-terraform-modul
 - README.md du repo modules (badges + exemple Quick Start).
 
 Idéalement faire une PR sur `cetic-cloud-terraform-modules` juste après le release du provider, dans la même fenêtre temporelle.
+
+### Live Registry
+
+**Latest** : `v2.0.1` (2026-05-28). Pinned via `~> 2.0` partout (`docs/index.md`, `README.md`, 5 `examples/**/main.tf`).
+
+**Historique récent** :
+- `v2.0.1` — docs catch-up : bump 7 fichiers exemples (`~> 1.1` / `~> 0.x` → `~> 2.0`). Aucun changement de schéma. PR #31.
+- `v2.0.0` — **BREAKING** : drop `ccp_lxc_templates` + `ccp_qemu_templates` (deprecated en v1.2.0). Backend API inchangé. PR #30.
+- `v1.2.0` — feat : nouveaux datasources canoniques `ccp_container_templates` + `ccp_vm_templates`. Anciens `ccp_lxc_templates`/`ccp_qemu_templates` marqués `DeprecationMessage`. PR #29.
+- `v1.1.5` — docs : fix split sidebar Registry (Database/Databases, Network/Networking — 12 fichiers frontmatter). PR #28.
+- `v1.1.4` — docs : DB ×4 + LB params manquants (`storage_gb`, `replicas`, `scale_set_id`, `cpu_millicores`, `memory_mb`, `endpoint_vnet_ip`). PR #27.
+- `v1.1.3` — docs : full ingress controller coverage sur `ccp_k8s_cluster` (5 params ingress + 2 apiserver + tableau 4 combinaisons class × scope) + anti-leak (drop LXC/Keepalived/VRRP/HAProxy/Proxmox/VIP/BGP/DNAT/L2 announce/BPF/NodePort). PRs #25 + #26.
+
+**Cascade modules après chaque release** : `cetic-cloud-terraform-modules` v0.18.0 = bump constraint `>= 2.0.0` sur les 46 fichiers `versions.tf` + `examples/` + `README` + `CHANGELOG`.
 
 ---
 
@@ -139,6 +162,49 @@ examples/                    # Exemples auto-testés (acceptance tests)
   - `DataSources()` idem.
 - Validators : utiliser `validator.String/Int64/...` du framework (`int64validator.Between(...)`, `stringvalidator.RegexMatches(...)`).
 - PlanModifiers : `stringplanmodifier.RequiresReplace()` pour les champs immutables, `UseStateForUnknown()` pour les Computed stables.
+
+### Metadata.TypeName — hardcoded `ccp_*` (depuis v1.0.0)
+
+Le provider's `Metadata.TypeName = "cetic-cloud-platform"` (matche le snippet
+Registry). Mais les **resource/datasource types** restent en `ccp_*`. Le
+découplage se fait en hardcodant chaque `Metadata` :
+
+```go
+func (r *vpcResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+    resp.TypeName = "ccp_vpc"   // ← HARDCODÉ, pas `req.ProviderTypeName + "_vpc"`
+}
+```
+
+**Piège** : `req.ProviderTypeName` vaudrait `cetic-cloud-platform` → resources
+exposées comme `cetic-cloud-platform_vpc` (cassé pour les consommateurs).
+**Toute nouvelle resource/datasource doit suivre ce pattern.**
+
+Sed safety check (post-rename) :
+```bash
+grep -rln 'req\.ProviderTypeName' internal/resources/ internal/datasources/
+# DOIT retourner vide
+```
+
+Voir mémoire `feedback-tf-provider-typename-metadata-sed-regex`.
+
+### Optional+Computed+UseStateForUnknown — pattern anti-perma-diff
+
+Pour tout champ que l'API peut populer (mirror) et que le user peut aussi
+set explicitement, schéma typique :
+
+```go
+"public_ip_id": schema.StringAttribute{
+    Optional: true,
+    Computed: true,                                  // ← obligatoire
+    PlanModifiers: []planmodifier.String{
+        stringplanmodifier.UseStateForUnknown(),     // ← obligatoire
+    },
+},
+```
+
+Sans ça → perma-diff dès que l'API mirror une valeur (ex. `ccp_public_ip.attached_to_id`
+qui prend la valeur `vm_instance_id` après attach via une autre resource).
+Voir mémoire `feedback-tf-optional-computed-use-state-for-unknown`.
 
 ## Conventions doc
 
