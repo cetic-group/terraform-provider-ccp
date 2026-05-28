@@ -41,7 +41,7 @@ type iamRoleDataSourceModel struct {
 }
 
 func (d *iamRoleDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_iam_role"
+	resp.TypeName = "ccp_iam_role"
 }
 
 func (d *iamRoleDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

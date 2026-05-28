@@ -121,7 +121,7 @@ type providerModel struct {
 }
 
 func (p *ccpProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "ccp"
+	resp.TypeName = "cetic-cloud-platform"
 	resp.Version = p.version
 }
 

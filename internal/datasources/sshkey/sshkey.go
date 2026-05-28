@@ -31,7 +31,7 @@ type sshDSModel struct {
 }
 
 func (d *sshDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_ssh_key"
+	resp.TypeName = "ccp_ssh_key"
 }
 
 func (d *sshDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

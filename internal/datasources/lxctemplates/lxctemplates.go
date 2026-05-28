@@ -32,7 +32,7 @@ type lxcTemplateModel struct {
 }
 
 func (d *lxcTemplatesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_lxc_templates"
+	resp.TypeName = "ccp_lxc_templates"
 }
 
 func (d *lxcTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

@@ -37,7 +37,7 @@ type dbPlanModel struct {
 }
 
 func (d *dbPlansDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_plans"
+	resp.TypeName = "ccp_db_plans"
 }
 
 func (d *dbPlansDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

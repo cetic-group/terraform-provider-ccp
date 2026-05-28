@@ -44,7 +44,7 @@ type valkeyDSModel struct {
 }
 
 func (d *valkeyDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_valkey_instance"
+	resp.TypeName = "ccp_db_valkey_instance"
 }
 
 func (d *valkeyDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

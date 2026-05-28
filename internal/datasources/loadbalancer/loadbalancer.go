@@ -37,7 +37,7 @@ type lbDSModel struct {
 }
 
 func (d *lbDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_load_balancer"
+	resp.TypeName = "ccp_load_balancer"
 }
 
 func (d *lbDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

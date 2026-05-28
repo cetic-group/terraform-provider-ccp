@@ -57,7 +57,7 @@ type cssResourceModel struct {
 }
 
 func (r *cssResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_container_scale_set"
+	resp.TypeName = "ccp_container_scale_set"
 }
 
 func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

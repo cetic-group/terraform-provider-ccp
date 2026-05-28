@@ -40,7 +40,7 @@ type memberResourceModel struct {
 }
 
 func (r *memberResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_org_member"
+	resp.TypeName = "ccp_org_member"
 }
 
 func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

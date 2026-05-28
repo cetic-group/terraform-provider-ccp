@@ -46,7 +46,7 @@ type fwModel struct {
 }
 
 func (r *fwResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet_firewall_rule"
+	resp.TypeName = "ccp_vnet_firewall_rule"
 }
 
 func (r *fwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

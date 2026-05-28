@@ -46,7 +46,7 @@ type pricingItemModel struct {
 }
 
 func (d *pricingDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_pricing"
+	resp.TypeName = "ccp_pricing"
 }
 
 func (d *pricingDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

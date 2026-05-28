@@ -46,7 +46,7 @@ type pgDSModel struct {
 }
 
 func (d *pgDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_pg_instance"
+	resp.TypeName = "ccp_db_pg_instance"
 }
 
 func (d *pgDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

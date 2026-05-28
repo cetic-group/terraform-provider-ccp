@@ -68,7 +68,7 @@ type appgwResourceModel struct {
 }
 
 func (r *appgwResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_application_gateway"
+	resp.TypeName = "ccp_application_gateway"
 }
 
 func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

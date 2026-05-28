@@ -96,7 +96,7 @@ const (
 )
 
 func (r *objectBucketResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_object_bucket"
+	resp.TypeName = "ccp_object_bucket"
 }
 
 func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

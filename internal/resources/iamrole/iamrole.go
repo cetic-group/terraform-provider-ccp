@@ -54,7 +54,7 @@ type iamRoleResourceModel struct {
 }
 
 func (r *iamRoleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_iam_role"
+	resp.TypeName = "ccp_iam_role"
 }
 
 func (r *iamRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

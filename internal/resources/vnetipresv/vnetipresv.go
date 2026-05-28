@@ -41,7 +41,7 @@ type resvModel struct {
 }
 
 func (r *resvResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet_ip_reservation"
+	resp.TypeName = "ccp_vnet_ip_reservation"
 }
 
 func (r *resvResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

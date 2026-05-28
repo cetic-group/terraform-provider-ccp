@@ -40,7 +40,7 @@ type vmssDSModel struct {
 }
 
 func (d *vmssDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vm_scale_set"
+	resp.TypeName = "ccp_vm_scale_set"
 }
 
 func (d *vmssDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

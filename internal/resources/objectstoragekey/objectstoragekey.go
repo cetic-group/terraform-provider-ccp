@@ -41,7 +41,7 @@ type keyModel struct {
 }
 
 func (r *keyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_object_storage_key"
+	resp.TypeName = "ccp_object_storage_key"
 }
 
 func (r *keyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -50,7 +50,7 @@ type registryUserResourceModel struct {
 }
 
 func (r *registryUserResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_registry_user"
+	resp.TypeName = "ccp_registry_user"
 }
 
 func (r *registryUserResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

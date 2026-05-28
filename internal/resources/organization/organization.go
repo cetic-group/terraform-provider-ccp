@@ -39,7 +39,7 @@ type orgResourceModel struct {
 }
 
 func (r *orgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_organization"
+	resp.TypeName = "ccp_organization"
 }
 
 func (r *orgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

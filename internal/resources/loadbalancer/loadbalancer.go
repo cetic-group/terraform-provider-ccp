@@ -70,7 +70,7 @@ type lbResourceModel struct {
 }
 
 func (r *lbResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_load_balancer"
+	resp.TypeName = "ccp_load_balancer"
 }
 
 func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

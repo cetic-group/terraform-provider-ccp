@@ -39,7 +39,7 @@ type bvDSModel struct {
 }
 
 func (d *bvDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_block_volume"
+	resp.TypeName = "ccp_block_volume"
 }
 
 func (d *bvDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

@@ -33,7 +33,7 @@ type promoCodeModel struct {
 }
 
 func (d *promoCodesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_promo_codes_available"
+	resp.TypeName = "ccp_promo_codes_available"
 }
 
 func (d *promoCodesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

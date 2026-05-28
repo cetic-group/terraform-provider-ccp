@@ -32,7 +32,7 @@ type qemuTemplateModel struct {
 }
 
 func (d *qemuTemplatesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_qemu_templates"
+	resp.TypeName = "ccp_qemu_templates"
 }
 
 func (d *qemuTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

@@ -46,7 +46,7 @@ type mysqlDSModel struct {
 }
 
 func (d *mysqlDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_mysql_instance"
+	resp.TypeName = "ccp_db_mysql_instance"
 }
 
 func (d *mysqlDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

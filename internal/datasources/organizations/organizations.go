@@ -48,7 +48,7 @@ type organizationModel struct {
 
 // Metadata returns the data source type name.
 func (d *organizationsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_organizations"
+	resp.TypeName = "ccp_organizations"
 }
 
 // Schema defines the schema for the data source.

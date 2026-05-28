@@ -44,7 +44,7 @@ type vmInstanceDSModel struct {
 }
 
 func (d *vmInstanceDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vm_instance"
+	resp.TypeName = "ccp_vm_instance"
 }
 
 func (d *vmInstanceDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

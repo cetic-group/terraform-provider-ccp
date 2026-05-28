@@ -36,7 +36,7 @@ type ctDSModel struct {
 }
 
 func (d *ctDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_custom_template"
+	resp.TypeName = "ccp_custom_template"
 }
 
 func (d *ctDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

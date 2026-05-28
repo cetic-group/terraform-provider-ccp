@@ -36,7 +36,7 @@ type bucketDSModel struct {
 }
 
 func (d *bucketDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_object_bucket"
+	resp.TypeName = "ccp_object_bucket"
 }
 
 func (d *bucketDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

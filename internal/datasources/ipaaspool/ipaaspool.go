@@ -33,7 +33,7 @@ type poolDSModel struct {
 }
 
 func (d *poolDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_ipaas_pool"
+	resp.TypeName = "ccp_ipaas_pool"
 }
 
 func (d *poolDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

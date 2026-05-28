@@ -39,7 +39,7 @@ type secretDataSourceModel struct {
 }
 
 func (d *secretDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secret"
+	resp.TypeName = "ccp_secret"
 }
 
 func (d *secretDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

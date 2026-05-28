@@ -110,7 +110,7 @@ const (
 )
 
 func (r *vnetResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet"
+	resp.TypeName = "ccp_vnet"
 }
 
 func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -49,7 +49,7 @@ type registryACLResourceModel struct {
 }
 
 func (r *registryACLResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_registry_acl"
+	resp.TypeName = "ccp_registry_acl"
 }
 
 // repoPatternRE accepts repo names made of lowercase letters, digits, `-`,

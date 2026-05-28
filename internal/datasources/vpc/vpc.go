@@ -34,7 +34,7 @@ type vpcDSModel struct {
 }
 
 func (d *vpcDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vpc"
+	resp.TypeName = "ccp_vpc"
 }
 
 func (d *vpcDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

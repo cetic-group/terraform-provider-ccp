@@ -82,7 +82,7 @@ type routeResourceModel struct {
 }
 
 func (r *routeResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_appgw_route"
+	resp.TypeName = "ccp_appgw_route"
 }
 
 func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -50,7 +50,7 @@ type dbvalkeyResourceModel struct {
 }
 
 func (r *dbvalkeyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_valkey_instance"
+	resp.TypeName = "ccp_db_valkey_instance"
 }
 
 func (r *dbvalkeyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

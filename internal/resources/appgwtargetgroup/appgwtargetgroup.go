@@ -54,7 +54,7 @@ type tgResourceModel struct {
 }
 
 func (r *tgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_appgw_target_group"
+	resp.TypeName = "ccp_appgw_target_group"
 }
 
 func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

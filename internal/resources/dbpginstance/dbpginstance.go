@@ -51,7 +51,7 @@ type dbpgResourceModel struct {
 }
 
 func (r *dbpgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_pg_instance"
+	resp.TypeName = "ccp_db_pg_instance"
 }
 
 func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

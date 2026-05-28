@@ -42,7 +42,7 @@ type ticketResourceModel struct {
 }
 
 func (r *ticketResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_support_ticket"
+	resp.TypeName = "ccp_support_ticket"
 }
 
 func (r *ticketResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

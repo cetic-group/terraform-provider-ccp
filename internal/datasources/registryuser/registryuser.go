@@ -30,7 +30,7 @@ type userDSModel struct {
 }
 
 func (d *userDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_registry_user"
+	resp.TypeName = "ccp_registry_user"
 }
 
 func (d *userDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

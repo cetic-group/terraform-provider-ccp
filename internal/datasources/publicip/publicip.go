@@ -35,7 +35,7 @@ type pipDSModel struct {
 }
 
 func (d *pipDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_public_ip"
+	resp.TypeName = "ccp_public_ip"
 }
 
 func (d *pipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

@@ -42,7 +42,7 @@ type snapModel struct {
 }
 
 func (r *snapResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_container_snapshot"
+	resp.TypeName = "ccp_container_snapshot"
 }
 
 func (r *snapResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
