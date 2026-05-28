@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -52,6 +53,7 @@ var (
 	_ resource.Resource                = (*vmInstanceResource)(nil)
 	_ resource.ResourceWithConfigure   = (*vmInstanceResource)(nil)
 	_ resource.ResourceWithImportState = (*vmInstanceResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*vmInstanceResource)(nil)
 )
 
 // New returns a freshly-constructed ccp_vm_instance resource.
@@ -211,15 +213,17 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				},
 			},
 			"public_ip_id": schema.StringAttribute{
-				MarkdownDescription: "UUID of an already-allocated public IP to attach at " +
-					"creation. To attach/detach later, use the `ccp_public_ip` resource " +
-					"or the API directly. Forces replacement.",
+				MarkdownDescription: "UUID of a public IP to attach to the VM. Mutable: " +
+					"changing this attribute attaches/detaches via the CETIC Cloud API " +
+					"without recreating the VM. Set at creation to pin the IP from the " +
+					"start; update later to swap; clear to detach.",
 				Optional: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(uuidPattern, "must be a valid UUID"),
 				},
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"root_password": schema.StringAttribute{
@@ -330,6 +334,37 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 		},
 	}
+}
+
+// ModifyPlan validates VNet egress requirements before apply. When the
+// user supplies a `user_data` script, the target VNet MUST have
+// `snat=true` — otherwise the script's package downloads (apt, curl, etc.)
+// will silently fail at first boot and leave the VM in a broken state.
+// Skips during destroy plans and when `vnet_id` / `user_data` are unknown.
+func (r *vmInstanceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return // destroy
+	}
+	if r.client == nil {
+		return // provider not configured yet
+	}
+	var plan vmInstanceResourceModel
+	if d := req.Plan.Get(ctx, &plan); d.HasError() {
+		return
+	}
+	if plan.UserData.IsNull() || plan.UserData.IsUnknown() || plan.UserData.ValueString() == "" {
+		return
+	}
+	if plan.VnetID.IsNull() || plan.VnetID.IsUnknown() || plan.VnetID.ValueString() == "" {
+		return
+	}
+	snatvalidator.CheckVnetSnat(
+		ctx, r.client, plan.VnetID.ValueString(),
+		"Cloud-init `user_data` scripts that install packages, fetch container "+
+			"images, or reach any external endpoint will fail without outbound "+
+			"NAT.",
+		&resp.Diagnostics,
+	)
 }
 
 func (r *vmInstanceResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -501,6 +536,8 @@ func (r *vmInstanceResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	refreshPublicIPID(ctx, r.client, fresh.ID, &plan.PublicIPID)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -540,12 +577,36 @@ func (r *vmInstanceResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	refreshPublicIPID(ctx, r.client, got.ID, &state.PublicIPID)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update handles in-place mutation of `name` and `tags` via PATCH. The
-// framework only routes here when no RequiresReplace attribute changed, so we
-// can safely diff name/tags and call the API.
+// refreshPublicIPID resolves the UUID of the public IP currently attached
+// to the VM via `client.FindPublicIPByResource`. `GET /v1/vm-instances/{id}`
+// only returns the resolved IPv4 address, not the UUID, so we list+filter
+// to keep `public_ip_id` accurate in state for Read/Create/Update paths.
+// Quiet failures (network blip, transient API error) leave the prior value
+// untouched — the next plan/refresh will retry.
+func refreshPublicIPID(ctx context.Context, c *client.Client, vmID string, dst *types.String) {
+	if c == nil || vmID == "" {
+		return
+	}
+	ip, err := c.FindPublicIPByResource(ctx, "vm_instance", vmID)
+	if err != nil {
+		return
+	}
+	if ip == nil {
+		*dst = types.StringNull()
+		return
+	}
+	*dst = types.StringValue(ip.ID)
+}
+
+// Update handles in-place mutation of `name`, `tags`, and `public_ip_id`.
+// Name/tags go through PATCH /v1/vm-instances/{id}; public_ip_id swaps are
+// performed via the dedicated /v1/public-ips/{id}/attach + /detach endpoints,
+// allowing the VM itself to keep running across the change.
 func (r *vmInstanceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state vmInstanceResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -555,6 +616,37 @@ func (r *vmInstanceResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	id := state.ID.ValueString()
+
+	// ── Public IP attach/detach via dedicated endpoints (no VM recreate) ──
+	planIPID := plan.PublicIPID.ValueString()
+	stateIPID := state.PublicIPID.ValueString()
+	if planIPID != stateIPID {
+		// Detach old IP first to avoid 409 from the API (an IP can only be
+		// attached to one resource at a time).
+		if stateIPID != "" {
+			if _, err := r.client.DetachPublicIP(ctx, stateIPID); err != nil && !client.IsNotFound(err) {
+				resp.Diagnostics.AddError(
+					"Failed to detach public IP from VM",
+					fmt.Sprintf("CETIC Cloud API error detaching IP %s from VM %s: %s",
+						stateIPID, id, err.Error()),
+				)
+				return
+			}
+		}
+		if planIPID != "" {
+			if _, err := r.client.AttachPublicIP(ctx, planIPID, client.PublicIPAttachRequest{
+				ResourceType: "vm_instance",
+				ResourceID:   id,
+			}); err != nil {
+				resp.Diagnostics.AddError(
+					"Failed to attach public IP to VM",
+					fmt.Sprintf("CETIC Cloud API error attaching IP %s to VM %s: %s",
+						planIPID, id, err.Error()),
+				)
+				return
+			}
+		}
+	}
 
 	planTags, diags := stringsFromList(ctx, plan.Tags)
 	resp.Diagnostics.Append(diags...)
@@ -620,6 +712,8 @@ func (r *vmInstanceResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	refreshPublicIPID(ctx, r.client, fresh.ID, &plan.PublicIPID)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }

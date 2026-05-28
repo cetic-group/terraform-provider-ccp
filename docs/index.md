@@ -21,7 +21,7 @@ terraform {
   required_providers {
     cetic-cloud-platform = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 1.0"
+      version = "~> 1.1"
     }
   }
 }
@@ -49,7 +49,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 1.0"
+      version = "~> 1.1"
     }
   }
 }
@@ -93,7 +93,7 @@ terraform {
   required_providers {
     cetic-cloud-platform = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 1.0"
+      version = "~> 1.1"
     }
   }
 }
@@ -126,7 +126,7 @@ terraform {
   required_providers {
     cetic-cloud-platform = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 1.0"
+      version = "~> 1.1"
     }
   }
 }
