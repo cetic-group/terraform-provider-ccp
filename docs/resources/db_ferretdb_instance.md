@@ -7,15 +7,13 @@ description: |-
 
 # ccp_db_ferretdb_instance (Resource)
 
-Manages a managed MongoDB-compatible instance powered by FerretDB v2 (Apache 2.0 license). FerretDB v2 translates the MongoDB wire protocol to SQL, storing data in a managed PostgreSQL cluster with the **DocumentDB extension** (PG-DocumentDB image) — both running in the same isolated namespace. Compatible with all standard MongoDB drivers, tools, and the MongoDB shell.
+Manages a managed MongoDB-compatible instance powered by FerretDB v2 (Apache 2.0 license). FerretDB v2 translates the MongoDB wire protocol to SQL, storing data in a managed PostgreSQL cluster with the **DocumentDB extension**. Compatible with all standard MongoDB drivers, tools, and the MongoDB shell.
 
-~> **Note:** The `tier` argument is immutable — it determines the replica count at creation and cannot be changed. `dev` provisions 1 PG instance + 1 FerretDB pod (no HA); `prod` provisions 3 PG instances + 3 FerretDB pods (HA inter-nodes via topologySpreadConstraints, RollingUpdate zero-downtime). To migrate tiers, create a new instance and restore data.
+~> **Note:** `replicas` is set at creation and immutable — `1` provisions a single FerretDB pod with a single PG backend (`tier = "dev"`), `3` provisions HA with topology spread on both layers (`tier = "prod"`). To migrate from dev to prod, create a new instance and restore data.
 
-~> **Note:** Database provisioning is asynchronous. The provider polls until the instance reaches `active` status. Provisioning includes both the FerretDB layer and its backing PostgreSQL cluster (CNPG operator) with the DocumentDB extension installed via `postInitSQL`.
+~> **Note:** Provisioning is asynchronous. The provider polls until the instance reaches `active` status. Provisioning sets up both the FerretDB layer and its backing PostgreSQL cluster.
 
-~> **Note:** Connection string format is `mongodb://postgres:<password>@<endpoint>:27017/postgres?authSource=admin`. The user is always `postgres` (PG superuser) and the database is `postgres` (where DocumentDB stores MongoDB-shaped tables). FerretDB v2 bridges MongoDB SCRAM-SHA-256 auth to PG SCRAM via the superuser secret.
-
-~> **Note:** Database provisioning is asynchronous. The provider polls until the instance reaches `active` status. Provisioning includes both the FerretDB layer and its backing PostgreSQL cluster.
+~> **Note:** Connection string format is `mongodb://postgres:<password>@<endpoint_vnet_ip>:27017/postgres?authSource=admin`. The username is always `postgres` (the PG superuser used for SCRAM-SHA-256 auth bridging) and the database is always `postgres` (where DocumentDB stores MongoDB-shaped tables).
 
 ## Example Usage
 
@@ -26,46 +24,53 @@ resource "ccp_db_ferretdb_instance" "app_docs" {
   vpc_id         = ccp_vpc.main.id
   vnet_id        = ccp_vnet.data.id
   plan           = "medium"
-  tier           = "prod"
+  storage_gb     = 50
+  replicas       = 3 # HA — `tier` will be computed as "prod"
   engine_version = "2"
   tags           = ["database", "mongodb-compat", "env:prod"]
 }
 
-output "mongo_uri" {
-  # admin_username = "postgres" et admin_database = "postgres" sont
-  # toujours fixes pour FerretDB v2 (le superuser PG est utilisé pour
-  # auth, et DocumentDB stocke ses collections dans la DB `postgres`).
-  value     = "mongodb://${ccp_db_ferretdb_instance.app_docs.admin_username}:${ccp_db_ferretdb_instance.app_docs.admin_password}@${ccp_db_ferretdb_instance.app_docs.endpoint_host}:${ccp_db_ferretdb_instance.app_docs.endpoint_port}/${ccp_db_ferretdb_instance.app_docs.admin_database}?authSource=admin"
-  sensitive = true
+output "mongo_endpoint" {
+  value = "mongodb://${ccp_db_ferretdb_instance.app_docs.admin_username}@${ccp_db_ferretdb_instance.app_docs.endpoint_vnet_ip}:${ccp_db_ferretdb_instance.app_docs.endpoint_port}/${ccp_db_ferretdb_instance.app_docs.admin_database}?authSource=admin"
 }
+```
+
+Retrieve the admin password through the dedicated CLI / API endpoint (not exposed as a Terraform attribute):
+
+```bash
+cetic db ferretdb credentials <instance_id>
 ```
 
 ## Argument Reference
 
 ### Required
 
-- `name` - (Required) Name of the FerretDB instance.
-- `region` - (Required, Forces new resource) Region where the instance is created. One of: `RNN`, `PAR`, `ABJ`.
-- `vpc_id` - (Required, Forces new resource) UUID of the VPC for internal network connectivity.
-- `vnet_id` - (Required, Forces new resource) UUID of the VNet where the database endpoint is accessible.
-- `plan` - (Required, Forces new resource) Instance plan controlling CPU and memory. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
+- `name` - Name of the FerretDB instance.
+- `region` - (Forces new resource) Region. One of: `RNN`, `PAR`, `ABJ`.
+- `vpc_id` - (Forces new resource) UUID of the VPC.
+- `vnet_id` - (Forces new resource) UUID of the VNet where the endpoint is accessible.
+- `plan` - (Forces new resource) Instance plan controlling CPU and memory. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
+- `storage_gb` - Persistent storage size in GB (for the backing PG cluster).
 
 ### Optional
 
-- `engine_version` - (Optional, Forces new resource) FerretDB major version to deploy (e.g. `"2"` for FerretDB v2 with DocumentDB extension). Available versions are managed by the CETIC Cloud team. Defaults to the latest available version (`2`).
-- `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
+- `replicas` - (Forces new resource) Replica count. `1` (default) = single FerretDB pod + single PG. `3` = HA on both layers. Sets `tier` accordingly. Default `1`.
+- `engine_version` - (Forces new resource) FerretDB major version (e.g. `"2"`). Available versions are managed by the CETIC Cloud team. Defaults to the latest available version.
+- `tags` - List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-- `id` - The UUID of the instance.
-- `status` - Current status. Possible values: `provisioning`, `active`, `error`.
-- `endpoint_host` - Hostname or IP address for connecting to FerretDB within the VNet (MongoDB wire protocol). Routes to the FerretDB Service (port 27017), **not** the PG cluster (which is namespace-internal on port 5432).
+- `id` - UUID of the instance.
+- `status` - Current status. One of: `provisioning`, `active`, `error`.
+- `tier` - Derived from `replicas` — `dev` (1 replica) or `prod` (3 replicas, HA).
+- `endpoint_vnet_ip` - Private IP within the VNet for MongoDB connections (routes to the FerretDB Service on port 27017, NOT the backing PG cluster).
 - `endpoint_port` - TCP port for MongoDB connections (always `27017`).
 - `admin_username` - Always `postgres` for FerretDB v2 (the PG superuser used for SCRAM-SHA-256 auth bridging).
 - `admin_database` - Always `postgres` for FerretDB v2 (DocumentDB extension stores its MongoDB-shaped tables there).
-- `admin_password` - (Sensitive) Administrator password (used by both the FerretDB pod to connect to the PG backend AND by the MongoDB client connection string).
+- `cpu_millicores` - CPU allocation in millicores. Derived from `plan`.
+- `memory_mb` - Memory allocation in MB. Derived from `plan`.
 
 ## Import
 

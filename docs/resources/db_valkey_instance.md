@@ -7,11 +7,11 @@ description: |-
 
 # ccp_db_valkey_instance (Resource)
 
-Manages a managed Valkey instance — an open-source, BSD-licensed Redis fork fully compatible with the Redis protocol and all Redis clients. Instances run on the shared regional Kubernetes workload cluster. Data is persisted on high-performance block storage.
+Manages a managed Valkey instance — an open-source, BSD-licensed Redis fork fully compatible with the Redis protocol and all Redis clients. Instances run on the shared regional Kubernetes workload cluster, isolated per tenant. Data is persisted on high-performance block storage.
 
-~> **Note:** The `tier` argument is immutable — it determines the replica count at creation and cannot be changed. `dev` provisions 1 replica (no HA); `prod` provisions 3 replicas with anti-affinity for HA. To migrate from `dev` to `prod`, create a new instance.
+~> **Note:** `replicas` is set at creation and immutable — `1` provisions a single instance (`tier = "dev"`), `3` provisions an HA cluster (`tier = "prod"`). To migrate from dev to prod, create a new instance.
 
-~> **Note:** Database provisioning is asynchronous. The provider polls until the instance reaches `active` status (~3 minutes for `dev`, ~5 minutes for `prod`).
+~> **Note:** Provisioning is asynchronous. The provider polls until the instance reaches `active` status (~3 minutes single, ~5 minutes HA).
 
 ## Example Usage
 
@@ -22,41 +22,51 @@ resource "ccp_db_valkey_instance" "app_cache" {
   vpc_id         = ccp_vpc.main.id
   vnet_id        = ccp_vnet.web.id
   plan           = "small"
-  tier           = "prod"
+  storage_gb     = 10
+  replicas       = 3 # HA cluster — `tier` will be computed as "prod"
   engine_version = "8"
   tags           = ["cache", "valkey", "env:prod"]
 }
 
-output "redis_url" {
-  value     = "redis://:${ccp_db_valkey_instance.app_cache.admin_password}@${ccp_db_valkey_instance.app_cache.endpoint_host}:${ccp_db_valkey_instance.app_cache.endpoint_port}"
-  sensitive = true
+output "valkey_endpoint" {
+  value = "redis://${ccp_db_valkey_instance.app_cache.endpoint_vnet_ip}:${ccp_db_valkey_instance.app_cache.endpoint_port}"
 }
+```
+
+Retrieve the auth password through the dedicated CLI / API endpoint (not exposed as a Terraform attribute):
+
+```bash
+cetic db valkey credentials <instance_id>
 ```
 
 ## Argument Reference
 
 ### Required
 
-- `name` - (Required) Name of the Valkey instance.
-- `region` - (Required, Forces new resource) Region where the instance is created. One of: `RNN`, `PAR`, `ABJ`.
-- `vpc_id` - (Required, Forces new resource) UUID of the VPC for internal network connectivity.
-- `vnet_id` - (Required, Forces new resource) UUID of the VNet where the Valkey endpoint is accessible.
-- `plan` - (Required, Forces new resource) Instance plan controlling CPU and memory. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
+- `name` - Name of the Valkey instance.
+- `region` - (Forces new resource) Region. One of: `RNN`, `PAR`, `ABJ`.
+- `vpc_id` - (Forces new resource) UUID of the VPC.
+- `vnet_id` - (Forces new resource) UUID of the VNet where the endpoint is accessible.
+- `plan` - (Forces new resource) Instance plan controlling CPU and memory. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
+- `storage_gb` - Persistent storage size in GB (for AOF / RDB persistence).
 
 ### Optional
 
-- `engine_version` - (Optional, Forces new resource) Valkey major version to deploy (e.g. `"7"`, `"8"`). Available versions are managed by the CETIC Cloud team. Defaults to the latest available version.
-- `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
+- `replicas` - (Forces new resource) Replica count. `1` (default) = single instance, `3` = HA cluster. Sets `tier` accordingly. Default `1`.
+- `engine_version` - (Forces new resource) Valkey major version (e.g. `"7"`, `"8"`). Available versions are managed by the CETIC Cloud team. Defaults to the latest available version.
+- `tags` - List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-- `id` - The UUID of the instance.
-- `status` - Current status. Possible values: `provisioning`, `active`, `error`.
-- `endpoint_host` - Hostname or IP address for connecting to Valkey within the VNet.
-- `endpoint_port` - TCP port for Valkey/Redis connections (typically `6379`).
-- `admin_password` - (Sensitive) Authentication password for the Valkey instance.
+- `id` - UUID of the instance.
+- `status` - Current status. One of: `provisioning`, `active`, `error`.
+- `tier` - Derived from `replicas` — `dev` (1 replica) or `prod` (3 replicas, HA).
+- `endpoint_vnet_ip` - Private IP within the VNet for Valkey/Redis connections.
+- `endpoint_port` - TCP port (typically `6379`).
+- `cpu_millicores` - CPU allocation in millicores. Derived from `plan`.
+- `memory_mb` - Memory allocation in MB. Derived from `plan`.
 
 ## Import
 

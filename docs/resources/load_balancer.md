@@ -114,14 +114,15 @@ Each `listener` block supports:
 
 Each `backend` block inside a `listener` supports:
 
-### Required (one of)
+### Required (exactly one)
 
-- `container_id` - (Optional) UUID of a container instance to route traffic to. Exactly one of `container_id` or `vm_instance_id` must be set.
-- `vm_instance_id` - (Optional) UUID of a VM instance to route traffic to.
+- `container_id` - UUID of a container instance to route traffic to.
+- `vm_instance_id` - UUID of a VM instance to route traffic to.
+- `scale_set_id` - UUID of a container scale set. Traffic is round-robined across all healthy instances of the scale set — the LB reconciles backends automatically as the scale set grows or shrinks.
 
 ### Required
 
-- `port` - (Required) Backend port (1-65535). Must match the port the instance's service listens on.
+- `port` - Backend port (1-65535). Must match the port the instance's service listens on.
 
 ### Optional
 
