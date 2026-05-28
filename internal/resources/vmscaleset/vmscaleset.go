@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -29,6 +30,7 @@ var (
 	_ resource.Resource                = (*vmssResource)(nil)
 	_ resource.ResourceWithConfigure   = (*vmssResource)(nil)
 	_ resource.ResourceWithImportState = (*vmssResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*vmssResource)(nil)
 )
 
 func New() resource.Resource { return &vmssResource{} }
@@ -158,6 +160,36 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			},
 		},
 	}
+}
+
+// ModifyPlan validates that the target VNet has outbound NAT when the
+// scale set carries a `user_data` cloud-init script. Every cloned VM
+// runs the same script; if the VNet has `snat=false`, every instance
+// fails identically at first boot.
+func (r *vmssResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	if r.client == nil {
+		return
+	}
+	var plan vmssResourceModel
+	if d := req.Plan.Get(ctx, &plan); d.HasError() {
+		return
+	}
+	if plan.UserData.IsNull() || plan.UserData.IsUnknown() || plan.UserData.ValueString() == "" {
+		return
+	}
+	if plan.VnetID.IsNull() || plan.VnetID.IsUnknown() || plan.VnetID.ValueString() == "" {
+		return
+	}
+	snatvalidator.CheckVnetSnat(
+		ctx, r.client, plan.VnetID.ValueString(),
+		"Every cloned VM in the scale set runs the same `user_data`; a VNet "+
+			"without outbound NAT will break first boot identically on every "+
+			"instance.",
+		&resp.Diagnostics,
+	)
 }
 
 func (r *vmssResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

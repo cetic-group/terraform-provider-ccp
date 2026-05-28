@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -49,6 +50,7 @@ var (
 	_ resource.Resource                = (*containerInstanceResource)(nil)
 	_ resource.ResourceWithConfigure   = (*containerInstanceResource)(nil)
 	_ resource.ResourceWithImportState = (*containerInstanceResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*containerInstanceResource)(nil)
 )
 
 // New returns a freshly-constructed ccp_container_instance resource.
@@ -201,15 +203,17 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"public_ip_id": schema.StringAttribute{
-				MarkdownDescription: "UUID of an already-allocated public IP to attach at " +
-					"creation. To attach/detach later, use the `ccp_public_ip` resource " +
-					"or the API directly. Changes force replacement.",
+				MarkdownDescription: "UUID of a public IP to attach to the container. " +
+					"Mutable: changing this attribute attaches/detaches via the CETIC " +
+					"Cloud API without recreating the container. Set at creation to pin " +
+					"the IP from the start; update later to swap; clear to detach.",
 				Optional: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(uuidPattern, "must be a valid UUID"),
 				},
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"root_password": schema.StringAttribute{
@@ -320,6 +324,34 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 			},
 		},
 	}
+}
+
+// ModifyPlan validates that the target VNet has outbound internet egress
+// when the user supplies a `user_data` cloud-init script. Without
+// `snat=true`, package installs at first boot fail silently.
+func (r *containerInstanceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	if r.client == nil {
+		return
+	}
+	var plan containerInstanceResourceModel
+	if d := req.Plan.Get(ctx, &plan); d.HasError() {
+		return
+	}
+	if plan.UserData.IsNull() || plan.UserData.IsUnknown() || plan.UserData.ValueString() == "" {
+		return
+	}
+	if plan.VnetID.IsNull() || plan.VnetID.IsUnknown() || plan.VnetID.ValueString() == "" {
+		return
+	}
+	snatvalidator.CheckVnetSnat(
+		ctx, r.client, plan.VnetID.ValueString(),
+		"Cloud-init `user_data` scripts that install packages or fetch any "+
+			"external endpoint will fail without outbound NAT.",
+		&resp.Diagnostics,
+	)
 }
 
 func (r *containerInstanceResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -485,6 +517,8 @@ func (r *containerInstanceResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
+	refreshPublicIPID(ctx, r.client, final.ID, &plan.PublicIPID)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -524,20 +558,86 @@ func (r *containerInstanceResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
+	refreshPublicIPID(ctx, r.client, got.ID, &state.PublicIPID)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update is a no-op: every user-settable attribute carries RequiresReplace,
-// so the framework will replace the resource via destroy + create rather than
-// call Update. We still emit a diagnostic if it is somehow invoked, since
-// reaching this branch would mean the schema and implementation drifted.
-func (r *containerInstanceResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError(
-		"Container instance has no in-place updates",
-		"ccp_container_instance has no mutable attributes; all changes force "+
-			"replacement. This should not happen with all-RequiresReplace fields — please "+
-			"report this as a provider bug.",
-	)
+// Update handles in-place swapping of `public_ip_id`. All other settable
+// attributes carry RequiresReplace, so the framework only routes here when
+// the public IP attachment changes.
+func (r *containerInstanceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state containerInstanceResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	id := state.ID.ValueString()
+
+	planIPID := plan.PublicIPID.ValueString()
+	stateIPID := state.PublicIPID.ValueString()
+	if planIPID != stateIPID {
+		if stateIPID != "" {
+			if _, err := r.client.DetachPublicIP(ctx, stateIPID); err != nil && !client.IsNotFound(err) {
+				resp.Diagnostics.AddError(
+					"Failed to detach public IP from container",
+					fmt.Sprintf("CETIC Cloud API error detaching IP %s from container %s: %s",
+						stateIPID, id, err.Error()),
+				)
+				return
+			}
+		}
+		if planIPID != "" {
+			if _, err := r.client.AttachPublicIP(ctx, planIPID, client.PublicIPAttachRequest{
+				ResourceType: "container",
+				ResourceID:   id,
+			}); err != nil {
+				resp.Diagnostics.AddError(
+					"Failed to attach public IP to container",
+					fmt.Sprintf("CETIC Cloud API error attaching IP %s to container %s: %s",
+						planIPID, id, err.Error()),
+				)
+				return
+			}
+		}
+	}
+
+	// Re-fetch so state reflects the authoritative server view.
+	fresh, err := r.client.GetContainer(ctx, id)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to read container after update",
+			fmt.Sprintf("Container %s was updated but the follow-up GET failed: %s", id, err.Error()),
+		)
+		return
+	}
+	diags := applyContainerToModel(ctx, fresh, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	refreshPublicIPID(ctx, r.client, id, &plan.PublicIPID)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// refreshPublicIPID resolves the UUID of the public IP currently attached
+// to the container via `client.FindPublicIPByResource`. `GET /v1/containers/{id}`
+// only returns the resolved IPv4 address, not the UUID.
+func refreshPublicIPID(ctx context.Context, c *client.Client, ctID string, dst *types.String) {
+	if c == nil || ctID == "" {
+		return
+	}
+	ip, err := c.FindPublicIPByResource(ctx, "container", ctID)
+	if err != nil {
+		return
+	}
+	if ip == nil {
+		*dst = types.StringNull()
+		return
+	}
+	*dst = types.StringValue(ip.ID)
 }
 
 func (r *containerInstanceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

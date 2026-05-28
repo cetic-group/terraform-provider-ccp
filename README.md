@@ -18,7 +18,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   required_providers {
 >     cetic-cloud-platform = {
 >       source  = "cetic-group/cetic-cloud-platform"
->       version = "~> 1.0"
+>       version = "~> 1.1"
 >     }
 >   }
 > }
@@ -41,7 +41,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   required_providers {
 >     ccp = {
 >       source  = "cetic-group/cetic-cloud-platform"
->       version = "~> 1.0"
+>       version = "~> 1.1"
 >     }
 >   }
 > }
@@ -114,7 +114,7 @@ terraform {
   required_providers {
     cetic-cloud-platform = {
       source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 1.0"
+      version = "~> 1.1"
     }
   }
 }

@@ -251,6 +251,33 @@ func (c *Client) GetVNet(ctx context.Context, vpcID, vnetID string) (*VNet, erro
 	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: fmt.Sprintf("/v1/vpcs/%s/vnets/%s", vpcID, vnetID), Detail: "vnet not found"}
 }
 
+// FindVNetByID looks up a VNet by its UUID alone (without requiring the
+// parent vpc_id). Scans all VPCs of the authenticated tenant. Used at
+// plan-time by compute resources whose schema only exposes `vnet_id`, to
+// validate constraints like `snat=true` against the target VNet before
+// apply. Slow path (O(num_vpcs) API calls) — acceptable for plan-time.
+func (c *Client) FindVNetByID(ctx context.Context, vnetID string) (*VNet, error) {
+	if vnetID == "" {
+		return nil, &APIError{StatusCode: http.StatusBadRequest, Detail: "empty vnetID"}
+	}
+	vpcs, err := c.ListVPCs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, vpc := range vpcs {
+		vnets, err := c.ListVNets(ctx, vpc.ID)
+		if err != nil {
+			continue
+		}
+		for i := range vnets {
+			if vnets[i].ID == vnetID {
+				return &vnets[i], nil
+			}
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: "/v1/vnets/" + vnetID, Detail: "vnet not found in any vpc"}
+}
+
 func (c *Client) CreateVNet(ctx context.Context, vpcID string, req VNetCreateRequest) (*VNet, error) {
 	var out VNet
 	if err := c.do(ctx, http.MethodPost, "/v1/vpcs/"+vpcID+"/vnets", req, &out); err != nil {
@@ -444,6 +471,36 @@ func (c *Client) DetachPublicIP(ctx context.Context, id string) (*PublicIP, erro
 		return nil, err
 	}
 	return &out, nil
+}
+
+// FindPublicIPByResource returns the public IP currently attached to the
+// given (resource_type, resource_id) pair, or nil if no IP is attached.
+// `resource_type` is one of `container`, `vm_instance`, or `load_balancer`
+// (matching the typed back-references on the `PublicIP` struct). Used by
+// resource Read paths to refresh the `public_ip_id` attribute even though
+// `GET /v1/<resource>/<id>` doesn't echo the UUID directly.
+func (c *Client) FindPublicIPByResource(ctx context.Context, resourceType, resourceID string) (*PublicIP, error) {
+	ips, err := c.ListPublicIPs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range ips {
+		var ref *string
+		switch resourceType {
+		case "container":
+			ref = ips[i].ContainerID
+		case "vm_instance":
+			ref = ips[i].VMInstanceID
+		case "load_balancer":
+			ref = ips[i].LoadBalancerID
+		default:
+			continue
+		}
+		if ref != nil && *ref == resourceID {
+			return &ips[i], nil
+		}
+	}
+	return nil, nil
 }
 
 // ─── Object Buckets (Ceph RGW) ───────────────────────────────────────────────
