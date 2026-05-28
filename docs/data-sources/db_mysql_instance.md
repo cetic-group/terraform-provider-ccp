@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_db_mysql_instance Data Source - cetic-cloud-platform"
-subcategory: "Database"
+subcategory: "Databases"
 description: |-
   Look up a MariaDB/MySQL database instance.
 ---

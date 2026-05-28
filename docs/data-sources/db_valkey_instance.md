@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_db_valkey_instance Data Source - cetic-cloud-platform"
-subcategory: "Database"
+subcategory: "Databases"
 description: |-
   Look up a Valkey (Redis-compatible) instance.
 ---

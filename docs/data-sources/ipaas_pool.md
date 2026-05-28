@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_ipaas_pool Data Source - cetic-cloud-platform"
-subcategory: "Network"
+subcategory: "Networking"
 description: |-
   Look up an IPaaS pool by ID (admin only).
 ---

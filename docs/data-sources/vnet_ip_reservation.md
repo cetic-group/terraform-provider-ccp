@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_vnet_ip_reservation Data Source - cetic-cloud-platform"
-subcategory: "Network"
+subcategory: "Networking"
 description: |-
   Look up a VNet IP reservation.
 ---

@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_load_balancer Data Source - cetic-cloud-platform"
-subcategory: "Network"
+subcategory: "Networking"
 description: |-
   Look up a Load Balancer by ID or by (name, region).
 ---
