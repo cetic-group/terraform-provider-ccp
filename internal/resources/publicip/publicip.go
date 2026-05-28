@@ -132,22 +132,34 @@ func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"attached_to_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the container or VM instance the IP should be " +
-					"attached to. Setting this attaches the IP; clearing it detaches. " +
+					"attached to. Setting this attaches the IP; updating it re-attaches. " +
 					"Required to be paired with `attached_to_type`. Load-balancer " +
-					"attachment uses a different code path and cannot be expressed here.",
+					"attachment uses a different code path and cannot be expressed here. " +
+					"Optional+Computed: when omitted from config, the provider mirrors " +
+					"whichever resource currently owns the IP (e.g. set via " +
+					"`ccp_vm_instance.public_ip_id`) without proposing a perma-diff.",
 				Optional: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(uuidPattern, "must be a valid UUID"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"attached_to_type": schema.StringAttribute{
 				MarkdownDescription: "Type of the resource referenced by `attached_to_id`. " +
 					"One of `container` or `vm_instance`. Required when `attached_to_id` " +
-					"is set. `load_balancer` is intentionally not accepted — use the " +
-					"`ccp_load_balancer` resource's IP attachment instead.",
+					"is set explicitly. `load_balancer` is intentionally not accepted — " +
+					"use the `ccp_load_balancer` resource's IP attachment instead. " +
+					"Optional+Computed; mirrors the active back-reference when omitted.",
 				Optional: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf("container", "vm_instance"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"ip_address": schema.StringAttribute{
