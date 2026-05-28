@@ -28,14 +28,12 @@ import (
 	dsk8snodepool "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8snodepool"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/k8stemplates"
 	dsloadbalancer "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/loadbalancer"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/lxctemplates"
 	dsobjectbucket "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/objectbucket"
 	dsobjectstoragekey "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/objectstoragekey"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/organizations"
 	dspricing "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/pricing"
 	dspromocodes "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/promocodes"
 	dspublicip "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/publicip"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/qemutemplates"
 	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/regions"
 	dsregistry "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registry"
 	dsregistryacl "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/datasources/registryacl"
@@ -242,10 +240,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		organizations.New,
 		containertemplates.New,
 		vmtemplates.New,
-		// Deprecated aliases kept for backward compat — removed in v2.0.0.
-		// Use ccp_container_templates and ccp_vm_templates instead.
-		lxctemplates.New,
-		qemutemplates.New,
 		dbplans.New,
 		dbengineversions.New,
 		k8stemplates.New,
