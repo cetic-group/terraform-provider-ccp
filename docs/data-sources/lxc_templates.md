@@ -2,39 +2,23 @@
 page_title: "ccp_lxc_templates Data Source - cetic-cloud-platform"
 subcategory: "Catalogs"
 description: |-
-  Lists active container templates available on CETIC Cloud.
+  Deprecated — use ccp_container_templates instead.
 ---
 
-# ccp_lxc_templates (Data Source)
+# ccp_lxc_templates (Data Source) — Deprecated
 
-Lists active container templates from the CETIC Cloud catalog (admin-managed). Use this to resolve a template `key` (e.g. `ubuntu-24.04`) at plan-time instead of hardcoding it in `ccp_container_instance.template`.
+~> **Deprecated.** Use [`ccp_container_templates`](container_templates.md) instead. `ccp_lxc_templates` exposes the underlying implementation name (LXC) rather than the canonical metier name (container). The two return the same data and have identical schemas. This alias will be removed in v2.0.0 of the provider.
 
-## Example Usage
+## Migration
 
-```hcl
-data "ccp_lxc_templates" "all" {}
+```diff
+- data "ccp_lxc_templates" "available" {}
++ data "ccp_container_templates" "available" {}
 
-output "available_lxc_templates" {
-  value = [for t in data.ccp_lxc_templates.all.templates : t.key]
-}
-
-# Pick the default template programmatically
-locals {
-  default_lxc = one([for t in data.ccp_lxc_templates.all.templates : t if t.is_default])
-}
-
-resource "ccp_container_instance" "web" {
-  name     = "web-01"
-  region   = "RNN"
-  plan     = "small"
-  template = local.default_lxc.key
-  vnet_id  = ccp_vnet.web.id
-}
+  resource "ccp_container_instance" "web" {
+-   template = data.ccp_lxc_templates.available.templates[0].key
++   template = data.ccp_container_templates.available.templates[0].key
+  }
 ```
 
-## Attributes Reference
-
-- `templates` - List of active container templates.
-  - `key` - Template key (used in `ccp_container_instance.template`).
-  - `display_name` - Human-readable template name.
-  - `is_default` - Whether this template is the default suggestion in the console.
+Schema is unchanged — refer to the [`ccp_container_templates`](container_templates.md) page for the full reference.
