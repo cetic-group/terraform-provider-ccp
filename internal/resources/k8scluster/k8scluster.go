@@ -88,7 +88,7 @@ type k8sResourceModel struct {
 }
 
 func (r *k8sResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_k8s_cluster"
+	resp.TypeName = "ccp_k8s_cluster"
 }
 
 func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

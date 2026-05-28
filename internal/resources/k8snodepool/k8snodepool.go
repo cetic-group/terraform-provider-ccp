@@ -52,7 +52,7 @@ var taintAttrTypes = map[string]attr.Type{
 }
 
 func (r *poolResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_k8s_node_pool"
+	resp.TypeName = "ccp_k8s_node_pool"
 }
 
 func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

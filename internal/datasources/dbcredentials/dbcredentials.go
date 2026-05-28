@@ -121,8 +121,8 @@ type apiResponse struct {
 	URI      string `json:"uri"`
 }
 
-func (d *dbCredsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + d.eng.typeName()
+func (d *dbCredsDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "ccp" + d.eng.typeName()
 }
 
 func (d *dbCredsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

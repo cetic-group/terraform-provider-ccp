@@ -46,7 +46,7 @@ type npDSModel struct {
 }
 
 func (d *npDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_k8s_node_pool"
+	resp.TypeName = "ccp_k8s_node_pool"
 }
 
 func (d *npDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
