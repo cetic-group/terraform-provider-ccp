@@ -40,7 +40,7 @@ type cssDSModel struct {
 }
 
 func (d *cssDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_container_scale_set"
+	resp.TypeName = "ccp_container_scale_set"
 }
 
 func (d *cssDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

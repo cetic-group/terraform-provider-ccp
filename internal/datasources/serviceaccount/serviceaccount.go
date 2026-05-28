@@ -36,7 +36,7 @@ type saDSModel struct {
 }
 
 func (d *saDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_service_account"
+	resp.TypeName = "ccp_service_account"
 }
 
 func (d *saDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

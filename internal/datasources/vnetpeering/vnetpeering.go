@@ -34,7 +34,7 @@ type peeringDSModel struct {
 }
 
 func (d *peeringDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet_peering"
+	resp.TypeName = "ccp_vnet_peering"
 }
 
 func (d *peeringDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

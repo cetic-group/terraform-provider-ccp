@@ -58,7 +58,7 @@ type customTemplateModel struct {
 var nameRe = regexp.MustCompile(`^[a-zA-Z0-9_\- ]{2,100}$`)
 
 func (r *customTemplateResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_custom_template"
+	resp.TypeName = "ccp_custom_template"
 }
 
 func (r *customTemplateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -44,7 +44,7 @@ type containerDSModel struct {
 }
 
 func (d *containerDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_container_instance"
+	resp.TypeName = "ccp_container_instance"
 }
 
 func (d *containerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

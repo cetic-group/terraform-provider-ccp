@@ -43,7 +43,7 @@ type regionModel struct {
 
 // Metadata returns the data source type name.
 func (d *regionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_regions"
+	resp.TypeName = "ccp_regions"
 }
 
 // Schema defines the schema for the data source.

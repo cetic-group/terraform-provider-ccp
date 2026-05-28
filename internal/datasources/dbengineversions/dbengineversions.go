@@ -34,7 +34,7 @@ type versionModel struct {
 }
 
 func (d *dbEngineVersionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_engine_versions"
+	resp.TypeName = "ccp_db_engine_versions"
 }
 
 func (d *dbEngineVersionsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

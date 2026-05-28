@@ -33,7 +33,7 @@ type aclDSModel struct {
 }
 
 func (d *aclDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_registry_acl"
+	resp.TypeName = "ccp_registry_acl"
 }
 
 func (d *aclDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

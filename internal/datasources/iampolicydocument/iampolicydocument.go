@@ -75,7 +75,7 @@ type policyConditionBlock struct {
 }
 
 func (d *policyDocumentDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_iam_policy_document"
+	resp.TypeName = "ccp_iam_policy_document"
 }
 
 func (d *policyDocumentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

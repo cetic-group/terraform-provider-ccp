@@ -40,7 +40,7 @@ type qrResourceModel struct {
 }
 
 func (r *qrResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_quota_request"
+	resp.TypeName = "ccp_quota_request"
 }
 
 func (r *qrResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

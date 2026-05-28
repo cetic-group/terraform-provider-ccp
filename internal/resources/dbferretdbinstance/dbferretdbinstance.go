@@ -47,7 +47,7 @@ type dbferretdbResourceModel struct {
 }
 
 func (r *dbferretdbResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_ferretdb_instance"
+	resp.TypeName = "ccp_db_ferretdb_instance"
 }
 
 func (r *dbferretdbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

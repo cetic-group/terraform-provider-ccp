@@ -38,7 +38,7 @@ type vnetDSModel struct {
 }
 
 func (d *vnetDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet"
+	resp.TypeName = "ccp_vnet"
 }
 
 func (d *vnetDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

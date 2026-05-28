@@ -33,7 +33,7 @@ type oskDSModel struct {
 }
 
 func (d *oskDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_object_storage_key"
+	resp.TypeName = "ccp_object_storage_key"
 }
 
 func (d *oskDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

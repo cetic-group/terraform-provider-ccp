@@ -44,7 +44,7 @@ type peerResourceModel struct {
 }
 
 func (r *peerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet_peering"
+	resp.TypeName = "ccp_vnet_peering"
 }
 
 func (r *peerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

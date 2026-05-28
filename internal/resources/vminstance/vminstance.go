@@ -117,7 +117,7 @@ const (
 const defaultTemplate = "ubuntu-24.04"
 
 func (r *vmInstanceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vm_instance"
+	resp.TypeName = "ccp_vm_instance"
 }
 
 func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -33,7 +33,7 @@ type resDSModel struct {
 }
 
 func (d *resDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_vnet_ip_reservation"
+	resp.TypeName = "ccp_vnet_ip_reservation"
 }
 
 func (d *resDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

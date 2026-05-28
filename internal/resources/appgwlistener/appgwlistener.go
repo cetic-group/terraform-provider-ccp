@@ -45,7 +45,7 @@ type listenerResourceModel struct {
 }
 
 func (r *listenerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_appgw_listener"
+	resp.TypeName = "ccp_appgw_listener"
 }
 
 func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

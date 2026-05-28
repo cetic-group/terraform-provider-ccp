@@ -42,7 +42,7 @@ type registryDataSourceModel struct {
 }
 
 func (d *registryDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_registry"
+	resp.TypeName = "ccp_registry"
 }
 
 func (d *registryDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

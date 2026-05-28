@@ -33,7 +33,7 @@ type akDSModel struct {
 }
 
 func (d *akDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_api_key"
+	resp.TypeName = "ccp_api_key"
 }
 
 func (d *akDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

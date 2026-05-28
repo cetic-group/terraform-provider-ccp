@@ -45,7 +45,7 @@ type supportSubscriptionModel struct {
 }
 
 func (r *supportSubscriptionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_support_subscription"
+	resp.TypeName = "ccp_support_subscription"
 }
 
 func (r *supportSubscriptionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

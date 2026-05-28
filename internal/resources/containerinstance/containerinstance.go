@@ -108,7 +108,7 @@ const (
 )
 
 func (r *containerInstanceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_container_instance"
+	resp.TypeName = "ccp_container_instance"
 }
 
 func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

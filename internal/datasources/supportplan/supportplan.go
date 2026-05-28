@@ -39,7 +39,7 @@ type supportPlanModel struct {
 }
 
 func (d *supportPlanDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_support_plan"
+	resp.TypeName = "ccp_support_plan"
 }
 
 func (d *supportPlanDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

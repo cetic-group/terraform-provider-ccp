@@ -47,7 +47,7 @@ type dbmysqlResourceModel struct {
 }
 
 func (r *dbmysqlResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_db_mysql_instance"
+	resp.TypeName = "ccp_db_mysql_instance"
 }
 
 func (r *dbmysqlResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

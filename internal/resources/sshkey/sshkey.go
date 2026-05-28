@@ -62,7 +62,7 @@ type sshKeyResourceModel struct {
 var nameValidatorPattern = regexp.MustCompile(`^[a-zA-Z0-9_\- ]+$`)
 
 func (r *sshKeyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_ssh_key"
+	resp.TypeName = "ccp_ssh_key"
 }
 
 func (r *sshKeyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

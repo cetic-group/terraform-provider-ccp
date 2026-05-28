@@ -32,7 +32,7 @@ type snapDSModel struct {
 }
 
 func (d *snapDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_container_snapshot"
+	resp.TypeName = "ccp_container_snapshot"
 }
 
 func (d *snapDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

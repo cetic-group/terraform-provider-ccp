@@ -39,7 +39,7 @@ type commitModel struct {
 }
 
 func (r *commitResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_commit"
+	resp.TypeName = "ccp_commit"
 }
 
 func (r *commitResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
