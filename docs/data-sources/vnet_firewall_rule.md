@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_vnet_firewall_rule Data Source - cetic-cloud-platform"
-subcategory: "Network"
+subcategory: "Networking"
 description: |-
   Look up a VNet firewall rule by (id, vnet_id).
 ---

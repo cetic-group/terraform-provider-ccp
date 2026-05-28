@@ -1,6 +1,6 @@
 ---
 page_title: "ccp_vnet Data Source - cetic-cloud-platform"
-subcategory: "Network"
+subcategory: "Networking"
 description: |-
   Look up an existing VNet inside a VPC by (id, vpc_id) or (name, vpc_id).
 ---
