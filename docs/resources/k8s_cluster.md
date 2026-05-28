@@ -29,8 +29,8 @@ resource "ccp_k8s_cluster" "dev" {
 ```
 
 Default behavior:
-- `tier = "dev"` → 1 LXC proxy fronting the apiserver (SPOF acceptable in dev).
-- `ingress_controller_enabled = true`, `ingress_controller_class = "incluster"`, `ingress_controller_scope = "internal"` → Cilium L2 announce on a private VNet IP, auto-allocated.
+- `tier = "dev"` → single apiserver frontend (SPOF acceptable in dev).
+- `ingress_controller_enabled = true`, `ingress_controller_class = "incluster"`, `ingress_controller_scope = "internal"` → ingress handled by Cilium inside the cluster on an auto-allocated VNet IP.
 - Apiserver private only (no public IP).
 - Pod CIDR `10.244.0.0/16`, service CIDR `10.96.0.0/12`.
 
@@ -52,12 +52,12 @@ resource "ccp_k8s_cluster" "prod" {
   vnet_id         = ccp_vnet.workers.id
   k8s_version     = "v1.34.8"
   os_template_key = "kube-v1-34-8"
-  tier            = "prod" # HA: 2 LXC proxies + Keepalived VRRP + floating VIP
+  tier            = "prod" # HA: redundant apiserver frontend with automatic failover
 
   # Apiserver: public access
   apiserver_public_ip_id = ccp_public_ip.apiserver.id
 
-  # Ingress: public, in-cluster Cilium L2 announce
+  # Ingress: public, handled in-cluster (no extra load balancer)
   ingress_controller_enabled = true
   ingress_controller_class   = "incluster"
   ingress_controller_scope   = "external"
@@ -84,9 +84,9 @@ resource "ccp_k8s_cluster" "prod" {
 ### Optional — cluster topology
 
 - `display_name` - Display name shown in the console. Defaults to `name`.
-- `tier` - (Forces new resource) Topology of the LXC proxy fronting the apiserver:
-    * `dev` (default) — single LXC proxy (SPOF acceptable in dev/staging).
-    * `prod` — 2 LXC proxies (primary + secondary) with Keepalived VRRP and a floating VIP, providing HA at the proxy layer.
+- `tier` - (Forces new resource) Topology of the apiserver frontend:
+    * `dev` (default) — single frontend (SPOF acceptable in dev/staging).
+    * `prod` — redundant frontend (primary + secondary) with automatic failover on a floating address, providing HA at the apiserver layer.
 
     Immutable on the backend — changing `tier` forces destroy + recreate.
 - `pod_cidr` - (Forces new resource) Pod IP range. Default `"10.244.0.0/16"`.
@@ -107,8 +107,8 @@ CETIC Cloud Kubernetes Service (CCKS) ships with an ingress controller deployed 
 
 - `ingress_controller_enabled` - Deploy an ingress controller at bootstrap. Mutable. Default `true`.
 - `ingress_controller_class` - Implementation:
-    * `incluster` (default) — Cilium L2 announce. The IP is advertised by the workers themselves on the VNet (ARP for internal scope, BGP via IPaaS edge for external). No extra infrastructure.
-    * `managed` — A CETIC Cloud LB (LXC + HAProxy/Keepalived) is provisioned in front of the cluster. Useful when you need L4 features like proxy protocol or per-listener TLS termination decoupled from the cluster.
+    * `incluster` (default) — Cilium-based ingress deployed inside the cluster. The IP is advertised by the workers themselves on the VNet (internal scope) or routed through CETIC Cloud's regional network (external scope). No extra load balancer to provision.
+    * `managed` — A dedicated CETIC Cloud load balancer (HA pair with automatic failover) is provisioned in front of the cluster. Useful when you need L4 features like proxy protocol or per-listener TLS termination decoupled from the cluster.
 - `ingress_controller_scope` - Network reachability:
     * `internal` (default) — Private IP on the VNet. Reachable only from inside the VPC (or via VPC peering).
     * `external` — Public IP routed through the regional IPaaS edge.
@@ -117,12 +117,12 @@ CETIC Cloud Kubernetes Service (CCKS) ships with an ingress controller deployed 
 
 #### Ingress controller — the four combinations
 
-| `class` | `scope` | Use case | IP source | Data path |
-|---------|---------|----------|-----------|-----------|
-| `incluster` | `internal` | Workloads only reached from inside the VPC (intranet, B2B over VPC peering) | Auto-allocated from VNet CIDR, or pin via `ingress_internal_ip` | Cilium L2 announce → ARP on VNet bridge → worker pod |
-| `incluster` | `external` | Public services with the lowest possible cost (no extra LB) | Auto-allocated, or pin via `ingress_public_ip_id` (region must match cluster) | IPaaS edge (DNAT) → WG tunnel → NAT GW → BGP /32 → worker pod (Cilium kube-proxy replacement intercepts in BPF) |
-| `managed` | `internal` | Internal services that need L4 features (proxy protocol, custom listeners) | Auto-allocated, or pin via `ingress_internal_ip` | LB LXC pair (VRRP VIP) → worker NodePort → Cilium → pod |
-| `managed` | `external` | Public services that need an external LB (TLS termination at the LB, full L4 control) | Auto-allocated, or pin via `ingress_public_ip_id` | IPaaS edge → LB public IP → LB LXC pair → worker NodePort → pod |
+| `class` | `scope` | Use case | IP source | Characteristics |
+|---------|---------|----------|-----------|-----------------|
+| `incluster` | `internal` | Workloads only reached from inside the VPC (intranet, B2B over VPC peering) | Auto-allocated from VNet CIDR, or pin via `ingress_internal_ip` | Handled by the Cilium ingress controller deployed inside the cluster — minimal cost, no extra load balancer |
+| `incluster` | `external` | Public services with the lowest possible cost | Auto-allocated, or pin via `ingress_public_ip_id` (region must match cluster) | The public IP routes to the workers through CETIC Cloud's regional network — no external load balancer to provision |
+| `managed` | `internal` | Internal services that need L4 features (proxy protocol, custom listeners) | Auto-allocated, or pin via `ingress_internal_ip` | Dedicated load balancer, HA pair with automatic failover on a floating address — TLS and L4 features decoupled from the cluster |
+| `managed` | `external` | Public services that need an external load balancer | Auto-allocated, or pin via `ingress_public_ip_id` | Dedicated load balancer exposed on the internet — TLS termination and full L4 control at a tier separate from the cluster |
 
 ### Optional — autoscaler
 
@@ -150,11 +150,13 @@ In addition to all arguments above, the following attributes are exported.
 
 - `ingress_public_ip_address` - Effective public IP of the ingress controller (Computed). Populated once the IP is reserved + bound — `scope = "external"` only.
 
-### Proxy topology (tier = "prod")
+### Apiserver frontend HA (tier = "prod")
 
-- `proxy_secondary_vmid` - Proxmox VMID of the secondary LXC proxy. `null` when `tier = "dev"`.
-- `proxy_secondary_node` - Proxmox node hosting the secondary proxy. `null` when `tier = "dev"`.
-- `proxy_vip_vnet` - Keepalived VRRP floating VIP shared between the two proxies. `null` when `tier = "dev"`.
+These attributes are populated when `tier = "prod"` and exist for observability of the redundant frontend behind the apiserver. They are `null` when `tier = "dev"`.
+
+- `proxy_secondary_vmid` - Internal identifier of the secondary apiserver frontend. Read-only.
+- `proxy_secondary_node` - Internal placement of the secondary apiserver frontend. Read-only.
+- `proxy_vip_vnet` - Floating address on the VNet shared between the two apiserver frontends — this is the IP the kubeconfig points at when HA is active.
 
 ## Import
 
