@@ -28,19 +28,19 @@ func New() datasource.DataSource { return &k8sClusterDataSource{} }
 type k8sClusterDataSource struct{ client *client.Client }
 
 type k8sClusterDSModel struct {
-	ID            types.String `tfsdk:"id"`
-	Name          types.String `tfsdk:"name"`
-	DisplayName   types.String `tfsdk:"display_name"`
-	Region        types.String `tfsdk:"region"`
-	K8sVersion    types.String `tfsdk:"k8s_version"`
-	OsTemplateKey types.String `tfsdk:"os_template_key"`
-	VpcID         types.String `tfsdk:"vpc_id"`
-	VnetID        types.String `tfsdk:"vnet_id"`
-	PodCIDR       types.String `tfsdk:"pod_cidr"`
-	ServiceCIDR   types.String `tfsdk:"service_cidr"`
-	ApiEndpoint   types.String `tfsdk:"api_endpoint"`
-	PublicIPID    types.String `tfsdk:"public_ip_id"`
-	PublicIPAddress types.String `tfsdk:"public_ip_address"`
+	ID                  types.String `tfsdk:"id"`
+	Name                types.String `tfsdk:"name"`
+	DisplayName         types.String `tfsdk:"display_name"`
+	Region              types.String `tfsdk:"region"`
+	K8sVersion          types.String `tfsdk:"k8s_version"`
+	OsTemplateKey       types.String `tfsdk:"os_template_key"`
+	VpcID               types.String `tfsdk:"vpc_id"`
+	VnetID              types.String `tfsdk:"vnet_id"`
+	PodCIDR             types.String `tfsdk:"pod_cidr"`
+	ServiceCIDR         types.String `tfsdk:"service_cidr"`
+	ApiEndpoint         types.String `tfsdk:"api_endpoint"`
+	ApiserverPublicIPID types.String `tfsdk:"apiserver_public_ip_id"`
+	PublicIPAddress     types.String `tfsdk:"public_ip_address"`
 	// Autoscaler
 	AutoscalerScaleDownDelayAfterAdd types.String `tfsdk:"autoscaler_scale_down_delay_after_add"`
 	AutoscalerScaleDownUnneededTime  types.String `tfsdk:"autoscaler_scale_down_unneeded_time"`
@@ -96,7 +96,7 @@ func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 			"pod_cidr":                              schema.StringAttribute{Computed: true},
 			"service_cidr":                          schema.StringAttribute{Computed: true},
 			"api_endpoint":                          schema.StringAttribute{Computed: true},
-			"public_ip_id":                          schema.StringAttribute{Computed: true},
+			"apiserver_public_ip_id":                schema.StringAttribute{Computed: true},
 			"public_ip_address":                     schema.StringAttribute{Computed: true},
 			"autoscaler_scale_down_delay_after_add": schema.StringAttribute{Computed: true},
 			"autoscaler_scale_down_unneeded_time":   schema.StringAttribute{Computed: true},
@@ -244,9 +244,9 @@ func (d *k8sClusterDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		state.ApiEndpoint = types.StringNull()
 	}
 	if found.PublicIPID != nil {
-		state.PublicIPID = types.StringValue(*found.PublicIPID)
+		state.ApiserverPublicIPID = types.StringValue(*found.PublicIPID)
 	} else {
-		state.PublicIPID = types.StringNull()
+		state.ApiserverPublicIPID = types.StringNull()
 	}
 	if found.PublicIPAddress != nil {
 		state.PublicIPAddress = types.StringValue(*found.PublicIPAddress)
