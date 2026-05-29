@@ -616,13 +616,22 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		v := plan.IngressControllerClass.ValueString()
 		upd.IngressControllerClass = &v
 	}
-	if !plan.IngressPublicIPID.Equal(state.IngressPublicIPID) {
-		v := plan.IngressPublicIPID.ValueString()
-		upd.IngressPublicIPID = &v
+	// Ne jamais envoyer une valeur Computed encore Unknown (known-after-apply)
+	// ni une chaîne vide : `ingress_public_ip_id` part alors en `""` → le
+	// backend tente de la parser en UUID → 422. Ces champs sont recalculés par
+	// le backend selon le scope ingress ; on ne les pousse que si l'utilisateur
+	// a fourni une valeur concrète non vide.
+	if !plan.IngressPublicIPID.Equal(state.IngressPublicIPID) &&
+		!plan.IngressPublicIPID.IsNull() && !plan.IngressPublicIPID.IsUnknown() {
+		if v := plan.IngressPublicIPID.ValueString(); v != "" {
+			upd.IngressPublicIPID = &v
+		}
 	}
-	if !plan.IngressInternalIP.Equal(state.IngressInternalIP) {
-		v := plan.IngressInternalIP.ValueString()
-		upd.IngressInternalIP = &v
+	if !plan.IngressInternalIP.Equal(state.IngressInternalIP) &&
+		!plan.IngressInternalIP.IsNull() && !plan.IngressInternalIP.IsUnknown() {
+		if v := plan.IngressInternalIP.ValueString(); v != "" {
+			upd.IngressInternalIP = &v
+		}
 	}
 
 	updated, err := r.client.UpdateK8sCluster(ctx, state.ID.ValueString(), upd)
