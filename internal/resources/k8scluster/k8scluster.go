@@ -645,14 +645,21 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			npReq := client.K8sNodePoolUpdateRequest{}
 			rep := int(ip.Replicas.ValueInt64())
 			npReq.Replicas = &rep
+			// Retirer min/max (null) → on envoie explicitement 0 : annotations
+			// autoscaler min=0/max=0 = autoscaler désactivé, le pool reste à
+			// `replicas`. Set min/max → autoscaler activé. C'est le toggle par
+			// présence, aligné sur ccp_k8s_node_pool (le backend PATCH ne peut
+			// pas effacer un None, mais applique 0).
+			minZ := 0
 			if !ip.MinSize.IsNull() && !ip.MinSize.IsUnknown() {
-				v := int(ip.MinSize.ValueInt64())
-				npReq.MinSize = &v
+				minZ = int(ip.MinSize.ValueInt64())
 			}
+			npReq.MinSize = &minZ
+			maxZ := 0
 			if !ip.MaxSize.IsNull() && !ip.MaxSize.IsUnknown() {
-				v := int(ip.MaxSize.ValueInt64())
-				npReq.MaxSize = &v
+				maxZ = int(ip.MaxSize.ValueInt64())
 			}
+			npReq.MaxSize = &maxZ
 			if _, err := r.client.UpdateK8sNodePool(ctx, state.ID.ValueString(), poolID, npReq); err != nil {
 				resp.Diagnostics.AddError("Failed to update initial node pool", err.Error())
 				return
