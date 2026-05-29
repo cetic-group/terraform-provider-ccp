@@ -530,46 +530,50 @@ type VMScaleSetUpdateRequest struct {
 // création, utiliser `ccp_k8s_node_pool` (séparée).
 
 type K8sCluster struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	DisplayName    *string   `json:"display_name,omitempty"`
-	Region         string    `json:"region"`
-	K8sVersion     string    `json:"k8s_version"`
-	OsTemplateKey  string    `json:"os_template_key"`
-	VpcID          string    `json:"vpc_id"`
-	VnetID         string    `json:"vnet_id"`
-	PodCIDR        string    `json:"pod_cidr"`
-	ServiceCIDR    string    `json:"service_cidr"`
-	ApiEndpoint    *string   `json:"api_endpoint,omitempty"`
-	PublicIPID     *string   `json:"public_ip_id,omitempty"`
-	PublicIPAddress *string  `json:"public_ip_address,omitempty"`
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	DisplayName     *string `json:"display_name,omitempty"`
+	Region          string  `json:"region"`
+	K8sVersion      string  `json:"k8s_version"`
+	OsTemplateKey   string  `json:"os_template_key"`
+	VpcID           string  `json:"vpc_id"`
+	VnetID          string  `json:"vnet_id"`
+	PodCIDR         string  `json:"pod_cidr"`
+	ServiceCIDR     string  `json:"service_cidr"`
+	ApiEndpoint     *string `json:"api_endpoint,omitempty"`
+	PublicIPID      *string `json:"public_ip_id,omitempty"`
+	PublicIPAddress *string `json:"public_ip_address,omitempty"`
 	// Cluster Autoscaler timers
 	AutoscalerScaleDownDelayAfterAdd string `json:"autoscaler_scale_down_delay_after_add"`
 	AutoscalerScaleDownUnneededTime  string `json:"autoscaler_scale_down_unneeded_time"`
 	// Ingress controller
-	IngressControllerEnabled  bool    `json:"ingress_controller_enabled"`
-	IngressControllerScope    string  `json:"ingress_controller_scope"`
-	IngressControllerClass    string  `json:"ingress_controller_class"`
-	IngressPublicIPID         *string `json:"ingress_public_ip_id,omitempty"`
-	IngressPublicIPAddress    *string `json:"ingress_public_ip_address,omitempty"`
-	IngressInternalIP         *string `json:"ingress_internal_ip,omitempty"`
+	IngressControllerEnabled bool    `json:"ingress_controller_enabled"`
+	IngressControllerScope   string  `json:"ingress_controller_scope"`
+	IngressControllerClass   string  `json:"ingress_controller_class"`
+	IngressPublicIPID        *string `json:"ingress_public_ip_id,omitempty"`
+	IngressPublicIPAddress   *string `json:"ingress_public_ip_address,omitempty"`
+	IngressInternalIP        *string `json:"ingress_internal_ip,omitempty"`
 	// Tier — `dev` (single LXC proxy) or `prod` (HA Keepalived VRRP + VIP).
 	// Immutable on the backend; provider exposes it as Optional+Computed+ForceNew.
-	Tier               string  `json:"tier"`
-	ProxySecondaryVmid *int64  `json:"proxy_secondary_vmid,omitempty"`
-	ProxySecondaryNode *string `json:"proxy_secondary_node,omitempty"`
-	ProxyVipVnet       *string `json:"proxy_vip_vnet,omitempty"`
-	Status         string    `json:"status"`
-	ErrorMessage   *string   `json:"error_message,omitempty"`
-	Tags           []string  `json:"tags"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	Tier               string    `json:"tier"`
+	ProxySecondaryVmid *int64    `json:"proxy_secondary_vmid,omitempty"`
+	ProxySecondaryNode *string   `json:"proxy_secondary_node,omitempty"`
+	ProxyVipVnet       *string   `json:"proxy_vip_vnet,omitempty"`
+	Status             string    `json:"status"`
+	ErrorMessage       *string   `json:"error_message,omitempty"`
+	Tags               []string  `json:"tags"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 type K8sInitialPool struct {
 	Name     string `json:"name"`
 	Plan     string `json:"plan"`
 	Replicas int    `json:"replicas"`
+	// Autoscaler — min/max (NULL = pool exclu de l'autoscale). Parité avec les
+	// node pools additionnels.
+	MinSize *int `json:"min_size,omitempty"`
+	MaxSize *int `json:"max_size,omitempty"`
 }
 
 type K8sClusterCreateRequest struct {
@@ -594,8 +598,8 @@ type K8sClusterCreateRequest struct {
 	IngressPublicIPID        *string `json:"ingress_public_ip_id,omitempty"`
 	IngressInternalIP        *string `json:"ingress_internal_ip,omitempty"`
 	// Apiserver IP (optionnel, auto-attaché après provisioning)
-	ApiserverPublicIPID   *string `json:"apiserver_public_ip_id,omitempty"`
-	ApiserverInternalIP   *string `json:"apiserver_internal_ip,omitempty"`
+	ApiserverPublicIPID *string `json:"apiserver_public_ip_id,omitempty"`
+	ApiserverInternalIP *string `json:"apiserver_internal_ip,omitempty"`
 	// Tier — `dev` (default, single LXC proxy) or `prod` (HA Keepalived VRRP).
 	// Immutable on the backend — changing requires recreate.
 	Tier string `json:"tier,omitempty"`
@@ -678,28 +682,28 @@ type K8sNodePoolUpdateRequest struct {
 // ─── DB PostgreSQL Instance (DBaaS — Phase 5) ────────────────────────────────
 
 type DbPgInstance struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	Region          string    `json:"region"`
-	Engine          string    `json:"engine"`
-	EngineVersion   *string   `json:"engine_version,omitempty"`
-	Tier            string    `json:"tier"`
-	Plan            string    `json:"plan"`
-	VpcID           string    `json:"vpc_id"`
-	VnetID          string    `json:"vnet_id"`
-	Status          string    `json:"status"`
-	EndpointVnetIP  *string   `json:"endpoint_vnet_ip,omitempty"`
-	EndpointPort    *int      `json:"endpoint_port,omitempty"`
-	AdminUsername   *string   `json:"admin_username,omitempty"`
-	AdminDatabase   *string   `json:"admin_database,omitempty"`
-	Replicas        int       `json:"replicas"`
-	StorageGB       int       `json:"storage_gb"`
-	CPUMillicores   int       `json:"cpu_millicores"`
-	MemoryMB        int       `json:"memory_mb"`
-	ErrorMessage    *string   `json:"error_message,omitempty"`
-	Tags            []string  `json:"tags"`
-	PublicIPID      *string   `json:"public_ip_id,omitempty"`
-	PublicIPAddress *string   `json:"public_ip_address,omitempty"`
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Region          string   `json:"region"`
+	Engine          string   `json:"engine"`
+	EngineVersion   *string  `json:"engine_version,omitempty"`
+	Tier            string   `json:"tier"`
+	Plan            string   `json:"plan"`
+	VpcID           string   `json:"vpc_id"`
+	VnetID          string   `json:"vnet_id"`
+	Status          string   `json:"status"`
+	EndpointVnetIP  *string  `json:"endpoint_vnet_ip,omitempty"`
+	EndpointPort    *int     `json:"endpoint_port,omitempty"`
+	AdminUsername   *string  `json:"admin_username,omitempty"`
+	AdminDatabase   *string  `json:"admin_database,omitempty"`
+	Replicas        int      `json:"replicas"`
+	StorageGB       int      `json:"storage_gb"`
+	CPUMillicores   int      `json:"cpu_millicores"`
+	MemoryMB        int      `json:"memory_mb"`
+	ErrorMessage    *string  `json:"error_message,omitempty"`
+	Tags            []string `json:"tags"`
+	PublicIPID      *string  `json:"public_ip_id,omitempty"`
+	PublicIPAddress *string  `json:"public_ip_address,omitempty"`
 }
 
 type DbPgInstanceCreateRequest struct {
@@ -840,14 +844,14 @@ type DbFerretdbInstanceCreateRequest struct {
 // ─── Organization ──────────────────────────────────────────────────────────
 
 type OrganizationResource struct {
-	ID                     string    `json:"id"`
-	Name                   string    `json:"name"`
-	Description            *string   `json:"description,omitempty"`
-	IsDefault              bool      `json:"is_default"`
-	Tags                   []string  `json:"tags"`
-	HasPaymentMethod       bool      `json:"has_payment_method"`
-	HasSubscription        bool      `json:"has_subscription"`
-	CreatedAt              time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Description      *string   `json:"description,omitempty"`
+	IsDefault        bool      `json:"is_default"`
+	Tags             []string  `json:"tags"`
+	HasPaymentMethod bool      `json:"has_payment_method"`
+	HasSubscription  bool      `json:"has_subscription"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type OrganizationCreateRequest struct {
@@ -880,20 +884,20 @@ type ApiKeyCreateResponse struct {
 }
 
 type ApiKeyCreateRequest struct {
-	Name           string   `json:"name"`
-	Scopes         []string `json:"scopes"`
-	ExpiresInDays  *int     `json:"expires_in_days,omitempty"`
+	Name          string   `json:"name"`
+	Scopes        []string `json:"scopes"`
+	ExpiresInDays *int     `json:"expires_in_days,omitempty"`
 }
 
 // ─── Org Member ───────────────────────────────────────────────────────────
 
 type OrgMember struct {
-	ID              string    `json:"id"`
-	Email           string    `json:"email"`
-	Role            string    `json:"role"` // owner | admin | member | viewer
-	MemberTenantID  *string   `json:"member_tenant_id,omitempty"`
-	AcceptedAt      *string   `json:"accepted_at,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	Email          string    `json:"email"`
+	Role           string    `json:"role"` // owner | admin | member | viewer
+	MemberTenantID *string   `json:"member_tenant_id,omitempty"`
+	AcceptedAt     *string   `json:"accepted_at,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type OrgMemberCreateRequest struct {
@@ -927,18 +931,16 @@ type VnetPeeringCreateRequest struct {
 
 // ─── VPC Peering ──────────────────────────────────────────────────────────
 
-
-
 // ─── Support Ticket ────────────────────────────────────────────────────────
 
 type SupportTicket struct {
-	ID         string    `json:"id"`
-	Subject    string    `json:"subject"`
-	Category   string    `json:"category"` // bug | feature | billing | network | infra | question
-	Priority   string    `json:"priority"` // low | normal | high | urgent
-	Status     string    `json:"status"`   // open | pending_admin | pending_customer | resolved | closed
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID        string    `json:"id"`
+	Subject   string    `json:"subject"`
+	Category  string    `json:"category"` // bug | feature | billing | network | infra | question
+	Priority  string    `json:"priority"` // low | normal | high | urgent
+	Status    string    `json:"status"`   // open | pending_admin | pending_customer | resolved | closed
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SupportTicketCreateRequest struct {
@@ -951,11 +953,11 @@ type SupportTicketCreateRequest struct {
 // ─── Object Storage Key (subuser RGW) ─────────────────────────────────────
 
 type ObjectStorageKey struct {
-	ID              string     `json:"id"`
-	Region          string     `json:"region"`
-	Label           string     `json:"label"`
-	AccessLevel     string     `json:"access_level"` // read|write|readwrite|full
-	AccessKeyPrefix string     `json:"access_key_prefix"`
+	ID              string `json:"id"`
+	Region          string `json:"region"`
+	Label           string `json:"label"`
+	AccessLevel     string `json:"access_level"` // read|write|readwrite|full
+	AccessKeyPrefix string `json:"access_key_prefix"`
 	// Credentials — only returned at creation time.
 	AccessKey   string  `json:"access_key,omitempty"`
 	SecretKey   string  `json:"secret_key,omitempty"`
@@ -966,10 +968,10 @@ type ObjectStorageKey struct {
 }
 
 type ObjectStorageKeyCreateRequest struct {
-	Region          string `json:"region"`
-	Label           string `json:"label"`
-	AccessLevel     string `json:"access_level"`
-	ExpiresInDays   *int   `json:"expires_in_days,omitempty"`
+	Region        string `json:"region"`
+	Label         string `json:"label"`
+	AccessLevel   string `json:"access_level"`
+	ExpiresInDays *int   `json:"expires_in_days,omitempty"`
 }
 
 // ─── IPaaS Pool (admin only) ───────────────────────────────────────────────
@@ -1038,14 +1040,14 @@ type ContainerSnapshotCreateRequest struct {
 // ─── VM Snapshot ─────────────────────────────────────────────────────────────
 
 type VmSnapshot struct {
-	ID          string  `json:"id"`
-	VmInstanceID string `json:"vm_instance_id"`
-	Name        string  `json:"name"`
-	Description *string `json:"description,omitempty"`
-	Status      string  `json:"status"`
-	SizeBytes   *int64  `json:"size_bytes,omitempty"`
-	ErrorMsg    *string `json:"error_message,omitempty"`
-	CreatedAt   string  `json:"created_at"`
+	ID           string  `json:"id"`
+	VmInstanceID string  `json:"vm_instance_id"`
+	Name         string  `json:"name"`
+	Description  *string `json:"description,omitempty"`
+	Status       string  `json:"status"`
+	SizeBytes    *int64  `json:"size_bytes,omitempty"`
+	ErrorMsg     *string `json:"error_message,omitempty"`
+	CreatedAt    string  `json:"created_at"`
 }
 
 type VmSnapshotCreateRequest struct {
@@ -1122,13 +1124,13 @@ type QemuTemplate struct {
 // DbPlan represents a database plan (per engine).
 // GET /v1/db/plans?engine=<engine>
 type DbPlan struct {
-	Key            string   `json:"key"`
-	Name           *string  `json:"name,omitempty"`
-	Engine         string   `json:"engine"`
-	CPUMillicores  int      `json:"cpu_millicores"`
-	MemoryMB       int      `json:"memory_mb"`
-	PriceEURMonth  *float64 `json:"price_eur_month,omitempty"`
-	IsDefault      bool     `json:"is_default"`
+	Key           string   `json:"key"`
+	Name          *string  `json:"name,omitempty"`
+	Engine        string   `json:"engine"`
+	CPUMillicores int      `json:"cpu_millicores"`
+	MemoryMB      int      `json:"memory_mb"`
+	PriceEURMonth *float64 `json:"price_eur_month,omitempty"`
+	IsDefault     bool     `json:"is_default"`
 }
 
 // DbEngineVersion represents an active engine version exposed to clients.

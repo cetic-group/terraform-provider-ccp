@@ -44,6 +44,8 @@ type initialPoolModel struct {
 	Name     types.String `tfsdk:"name"`
 	Plan     types.String `tfsdk:"plan"`
 	Replicas types.Int64  `tfsdk:"replicas"`
+	MinSize  types.Int64  `tfsdk:"min_size"`
+	MaxSize  types.Int64  `tfsdk:"max_size"`
 }
 
 type k8sResourceModel struct {
@@ -280,7 +282,7 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 		},
 		Blocks: map[string]schema.Block{
 			"initial_pool": schema.SingleNestedBlock{
-				MarkdownDescription: "Initial worker pool created with the cluster (default: name=`default`, plan=`small`, replicas=1). Forces replacement.",
+				MarkdownDescription: "Initial worker pool created with the cluster (default: name=`default`, plan=`small`, replicas=1). `name`/`plan` force replacement ; `replicas`/`min_size`/`max_size` are mutable in-place.",
 				Attributes: map[string]schema.Attribute{
 					"name": schema.StringAttribute{
 						Required:      true,
@@ -292,6 +294,14 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					},
 					"replicas": schema.Int64Attribute{
 						Required: true,
+					},
+					"min_size": schema.Int64Attribute{
+						MarkdownDescription: "Cluster autoscaler lower bound for this pool. Set `min_size` **and** `max_size` to enable the autoscaler on the initial pool (mutable in-place). Leave both unset for a fixed-size pool.",
+						Optional:            true,
+					},
+					"max_size": schema.Int64Attribute{
+						MarkdownDescription: "Cluster autoscaler upper bound for this pool. Requires `min_size`.",
+						Optional:            true,
 					},
 				},
 			},
@@ -423,6 +433,14 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		pool.Name = plan.InitialPool.Name.ValueString()
 		pool.Plan = plan.InitialPool.Plan.ValueString()
 		pool.Replicas = int(plan.InitialPool.Replicas.ValueInt64())
+		if !plan.InitialPool.MinSize.IsNull() && !plan.InitialPool.MinSize.IsUnknown() {
+			v := int(plan.InitialPool.MinSize.ValueInt64())
+			pool.MinSize = &v
+		}
+		if !plan.InitialPool.MaxSize.IsNull() && !plan.InitialPool.MaxSize.IsUnknown() {
+			v := int(plan.InitialPool.MaxSize.ValueInt64())
+			pool.MaxSize = &v
+		}
 	}
 
 	// `tier` is Optional+Computed with Default("dev"). Forward whatever the
@@ -594,6 +612,49 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			_, err := r.client.DetachIPFromK8sCluster(ctx, state.ID.ValueString())
 			if err != nil {
 				resp.Diagnostics.AddError("Failed to detach IP from K8s cluster", err.Error())
+				return
+			}
+		}
+	}
+
+	// ── Initial pool — réconciliation in-place (replicas + autoscaler min/max) ─
+	// Le backend ne met pas à jour l'initial pool via le PATCH cluster ; il vit
+	// comme un node pool. On retrouve ce node pool par son nom et on le PATCH
+	// directement. Couvre le scale (replicas) ET l'activation/ajustement de
+	// l'autoscaler (min/max) sur l'initial pool, sans recréer le cluster.
+	if plan.InitialPool != nil && state.InitialPool != nil {
+		ip, sp := plan.InitialPool, state.InitialPool
+		if !ip.Replicas.Equal(sp.Replicas) || !ip.MinSize.Equal(sp.MinSize) || !ip.MaxSize.Equal(sp.MaxSize) {
+			pools, err := r.client.ListK8sNodePools(ctx, state.ID.ValueString())
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to list node pools for initial pool reconcile", err.Error())
+				return
+			}
+			poolID := ""
+			for _, p := range pools {
+				if p.Name == ip.Name.ValueString() {
+					poolID = p.ID
+					break
+				}
+			}
+			if poolID == "" {
+				resp.Diagnostics.AddError("Initial node pool not found",
+					fmt.Sprintf("No node pool named %q on cluster %s", ip.Name.ValueString(), state.ID.ValueString()))
+				return
+			}
+			npReq := client.K8sNodePoolUpdateRequest{}
+			rep := int(ip.Replicas.ValueInt64())
+			npReq.Replicas = &rep
+			if !ip.MinSize.IsNull() && !ip.MinSize.IsUnknown() {
+				v := int(ip.MinSize.ValueInt64())
+				npReq.MinSize = &v
+			}
+			if !ip.MaxSize.IsNull() && !ip.MaxSize.IsUnknown() {
+				v := int(ip.MaxSize.ValueInt64())
+				npReq.MaxSize = &v
+			}
+			if _, err := r.client.UpdateK8sNodePool(ctx, state.ID.ValueString(), poolID, npReq); err != nil {
+				resp.Diagnostics.AddError("Failed to update initial node pool", err.Error())
 				return
 			}
 		}

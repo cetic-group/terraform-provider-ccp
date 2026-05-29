@@ -130,7 +130,11 @@ CETIC Cloud Kubernetes Service (CCKS) ships with an ingress controller deployed 
 - `autoscaler_scale_down_delay_after_add` - Duration the autoscaler waits after a scale-up before considering scale-down (e.g. `"10m"`). Default `"10m"`.
 - `autoscaler_scale_down_unneeded_time` - Duration a node must be unneeded before removal (e.g. `"10m"`). Default `"10m"`.
 
-The per-pool autoscaler is configured on [`ccp_k8s_node_pool`](k8s_node_pool.md) via `min_size` / `max_size`.
+The per-pool autoscaler is configured via `min_size` / `max_size`:
+- on the **initial pool** through the `initial_pool` block (`min_size` + `max_size`, mutable in-place — set both to enable, adjust to retune);
+- on **additional pools** through [`ccp_k8s_node_pool`](k8s_node_pool.md).
+
+Leave both `min_size`/`max_size` unset for a fixed-size pool. Note: enabling or retuning the autoscaler is in-place, but the backend cannot currently *disable* it on an existing pool by clearing `min_size`/`max_size` — recreate the pool to remove autoscaling.
 
 ## Attributes Reference
 
