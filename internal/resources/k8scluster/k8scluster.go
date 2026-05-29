@@ -267,8 +267,10 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"status": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				// PAS de UseStateForUnknown : `status` est volatil (un update peut
+				// le faire passer "active" → "updating") → pinner l'ancien état
+				// causerait "Provider produced inconsistent result". Known-after-apply.
+				Computed: true,
 			},
 			"tags": schema.ListAttribute{
 				ElementType: types.StringType,

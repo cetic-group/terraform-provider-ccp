@@ -110,8 +110,12 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "Set of Kubernetes taints applied to all nodes in this pool.",
 			},
 			"status": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				// PAS de UseStateForUnknown : `status` est volatil (un scale/labels/
+				// taints update le fait passer "active" → "updating" → "active").
+				// Pinner la valeur d'état précédente ferait planifier "active" puis
+				// l'apply retourne "updating" → "Provider produced inconsistent result".
+				// On le laisse known-after-apply à chaque changement.
+				Computed: true,
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
