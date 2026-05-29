@@ -244,6 +244,13 @@ func (r *dbvalkeyResource) Delete(ctx context.Context, req resource.DeleteReques
 			return
 		}
 		resp.Diagnostics.AddError("Failed to delete Valkey instance", err.Error())
+		return
+	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetDbValkey(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm Valkey instance deletion", err.Error())
 	}
 }
 

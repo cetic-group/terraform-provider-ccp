@@ -596,6 +596,12 @@ func (r *lbResource) Delete(ctx context.Context, req resource.DeleteRequest, res
 		resp.Diagnostics.AddError("Failed to delete Load Balancer", err.Error())
 		return
 	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetLoadBalancer(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm Load Balancer deletion", err.Error())
+	}
 }
 
 func (r *lbResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

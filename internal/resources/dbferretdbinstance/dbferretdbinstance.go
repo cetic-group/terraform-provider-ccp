@@ -202,6 +202,13 @@ func (r *dbferretdbResource) Delete(ctx context.Context, req resource.DeleteRequ
 			return
 		}
 		resp.Diagnostics.AddError("Failed to delete FerretDB instance", err.Error())
+		return
+	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetDbFerretdb(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm FerretDB instance deletion", err.Error())
 	}
 }
 

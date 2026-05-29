@@ -652,6 +652,19 @@ func (r *k8sResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 		resp.Diagnostics.AddError("Failed to delete K8s cluster", err.Error())
 		return
 	}
+	// Attendre la suppression RÉELLE avant de rendre la main. Le backend fait
+	// le teardown en asynchrone (cleanup namespace + proxy, plusieurs minutes)
+	// et garde la row en `deleting` jusqu'à la fin. Sans ce wait, un replace
+	// (destroy-then-create avec le même nom) repart en Create pendant que
+	// l'ancien cluster existe encore → `POST /v1/k8s/clusters` renvoie 409
+	// "un cluster nommé X existe déjà". Polling jusqu'à 404 = nom libéré.
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetK8sCluster(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm K8s cluster deletion", err.Error())
+		return
+	}
 }
 
 func (r *k8sResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

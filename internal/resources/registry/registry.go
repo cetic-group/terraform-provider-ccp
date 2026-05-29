@@ -380,6 +380,13 @@ func (r *registryResource) Delete(ctx context.Context, req resource.DeleteReques
 			return
 		}
 		resp.Diagnostics.AddError("Failed to delete CETIC Container Registry", err.Error())
+		return
+	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetRegistry(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm CETIC Container Registry deletion", err.Error())
 	}
 }
 

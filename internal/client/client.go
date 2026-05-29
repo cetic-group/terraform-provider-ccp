@@ -84,6 +84,35 @@ func IsConflict(err error) bool {
 	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict
 }
 
+// PollUntilDeleted blocks until `get` returns a NotFound error (resource is
+// really gone server-side) or the timeout expires. Call it at the end of a
+// resource Delete for any resource whose backend teardown is asynchronous
+// (the API accepts the DELETE then tears down in the background, keeping the
+// row in a `deleting` state for a while). Without this wait, a Terraform
+// replace (destroy-then-create with the same name) re-enters Create while the
+// old resource still exists → the backend POST returns 409 "already exists".
+// Polling until 404 guarantees the name is free before Create runs.
+func PollUntilDeleted(ctx context.Context, timeout time.Duration, get func(context.Context) error) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		err := get(ctx)
+		if err != nil {
+			if IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("deletion polling timeout after %s (resource still present server-side)", timeout)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+	}
+}
+
 // do issues a request and decodes the JSON response into out. If out is nil,
 // the body is discarded. Non-2xx returns *APIError.
 func (c *Client) do(ctx context.Context, method, path string, body any, out any) error {

@@ -263,6 +263,13 @@ func (r *dbpgResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 			return
 		}
 		resp.Diagnostics.AddError("Failed to delete PostgreSQL instance", err.Error())
+		return
+	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetDbPg(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm PostgreSQL instance deletion", err.Error())
 	}
 }
 
