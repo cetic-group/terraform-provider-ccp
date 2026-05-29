@@ -567,9 +567,11 @@ type K8sCluster struct {
 }
 
 type K8sInitialPool struct {
-	Name     string `json:"name"`
-	Plan     string `json:"plan"`
-	Replicas int    `json:"replicas"`
+	Name     string            `json:"name"`
+	Plan     string            `json:"plan"`
+	Replicas int               `json:"replicas"`
+	Labels   map[string]string `json:"labels,omitempty"`
+	Taints   []NodePoolTaint   `json:"taints,omitempty"`
 	// Autoscaler — min/max (NULL = pool exclu de l'autoscale). Parité avec les
 	// node pools additionnels.
 	MinSize *int `json:"min_size,omitempty"`
