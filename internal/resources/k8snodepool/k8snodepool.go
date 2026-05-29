@@ -206,14 +206,22 @@ func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) 
 	m.Name = types.StringValue(p.Name)
 	m.Plan = types.StringValue(p.Plan)
 	m.Replicas = types.Int64Value(int64(p.Replicas))
-	if p.MinSize != nil {
-		m.MinSize = types.Int64Value(int64(*p.MinSize))
+	// L'autoscaler est DÉSACTIVÉ ⟺ max_size absent ou 0 (annotations min=0/max=0).
+	// Le backend stocke 0/0 quand on désactive (un PATCH ne peut pas effacer un
+	// champ → on envoie 0). Comme `min_size`/`max_size` sont Optional (non-Computed),
+	// le state final doit == la config : on normalise donc l'état désactivé (0/0)
+	// vers null/null, sinon "inconsistent result: was null, but now 0".
+	// Quand l'autoscaler est activé (max_size > 0), on garde les valeurs réelles —
+	// y compris min_size=0 (scale-to-zero légitime).
+	if p.MaxSize != nil && *p.MaxSize > 0 {
+		m.MaxSize = types.Int64Value(int64(*p.MaxSize))
+		if p.MinSize != nil {
+			m.MinSize = types.Int64Value(int64(*p.MinSize))
+		} else {
+			m.MinSize = types.Int64Null()
+		}
 	} else {
 		m.MinSize = types.Int64Null()
-	}
-	if p.MaxSize != nil {
-		m.MaxSize = types.Int64Value(int64(*p.MaxSize))
-	} else {
 		m.MaxSize = types.Int64Null()
 	}
 	m.Status = types.StringValue(p.Status)
