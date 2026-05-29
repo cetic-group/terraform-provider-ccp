@@ -56,7 +56,7 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `pod_cidr` — Pod network CIDR.
 - `service_cidr` — Service network CIDR.
 - `api_endpoint` — Kubernetes API endpoint URL (`https://host:port`), available once the cluster is `active`.
-- `public_ip_id` — UUID of the public IP attached to the apiserver (nullable).
+- `apiserver_public_ip_id` — UUID of the public IP attached to the apiserver (nullable).
 - `public_ip_address` — Public IP address of the apiserver (nullable).
 - `autoscaler_scale_down_delay_after_add` — Cluster Autoscaler — duration to wait before scaling down after a scale-up event.
 - `autoscaler_scale_down_unneeded_time` — Cluster Autoscaler — duration a node must be unneeded before removal.

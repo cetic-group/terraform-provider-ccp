@@ -62,18 +62,17 @@ type k8sResourceModel struct {
 	AutoscalerScaleDownDelayAfterAdd types.String `tfsdk:"autoscaler_scale_down_delay_after_add"`
 	AutoscalerScaleDownUnneededTime  types.String `tfsdk:"autoscaler_scale_down_unneeded_time"`
 	// Ingress controller (mutable)
-	IngressControllerEnabled  types.Bool   `tfsdk:"ingress_controller_enabled"`
-	IngressControllerScope    types.String `tfsdk:"ingress_controller_scope"`
-	IngressControllerClass    types.String `tfsdk:"ingress_controller_class"`
-	IngressPublicIPID         types.String `tfsdk:"ingress_public_ip_id"`
-	IngressInternalIP         types.String `tfsdk:"ingress_internal_ip"`
-	IngressPublicIPAddress    types.String `tfsdk:"ingress_public_ip_address"`
-	// Apiserver IP (create-time only)
-	ApiserverPublicIPID  types.String `tfsdk:"apiserver_public_ip_id"`
-	ApiserverInternalIP  types.String `tfsdk:"apiserver_internal_ip"`
-	// Apiserver public IP (attach/detach, mutable)
-	PublicIPID      types.String `tfsdk:"public_ip_id"`
-	PublicIPAddress types.String `tfsdk:"public_ip_address"`
+	IngressControllerEnabled types.Bool   `tfsdk:"ingress_controller_enabled"`
+	IngressControllerScope   types.String `tfsdk:"ingress_controller_scope"`
+	IngressControllerClass   types.String `tfsdk:"ingress_controller_class"`
+	IngressPublicIPID        types.String `tfsdk:"ingress_public_ip_id"`
+	IngressInternalIP        types.String `tfsdk:"ingress_internal_ip"`
+	IngressPublicIPAddress   types.String `tfsdk:"ingress_public_ip_address"`
+	// Apiserver public IP : `apiserver_public_ip_id` est mutable (attach/détach),
+	// relu du backend. `apiserver_internal_ip` reste create-time (ForceNew).
+	ApiserverPublicIPID types.String `tfsdk:"apiserver_public_ip_id"`
+	ApiserverInternalIP types.String `tfsdk:"apiserver_internal_ip"`
+	PublicIPAddress     types.String `tfsdk:"public_ip_address"`
 	// Tier (create-time only, immutable)
 	Tier types.String `tfsdk:"tier"`
 	// Proxy HA (read-only, only populated for tier=prod)
@@ -201,22 +200,19 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			// ── Apiserver IP (create-time) ──────────────────────────────────
+			// ── Apiserver public IP (attach/détach, mutable) ───────────────
 			"apiserver_public_ip_id": schema.StringAttribute{
-				MarkdownDescription: "UUID d'une IP publique pour l'apiserver (attachée automatiquement après provisioning). Forces replacement.",
-				Optional:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				MarkdownDescription: "UUID d'une IP publique attachée à l'apiserver (kubeconfig public). " +
+					"Mutable : définir l'UUID attache l'IP, le retirer (`null`) la détache — " +
+					"sans recréer le cluster. Fonctionne à la création comme après coup.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"apiserver_internal_ip": schema.StringAttribute{
 				MarkdownDescription: "IP privée VNet pour l'endpoint apiserver. Forces replacement.",
 				Optional:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			// ── Apiserver public IP (attach/detach, mutable) ───────────────
-			"public_ip_id": schema.StringAttribute{
-				MarkdownDescription: "UUID d'une IP publique attachée à l'apiserver du cluster. Mutable (attach/detach).",
-				Optional:            true,
-				Computed:            true,
 			},
 			"public_ip_address": schema.StringAttribute{
 				MarkdownDescription: "Adresse IP publique de l'apiserver (computed).",
@@ -375,10 +371,12 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, currentInitial *ini
 	} else {
 		m.ApiEndpoint = types.StringNull()
 	}
+	// Le backend expose l'IP publique apiserver via `public_ip_id` ; côté
+	// provider c'est l'unique attribut `apiserver_public_ip_id` (mutable).
 	if c.PublicIPID != nil {
-		m.PublicIPID = types.StringValue(*c.PublicIPID)
+		m.ApiserverPublicIPID = types.StringValue(*c.PublicIPID)
 	} else {
-		m.PublicIPID = types.StringNull()
+		m.ApiserverPublicIPID = types.StringNull()
 	}
 	if c.PublicIPAddress != nil {
 		m.PublicIPAddress = types.StringValue(*c.PublicIPAddress)
@@ -467,10 +465,10 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		v := plan.IngressInternalIP.ValueString()
 		createReq.IngressInternalIP = &v
 	}
-	if !plan.ApiserverPublicIPID.IsNull() && !plan.ApiserverPublicIPID.IsUnknown() {
-		v := plan.ApiserverPublicIPID.ValueString()
-		createReq.ApiserverPublicIPID = &v
-	}
+	// `apiserver_public_ip_id` n'est PAS envoyé dans le POST create : il est
+	// attaché après provisioning via /attach-ip (cf. plus bas), de façon
+	// uniforme avec l'Update et fiable (le provisioning backend ne garantit
+	// pas l'attach auto à la création).
 	if !plan.ApiserverInternalIP.IsNull() && !plan.ApiserverInternalIP.IsUnknown() {
 		v := plan.ApiserverInternalIP.ValueString()
 		createReq.ApiserverInternalIP = &v
@@ -494,9 +492,24 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// Attache l'IP publique apiserver (si fournie) une fois le cluster prêt,
+	// via /attach-ip — même chemin que l'Update.
+	if !plan.ApiserverPublicIPID.IsNull() && !plan.ApiserverPublicIPID.IsUnknown() &&
+		plan.ApiserverPublicIPID.ValueString() != "" {
+		if _, err := r.client.AttachIPToK8sCluster(ctx, final.ID,
+			client.K8sAttachIPRequest{PublicIPID: plan.ApiserverPublicIPID.ValueString()}); err != nil {
+			resp.Diagnostics.AddError("Failed to attach apiserver public IP", err.Error())
+			return
+		}
+		if final, err = r.client.GetK8sCluster(ctx, final.ID); err != nil {
+			resp.Diagnostics.AddError("Failed to re-read K8s cluster after IP attach", err.Error())
+			return
+		}
+	}
+
 	state, diags := stateFromAPI(ctx, final, plan.InitialPool)
-	// Keep create-time only fields not returned by GET
-	state.ApiserverPublicIPID = plan.ApiserverPublicIPID
+	// `apiserver_internal_ip` reste create-time (non retourné par GET) ;
+	// `apiserver_public_ip_id` vient désormais du read-back (stateFromAPI).
 	state.ApiserverInternalIP = plan.ApiserverInternalIP
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
@@ -520,8 +533,8 @@ func (r *k8sResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 	newState, diags := stateFromAPI(ctx, got, state.InitialPool)
-	// Preserve create-time only fields not in GET response
-	newState.ApiserverPublicIPID = state.ApiserverPublicIPID
+	// `apiserver_internal_ip` est create-time (absent du GET) → préservé ;
+	// `apiserver_public_ip_id` est relu du backend par stateFromAPI.
 	newState.ApiserverInternalIP = state.ApiserverInternalIP
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
@@ -552,7 +565,6 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			return
 		}
 		newState, diags := stateFromAPI(ctx, final, state.InitialPool)
-		newState.ApiserverPublicIPID = state.ApiserverPublicIPID
 		newState.ApiserverInternalIP = state.ApiserverInternalIP
 		for _, d := range diags {
 			resp.Diagnostics.AddWarning("Tags conversion warning", d)
@@ -565,10 +577,12 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		}
 	}
 
-	// ── Apiserver public IP attach/detach ───────────────────────────────────
-	planIPID := plan.PublicIPID.ValueString()
-	stateIPID := state.PublicIPID.ValueString()
-	if planIPID != stateIPID {
+	// ── Apiserver public IP attach/detach (apiserver_public_ip_id, mutable) ──
+	// Skip si la valeur planifiée est encore Unknown (known-after-apply) pour
+	// ne pas détacher par erreur sur un "".
+	planIPID := plan.ApiserverPublicIPID.ValueString()
+	stateIPID := state.ApiserverPublicIPID.ValueString()
+	if !plan.ApiserverPublicIPID.IsUnknown() && planIPID != stateIPID {
 		if planIPID != "" {
 			_, err := r.client.AttachIPToK8sCluster(ctx, state.ID.ValueString(),
 				client.K8sAttachIPRequest{PublicIPID: planIPID})
@@ -642,7 +656,8 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 	newState, diags := stateFromAPI(ctx, updated, plan.InitialPool)
-	newState.ApiserverPublicIPID = state.ApiserverPublicIPID
+	// `apiserver_public_ip_id` reflète le backend (post-attach/détach) ;
+	// `apiserver_internal_ip` reste create-time (préservé).
 	newState.ApiserverInternalIP = state.ApiserverInternalIP
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)

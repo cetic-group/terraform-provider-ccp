@@ -95,11 +95,12 @@ resource "ccp_k8s_cluster" "prod" {
 
 ### Optional — apiserver exposure
 
-The apiserver always has a private endpoint (auto-allocated from the VNet CIDR or pinned via `apiserver_internal_ip`). It can additionally be exposed publicly via `apiserver_public_ip_id` (set at create time, immutable) **or** `public_ip_id` (mutable attach/detach).
+The apiserver always has a private endpoint (auto-allocated from the VNet CIDR or pinned via `apiserver_internal_ip`). It can additionally be exposed publicly via `apiserver_public_ip_id`.
 
 - `apiserver_internal_ip` - (Forces new resource) Pinned private IP for the apiserver. Defaults to auto-allocated within the VNet.
-- `apiserver_public_ip_id` - (Forces new resource) UUID of a public IP attached to the apiserver at create time. Use this for clusters that are public from day one. Once set, the IP is bound for the lifetime of the cluster.
-- `public_ip_id` - UUID of a public IP attached to the apiserver. **Mutable** — supports attach/detach over the cluster lifetime without recreation. Use this when you want to add a public endpoint later, or rotate the public IP. Mutually exclusive with `apiserver_public_ip_id` at create time.
+- `apiserver_public_ip_id` - UUID of a public IP attached to the apiserver (public kubeconfig). **Mutable** — set the UUID to attach, remove it (`null`) to detach, change it to rotate, all **without recreating the cluster**. Works both at create time and later. The IP must be in the same region as the cluster and come from a routed BYOIP pool; the cluster VNet must have SNAT enabled.
+
+> **Migration (provider v3.0.0)**: the former separate `public_ip_id` attribute is removed — `apiserver_public_ip_id` is now the single, mutable knob for the apiserver public IP. If you used `public_ip_id`, rename it to `apiserver_public_ip_id`.
 
 ### Optional — ingress controller
 
