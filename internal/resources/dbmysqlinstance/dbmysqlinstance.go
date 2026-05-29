@@ -202,6 +202,13 @@ func (r *dbmysqlResource) Delete(ctx context.Context, req resource.DeleteRequest
 			return
 		}
 		resp.Diagnostics.AddError("Failed to delete MariaDB instance", err.Error())
+		return
+	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetDbMysql(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm MariaDB instance deletion", err.Error())
 	}
 }
 

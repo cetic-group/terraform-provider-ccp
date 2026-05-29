@@ -509,6 +509,13 @@ func (r *appgwResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 			return
 		}
 		resp.Diagnostics.AddError("Failed to delete Application Gateway", err.Error())
+		return
+	}
+	if err := client.PollUntilDeleted(ctx, 20*time.Minute, func(ctx context.Context) error {
+		_, e := r.client.GetApplicationGateway(ctx, state.ID.ValueString())
+		return e
+	}); err != nil {
+		resp.Diagnostics.AddError("Failed to confirm Application Gateway deletion", err.Error())
 	}
 }
 
