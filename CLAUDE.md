@@ -83,9 +83,10 @@ Idéalement faire une PR sur `cetic-cloud-terraform-modules` juste après le rel
 
 ### Live Registry
 
-**Latest** : `v2.0.2` (2026-05-29). Pinned via `~> 2.0` partout (couvre 2.0.2 — pas de bump exemples requis pour un patch).
+**Latest** : `v2.0.3` (2026-05-29). Pinned via `~> 2.0` partout (couvre les patches — pas de bump exemples requis).
 
 **Historique récent** :
+- `v2.0.3` — fix : `ccp_k8s_cluster` Update n'envoie plus `ingress_public_ip_id`/`ingress_internal_ip` vides dans le PATCH. Ces champs Computed sont `known-after-apply` (Unknown) quand le scope ingress change → `.ValueString()` d'un Unknown = "" → `PATCH` avec `ingress_public_ip_id: ""` → backend 422 "valid UUID, found 0". Guard `IsNull/IsUnknown` + non-vide (aligné sur le Create). PR #35.
 - `v2.0.2` — fix : `Delete` attend la suppression réelle (poll `GetX` jusqu'au 404) sur les ressources à teardown async qui ne waitaient pas → évite le `409 "existe déjà"` sur un replace (destroy-then-create même nom). Nouveau helper `client.PollUntilDeleted`. Couvre `ccp_k8s_cluster`, `ccp_load_balancer`, `ccp_application_gateway`, `ccp_registry`, `ccp_db_{pg,valkey,mysql,ferretdb}`. (container/vm/vpc/vnet/object_bucket/block_volume avaient déjà un poll-delete.) Aucun changement de schéma. PR #33.
 - `v2.0.1` — docs catch-up : bump 7 fichiers exemples (`~> 1.1` / `~> 0.x` → `~> 2.0`). Aucun changement de schéma. PR #31.
 - `v2.0.0` — **BREAKING** : drop `ccp_lxc_templates` + `ccp_qemu_templates` (deprecated en v1.2.0). Backend API inchangé. PR #30.
