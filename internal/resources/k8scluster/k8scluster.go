@@ -44,8 +44,48 @@ type initialPoolModel struct {
 	Name     types.String `tfsdk:"name"`
 	Plan     types.String `tfsdk:"plan"`
 	Replicas types.Int64  `tfsdk:"replicas"`
+	Labels   types.Map    `tfsdk:"labels"`
+	Taints   types.Set    `tfsdk:"taints"`
 	MinSize  types.Int64  `tfsdk:"min_size"`
 	MaxSize  types.Int64  `tfsdk:"max_size"`
+}
+
+// initialPoolTaintModel mirrors the taint nested object for the initial_pool block.
+type initialPoolTaintModel struct {
+	Key    types.String `tfsdk:"key"`
+	Value  types.String `tfsdk:"value"`
+	Effect types.String `tfsdk:"effect"`
+}
+
+// initialPoolLabels converts the plan's labels map → map[string]string (nil if unset).
+func initialPoolLabels(ctx context.Context, ip *initialPoolModel) map[string]string {
+	if ip == nil || ip.Labels.IsNull() || ip.Labels.IsUnknown() {
+		return nil
+	}
+	out := map[string]string{}
+	ip.Labels.ElementsAs(ctx, &out, false)
+	return out
+}
+
+// initialPoolTaints converts the plan's taints set → []client.NodePoolTaint (nil if unset).
+func initialPoolTaints(ctx context.Context, ip *initialPoolModel) ([]client.NodePoolTaint, error) {
+	if ip == nil || ip.Taints.IsNull() || ip.Taints.IsUnknown() {
+		return nil, nil
+	}
+	var models []initialPoolTaintModel
+	if diags := ip.Taints.ElementsAs(ctx, &models, false); diags.HasError() {
+		return nil, fmt.Errorf("decoding initial_pool taints: %v", diags)
+	}
+	taints := make([]client.NodePoolTaint, 0, len(models))
+	for _, m := range models {
+		t := client.NodePoolTaint{Key: m.Key.ValueString(), Effect: m.Effect.ValueString()}
+		if !m.Value.IsNull() && !m.Value.IsUnknown() {
+			v := m.Value.ValueString()
+			t.Value = &v
+		}
+		taints = append(taints, t)
+	}
+	return taints, nil
 }
 
 type k8sResourceModel struct {
@@ -282,7 +322,7 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 		},
 		Blocks: map[string]schema.Block{
 			"initial_pool": schema.SingleNestedBlock{
-				MarkdownDescription: "Initial worker pool created with the cluster (default: name=`default`, plan=`small`, replicas=1). `name`/`plan` force replacement ; `replicas`/`min_size`/`max_size` are mutable in-place.",
+				MarkdownDescription: "Initial worker pool created with the cluster (default: name=`default`, plan=`small`, replicas=1). `name`/`plan` force replacement ; `replicas`/`min_size`/`max_size`/`labels`/`taints` are mutable in-place.",
 				Attributes: map[string]schema.Attribute{
 					"name": schema.StringAttribute{
 						Required:      true,
@@ -294,6 +334,34 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					},
 					"replicas": schema.Int64Attribute{
 						Required: true,
+					},
+					"labels": schema.MapAttribute{
+						MarkdownDescription: "Kubernetes labels propagated to the initial pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.",
+						ElementType:         types.StringType,
+						Optional:            true,
+					},
+					"taints": schema.SetNestedAttribute{
+						MarkdownDescription: "Kubernetes taints applied to the initial pool's nodes (parity with `ccp_k8s_node_pool.taints`). Mutable in-place.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"key": schema.StringAttribute{
+									Required:            true,
+									MarkdownDescription: "Taint key.",
+								},
+								"value": schema.StringAttribute{
+									Optional:            true,
+									MarkdownDescription: "Taint value (may be empty).",
+								},
+								"effect": schema.StringAttribute{
+									Required:            true,
+									MarkdownDescription: "Taint effect. One of: `NoSchedule`, `PreferNoSchedule`, `NoExecute`.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("NoSchedule", "PreferNoSchedule", "NoExecute"),
+									},
+								},
+							},
+						},
 					},
 					"min_size": schema.Int64Attribute{
 						MarkdownDescription: "Cluster autoscaler lower bound for this pool. Set `min_size` **and** `max_size` to enable the autoscaler on the initial pool (mutable in-place). Leave both unset for a fixed-size pool.",
@@ -433,6 +501,13 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		pool.Name = plan.InitialPool.Name.ValueString()
 		pool.Plan = plan.InitialPool.Plan.ValueString()
 		pool.Replicas = int(plan.InitialPool.Replicas.ValueInt64())
+		pool.Labels = initialPoolLabels(ctx, plan.InitialPool)
+		taints, err := initialPoolTaints(ctx, plan.InitialPool)
+		if err != nil {
+			resp.Diagnostics.AddError("Invalid initial_pool taints", err.Error())
+			return
+		}
+		pool.Taints = taints
 		if !plan.InitialPool.MinSize.IsNull() && !plan.InitialPool.MinSize.IsUnknown() {
 			v := int(plan.InitialPool.MinSize.ValueInt64())
 			pool.MinSize = &v
@@ -624,7 +699,8 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	// l'autoscaler (min/max) sur l'initial pool, sans recréer le cluster.
 	if plan.InitialPool != nil && state.InitialPool != nil {
 		ip, sp := plan.InitialPool, state.InitialPool
-		if !ip.Replicas.Equal(sp.Replicas) || !ip.MinSize.Equal(sp.MinSize) || !ip.MaxSize.Equal(sp.MaxSize) {
+		if !ip.Replicas.Equal(sp.Replicas) || !ip.MinSize.Equal(sp.MinSize) || !ip.MaxSize.Equal(sp.MaxSize) ||
+			!ip.Labels.Equal(sp.Labels) || !ip.Taints.Equal(sp.Taints) {
 			pools, err := r.client.ListK8sNodePools(ctx, state.ID.ValueString())
 			if err != nil {
 				resp.Diagnostics.AddError("Failed to list node pools for initial pool reconcile", err.Error())
@@ -660,6 +736,22 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 				maxZ = int(ip.MaxSize.ValueInt64())
 			}
 			npReq.MaxSize = &maxZ
+			// Labels + taints : on envoie toujours la valeur du plan (map/slice
+			// vides si retirés → le PATCH efface), parité avec ccp_k8s_node_pool.
+			labels := initialPoolLabels(ctx, ip)
+			if labels == nil {
+				labels = map[string]string{}
+			}
+			npReq.Labels = labels
+			taints, err := initialPoolTaints(ctx, ip)
+			if err != nil {
+				resp.Diagnostics.AddError("Invalid initial_pool taints", err.Error())
+				return
+			}
+			if taints == nil {
+				taints = []client.NodePoolTaint{}
+			}
+			npReq.Taints = taints
 			if _, err := r.client.UpdateK8sNodePool(ctx, state.ID.ValueString(), poolID, npReq); err != nil {
 				resp.Diagnostics.AddError("Failed to update initial node pool", err.Error())
 				return

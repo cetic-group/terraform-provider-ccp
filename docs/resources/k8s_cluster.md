@@ -92,6 +92,13 @@ resource "ccp_k8s_cluster" "prod" {
 - `pod_cidr` - (Forces new resource) Pod IP range. Default `"10.244.0.0/16"`.
 - `service_cidr` - (Forces new resource) Service IP range. Default `"10.96.0.0/12"`.
 - `tags` - List of free-form tags (max 60, max 50 chars each).
+- `initial_pool` - Block describing the worker pool created with the cluster. Attributes:
+    * `name` - (Forces new resource) Pool name. Default `"default"`.
+    * `plan` - (Forces new resource) Instance plan (`nano` … `xlarge`). Default `"small"`.
+    * `replicas` - Worker count. Mutable in-place (rolling).
+    * `labels` - Map of Kubernetes labels applied to the pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.
+    * `taints` - Set of Kubernetes taints (`{ key, value?, effect }`, `effect` ∈ `NoSchedule`/`PreferNoSchedule`/`NoExecute`) applied to the pool's nodes (parity with `ccp_k8s_node_pool.taints`). Mutable in-place.
+    * `min_size` / `max_size` - Cluster autoscaler bounds (see *Optional — autoscaler*).
 
 ### Optional — apiserver exposure
 
@@ -134,7 +141,7 @@ The per-pool autoscaler is configured via `min_size` / `max_size`:
 - on the **initial pool** through the `initial_pool` block (`min_size` + `max_size`, mutable in-place — set both to enable, adjust to retune);
 - on **additional pools** through [`ccp_k8s_node_pool`](k8s_node_pool.md).
 
-Leave both `min_size`/`max_size` unset for a fixed-size pool. Note: enabling or retuning the autoscaler is in-place, but the backend cannot currently *disable* it on an existing pool by clearing `min_size`/`max_size` — recreate the pool to remove autoscaling.
+Leave both `min_size`/`max_size` unset for a fixed-size pool. Enabling, retuning **and disabling** are all in-place: removing both `min_size`/`max_size` disables the autoscaler (the provider sends `0`/`0` → pool pinned to `replicas`), since provider v3.1.1/v3.1.2.
 
 ## Attributes Reference
 
