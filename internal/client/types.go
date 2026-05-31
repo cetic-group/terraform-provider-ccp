@@ -215,8 +215,11 @@ type PublicIPAttachRequest struct {
 const (
 	PublicIPStatusAvailable = "available"
 	PublicIPStatusAllocated = "allocated"
+	PublicIPStatusAttaching = "attaching"
 	PublicIPStatusAttached  = "attached"
+	PublicIPStatusDetaching = "detaching"
 	PublicIPStatusReserved  = "reserved"
+	PublicIPStatusError     = "error"
 )
 
 // ObjectBucket represents a Ceph RGW S3 bucket.
