@@ -76,12 +76,14 @@ var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]
 // Polling parameters.
 //
 //   - attachPollTimeout: time we wait for `allocated` → `attached` (or vice
-//     versa on detach). IPaaS attaches dispatch a Celery task that takes a
-//     few seconds end-to-end (DNAT entry on the edge + route + prefix-list
-//     refresh + secondary IP injection on the target).
+//     versa on detach). IPaaS attaches dispatch a Celery task that converges
+//     end-to-end (DNAT entry on the edge + route + prefix-list refresh +
+//     secondary IP injection on the target). 60s was too tight under load —
+//     BGP/WireGuard convergence + a busy Celery queue can push it past a
+//     minute, surfacing as a spurious timeout even though the attach succeeds.
 const (
 	pollInterval      = 5 * time.Second
-	attachPollTimeout = 60 * time.Second
+	attachPollTimeout = 5 * time.Minute
 )
 
 func (r *publicIPResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -541,49 +543,63 @@ func (r *publicIPResource) detachAndPoll(ctx context.Context, id string) diag.Di
 	return nil
 }
 
+// classifyAttachPoll maps a polled IP status to a (done, err) decision while
+// waiting for `attached`. `allocated` (task not picked up yet) and `attaching`
+// (IPaaS Celery task running) are transitional → keep polling. Only `error`
+// (or an unknown state) is a hard failure. Pure function → unit-testable.
+func classifyAttachPoll(id, status string) (bool, error) {
+	switch status {
+	case client.PublicIPStatusAttached:
+		return true, nil
+	case client.PublicIPStatusAllocated, client.PublicIPStatusAttaching:
+		return false, nil
+	case client.PublicIPStatusError:
+		return false, fmt.Errorf("public IP %s entered `error` state while attaching", id)
+	default:
+		return false, fmt.Errorf("public IP %s entered unexpected state %q while waiting for `attached`",
+			id, status)
+	}
+}
+
 // pollForAttached polls GetPublicIP every pollInterval up to attachPollTimeout,
-// stopping when the IP reaches `attached`. `allocated` is treated as
-// "still in flight" (IPaaS Celery task still running). Anything else is a
-// hard failure.
+// stopping when the IP reaches `attached`.
 func pollForAttached(ctx context.Context, c *client.Client, id string) error {
 	return client.Poll(ctx, pollInterval, attachPollTimeout, func(ctx context.Context) (bool, error) {
 		cur, err := c.GetPublicIP(ctx, id)
 		if err != nil {
 			return false, err
 		}
-		switch cur.Status {
-		case client.PublicIPStatusAttached:
-			return true, nil
-		case client.PublicIPStatusAllocated:
-			// IPaaS task still in flight — keep polling.
-			return false, nil
-		default:
-			return false, fmt.Errorf("public IP %s entered unexpected state %q while waiting for `attached`",
-				cur.ID, cur.Status)
-		}
+		return classifyAttachPoll(cur.ID, cur.Status)
 	})
 }
 
+// classifyDetachPoll maps a polled IP status to a (done, err) decision while
+// waiting for `allocated` (i.e. detached). `attached` (task not picked up yet)
+// and `detaching` (Celery task tearing down DNAT/route) are transitional → keep
+// polling. Only `error` (or an unknown state) is a hard failure.
+func classifyDetachPoll(id, status string) (bool, error) {
+	switch status {
+	case client.PublicIPStatusAllocated:
+		return true, nil
+	case client.PublicIPStatusAttached, client.PublicIPStatusDetaching:
+		return false, nil
+	case client.PublicIPStatusError:
+		return false, fmt.Errorf("public IP %s entered `error` state while detaching", id)
+	default:
+		return false, fmt.Errorf("public IP %s entered unexpected state %q while waiting for `allocated`",
+			id, status)
+	}
+}
+
 // pollForAllocated polls GetPublicIP every pollInterval up to attachPollTimeout,
-// stopping when the IP reaches `allocated` (i.e. detached). `attached` is
-// treated as "still in flight" (Celery task still tearing down DNAT/route).
-// Anything else is a hard failure.
+// stopping when the IP reaches `allocated` (i.e. detached).
 func pollForAllocated(ctx context.Context, c *client.Client, id string) error {
 	return client.Poll(ctx, pollInterval, attachPollTimeout, func(ctx context.Context) (bool, error) {
 		cur, err := c.GetPublicIP(ctx, id)
 		if err != nil {
 			return false, err
 		}
-		switch cur.Status {
-		case client.PublicIPStatusAllocated:
-			return true, nil
-		case client.PublicIPStatusAttached:
-			// Detach task still in flight — keep polling.
-			return false, nil
-		default:
-			return false, fmt.Errorf("public IP %s entered unexpected state %q while waiting for `allocated`",
-				cur.ID, cur.Status)
-		}
+		return classifyDetachPoll(cur.ID, cur.Status)
 	})
 }
 
