@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	dsacmednsproviders "github.com/cetic-group/terraform-provider-ccp/internal/datasources/acmednsproviders"
 	dsapikey "github.com/cetic-group/terraform-provider-ccp/internal/datasources/apikey"
 	dsapplicationgateway "github.com/cetic-group/terraform-provider-ccp/internal/datasources/applicationgateway"
 	dsblockvolume "github.com/cetic-group/terraform-provider-ccp/internal/datasources/blockvolume"
@@ -256,6 +257,7 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsloadbalancer.New,
 		dsipaaspool.New,
 		dsapplicationgateway.New,
+		dsacmednsproviders.New,
 		// Compute
 		dsvminstance.New,
 		dsvmscaleset.New,
