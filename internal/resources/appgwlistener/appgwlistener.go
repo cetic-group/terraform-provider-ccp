@@ -1,10 +1,10 @@
 // Package appgwlistener implements the ccp_appgw_listener Terraform
 // resource — a hostname served by an Application Gateway with its
-// Let's Encrypt certificate.
+// optional Let's Encrypt certificate.
 //
-// Listeners are immutable: hostname and custom_domain cannot change in
-// place. To rename a hostname or switch between custom_domain modes,
-// destroy and recreate the listener.
+// Listeners are immutable: every user-facing attribute carries a
+// RequiresReplace plan modifier. To change a hostname or its ACME
+// configuration, destroy and recreate the listener.
 package appgwlistener
 
 import (
@@ -16,17 +16,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
 var (
-	_ resource.Resource                = (*listenerResource)(nil)
-	_ resource.ResourceWithConfigure   = (*listenerResource)(nil)
-	_ resource.ResourceWithImportState = (*listenerResource)(nil)
+	_ resource.Resource                   = (*listenerResource)(nil)
+	_ resource.ResourceWithConfigure      = (*listenerResource)(nil)
+	_ resource.ResourceWithImportState    = (*listenerResource)(nil)
+	_ resource.ResourceWithValidateConfig = (*listenerResource)(nil)
 )
 
 func New() resource.Resource { return &listenerResource{} }
@@ -34,14 +35,19 @@ func New() resource.Resource { return &listenerResource{} }
 type listenerResource struct{ client *client.Client }
 
 type listenerResourceModel struct {
-	ID                types.String `tfsdk:"id"`
-	AppGWID           types.String `tfsdk:"appgw_id"`
-	Hostname          types.String `tfsdk:"hostname"`
-	CustomDomain      types.Bool   `tfsdk:"custom_domain"`
-	AcmeStatus        types.String `tfsdk:"acme_status"`
-	AcmeLastRenewalAt types.String `tfsdk:"acme_last_renewal_at"`
-	CertPath          types.String `tfsdk:"cert_path"`
-	CreatedAt         types.String `tfsdk:"created_at"`
+	ID                 types.String `tfsdk:"id"`
+	AppGWID            types.String `tfsdk:"appgw_id"`
+	Hostname           types.String `tfsdk:"hostname"`
+	AcmeChallenge      types.String `tfsdk:"acme_challenge"`
+	AcmeDNSProvider    types.String `tfsdk:"acme_dns_provider"`
+	AcmeDNSCredentials types.Map    `tfsdk:"acme_dns_credentials"`
+	AcmeStatus         types.String `tfsdk:"acme_status"`
+	AcmeLastRenewalAt  types.String `tfsdk:"acme_last_renewal_at"`
+	AcmeIssuedAt       types.String `tfsdk:"acme_issued_at"`
+	AcmeRenewAfter     types.String `tfsdk:"acme_renew_after"`
+	AcmeLastError      types.String `tfsdk:"acme_last_error"`
+	CertPath           types.String `tfsdk:"cert_path"`
+	CreatedAt          types.String `tfsdk:"created_at"`
 }
 
 func (r *listenerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -50,13 +56,11 @@ func (r *listenerResource) Metadata(_ context.Context, req resource.MetadataRequ
 
 func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a listener (hostname + TLS cert) on a `ccp_application_gateway`. " +
-			"Each listener gets its own Let's Encrypt certificate, served via SNI when the client " +
-			"requests this hostname.\n\n" +
-			"For `custom_domain = true`, the client must already point a CNAME from `hostname` to the " +
-			"gateway's auto-generated subdomain before this resource is created — ACME DNS-01 validation " +
-			"will otherwise fail.\n\n" +
-			"~> **`appgw_id`, `hostname` and `custom_domain` are immutable.** Any change forces a destroy + create.",
+		MarkdownDescription: "Manages a listener (a hostname served by a `ccp_application_gateway`, with an " +
+			"optional automatically-issued TLS certificate via Let's Encrypt/ACME). When `acme_challenge` " +
+			"is set, the certificate is requested automatically and served over SNI when a client connects " +
+			"with this hostname.\n\n" +
+			"~> **All attributes are immutable.** Any change forces a destroy + create.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the listener.",
@@ -70,58 +74,86 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"hostname": schema.StringAttribute{
 				MarkdownDescription: "Fully-qualified hostname served by this listener (e.g. `api.example.com`). " +
-					"Must be a valid RFC 1123 hostname (max 253 chars). **Immutable**.",
+					"Must be a valid, lowercase RFC 1123 hostname (max 253 chars). **Immutable**.",
 				Required: true,
 				Validators: []validator.String{
 					appgwvalidators.Hostname(),
+					stringvalidator.RegexMatches(lowercaseRe, "hostname must be lowercase"),
 				},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"custom_domain": schema.BoolAttribute{
-				MarkdownDescription: "When `true`, the hostname is a customer-owned domain (CNAME required, " +
-					"ACME validation uses DNS-01). When `false` (default), the listener serves an auto-generated " +
-					"subdomain under `app.cloud.cetic-group.com` and ACME uses HTTP-01. **Immutable**.",
+			"acme_challenge": schema.StringAttribute{
+				MarkdownDescription: "ACME (Let's Encrypt) challenge type used to issue the listener's TLS " +
+					"certificate: `http01` or `dns01`. `dns01` additionally requires `acme_dns_provider` and " +
+					"`acme_dns_credentials`. **Without this attribute, no TLS certificate is ever issued for " +
+					"the listener.** **Immutable**.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("http01", "dns01"),
+				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"acme_dns_provider": schema.StringAttribute{
+				MarkdownDescription: "DNS provider key used for the `dns01` challenge. See the " +
+					"`ccp_acme_dns_providers` data source for the supported catalog. " +
+					"Required when `acme_challenge = \"dns01\"`. **Immutable**.",
 				Optional:      true,
-				Computed:      true,
-				Default:       booldefault.StaticBool(false),
-				PlanModifiers: []planmodifier.Bool{boolplanmodifierRequiresReplace{}},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"acme_dns_credentials": schema.MapAttribute{
+				MarkdownDescription: "DNS provider credentials for the `dns01` challenge (write-only — never " +
+					"returned by the API). The expected keys depend on the provider (see " +
+					"`ccp_acme_dns_providers`). Required when `acme_challenge = \"dns01\"`. **Immutable**.",
+				Optional:    true,
+				Sensitive:   true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.Map{
+					mapRequiresReplace{},
+				},
 			},
 			"acme_status": schema.StringAttribute{
 				MarkdownDescription: "ACME issuance state: `pending` | `issued` | `failed`.",
 				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"acme_last_renewal_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 timestamp of the last successful certificate renewal.",
 				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"acme_issued_at": schema.StringAttribute{
+				MarkdownDescription: "RFC 3339 timestamp at which the current certificate was issued.",
+				Computed:            true,
+			},
+			"acme_renew_after": schema.StringAttribute{
+				MarkdownDescription: "RFC 3339 timestamp after which the certificate is eligible for renewal.",
+				Computed:            true,
+			},
+			"acme_last_error": schema.StringAttribute{
+				MarkdownDescription: "Last ACME error message, if certificate issuance or renewal failed.",
+				Computed:            true,
 			},
 			"cert_path": schema.StringAttribute{
 				MarkdownDescription: "Server-side filesystem path of the live certificate. Informational.",
 				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 creation timestamp.",
 				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}
 }
 
-// boolplanmodifierRequiresReplace forces replacement on any change to a
-// bool attribute (custom_domain). The framework's stdlib does not ship
-// a `RequiresReplace()` for Bool; we provide a tiny implementation.
-type boolplanmodifierRequiresReplace struct{}
+// mapRequiresReplace forces replacement on any change to a Map attribute.
+// The framework's stdlib does not ship a `RequiresReplace()` for Map.
+type mapRequiresReplace struct{}
 
-func (boolplanmodifierRequiresReplace) Description(_ context.Context) string {
+func (mapRequiresReplace) Description(_ context.Context) string {
 	return "Any change to this attribute forces resource replacement."
 }
-func (m boolplanmodifierRequiresReplace) MarkdownDescription(ctx context.Context) string {
+func (m mapRequiresReplace) MarkdownDescription(ctx context.Context) string {
 	return m.Description(ctx)
 }
-func (boolplanmodifierRequiresReplace) PlanModifyBool(_ context.Context, req planmodifier.BoolRequest, resp *planmodifier.BoolResponse) {
+func (mapRequiresReplace) PlanModifyMap(_ context.Context, req planmodifier.MapRequest, resp *planmodifier.MapResponse) {
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
 		// Create or destroy — never trigger replace.
 		return
@@ -143,23 +175,17 @@ func (r *listenerResource) Configure(_ context.Context, req resource.ConfigureRe
 	r.client = c
 }
 
-func applyToModel(l *client.AppGWListener, m *listenerResourceModel) {
-	m.ID = types.StringValue(l.ID)
-	m.AppGWID = types.StringValue(l.AppGWID)
-	m.Hostname = types.StringValue(l.Hostname)
-	m.CustomDomain = types.BoolValue(l.CustomDomain)
-	m.AcmeStatus = types.StringValue(l.AcmeStatus)
-	m.CreatedAt = types.StringValue(l.CreatedAt)
-	if l.AcmeLastRenewalAt != nil {
-		m.AcmeLastRenewalAt = types.StringValue(*l.AcmeLastRenewalAt)
-	} else {
-		m.AcmeLastRenewalAt = types.StringNull()
+// ValidateConfig enforces the dns01 invariant at plan time: a clear error
+// instead of a backend 400. Per CLAUDE.md pitfall #4, early-return when the
+// challenge is unresolved (Null OR Unknown) so `terraform validate` does not
+// fire before plan modifiers/defaults run.
+func (r *listenerResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var cfg listenerResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	if l.CertPath != nil {
-		m.CertPath = types.StringValue(*l.CertPath)
-	} else {
-		m.CertPath = types.StringNull()
-	}
+	resp.Diagnostics.Append(validateDNS01(cfg)...)
 }
 
 func (r *listenerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -172,9 +198,21 @@ func (r *listenerResource) Create(ctx context.Context, req resource.CreateReques
 	createReq := client.AppGWListenerCreateRequest{
 		Hostname: plan.Hostname.ValueString(),
 	}
-	if !plan.CustomDomain.IsNull() && !plan.CustomDomain.IsUnknown() {
-		v := plan.CustomDomain.ValueBool()
-		createReq.CustomDomain = &v
+	if v, ok := strVal(plan.AcmeChallenge); ok {
+		createReq.AcmeChallenge = &v
+	}
+	if v, ok := strVal(plan.AcmeDNSProvider); ok {
+		createReq.AcmeDNSProvider = &v
+	}
+	if !plan.AcmeDNSCredentials.IsNull() && !plan.AcmeDNSCredentials.IsUnknown() {
+		creds := map[string]string{}
+		resp.Diagnostics.Append(plan.AcmeDNSCredentials.ElementsAs(ctx, &creds, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if len(creds) > 0 {
+			createReq.AcmeDNSCredentials = creds
+		}
 	}
 
 	created, err := r.client.CreateAppGWListener(ctx, plan.AppGWID.ValueString(), createReq)
@@ -182,6 +220,8 @@ func (r *listenerResource) Create(ctx context.Context, req resource.CreateReques
 		resp.Diagnostics.AddError("Failed to create AppGW listener", err.Error())
 		return
 	}
+	// applyToModel preserves the plan's write-only credentials (the API never
+	// returns them).
 	applyToModel(created, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -233,7 +273,8 @@ func (r *listenerResource) Delete(ctx context.Context, req resource.DeleteReques
 
 // ImportState accepts `<appgw_id>/<listener_id>`. Splitting on '/' rather
 // than a UUID-only id keeps Import symmetric with how the listener is
-// retrieved (the API requires both UUIDs).
+// retrieved (the API requires both UUIDs). Write-only acme_dns_credentials
+// cannot be recovered on import.
 func (r *listenerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	parts := splitID(req.ID)
 	if len(parts) != 2 {

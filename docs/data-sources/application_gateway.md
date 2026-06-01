@@ -50,6 +50,6 @@ In addition to all arguments above:
 - `force_https`, `hsts_enabled`, `hsts_max_age`
 - `global_rate_limit_per_sec`, `global_allow_cidrs`, `global_deny_cidrs`, `trust_proxy_headers`
 - `tags`
-- `listeners` - List of `{id, hostname, custom_domain, acme_status, acme_last_renewal_at}`.
+- `listeners` - List of `{id, hostname, acme_status, acme_challenge, acme_dns_provider, acme_last_renewal_at}`.
 - `target_groups` - List of `{id, name, algorithm}`.
 - `routes` - List of `{id, listener_id, priority, path_match, path_match_type, target_group_id}`.

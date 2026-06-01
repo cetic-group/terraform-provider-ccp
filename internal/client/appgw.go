@@ -115,6 +115,18 @@ func (c *Client) RenewAppGWListenerCert(ctx context.Context, appgwID, listenerID
 	return &out, nil
 }
 
+// ListAppGWAcmeDNSProviders returns the supported DNS-01 providers for ACME on
+// application gateway listeners, keyed by provider id (e.g. "cloudflare"), with
+// their label + expected credential field names. The catalog is identical to
+// the load balancer one (ListLBAcmeDNSProviders).
+func (c *Client) ListAppGWAcmeDNSProviders(ctx context.Context) (map[string]AcmeDNSProvider, error) {
+	out := map[string]AcmeDNSProvider{}
+	if err := c.do(ctx, http.MethodGet, "/v1/app-gateways/acme/dns-providers", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ─── Target Group ────────────────────────────────────────────────────────────
 
 func (c *Client) ListAppGWTargetGroups(ctx context.Context, appgwID string) ([]AppGWTargetGroup, error) {

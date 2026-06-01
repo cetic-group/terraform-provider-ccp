@@ -95,19 +95,25 @@ const (
 // ─── Listener ───────────────────────────────────────────────────────────────
 
 type AppGWListener struct {
-	ID                 string  `json:"id"`
-	AppGWID            string  `json:"appgw_id"`
-	Hostname           string  `json:"hostname"`
-	CustomDomain       bool    `json:"custom_domain"`
-	AcmeStatus         string  `json:"acme_status"`
-	AcmeLastRenewalAt  *string `json:"acme_last_renewal_at,omitempty"`
-	CertPath           *string `json:"cert_path,omitempty"`
-	CreatedAt          string  `json:"created_at"`
+	ID                string  `json:"id"`
+	AppGWID           string  `json:"appgw_id"`
+	Hostname          string  `json:"hostname"`
+	AcmeStatus        string  `json:"acme_status"`
+	AcmeChallenge     *string `json:"acme_challenge,omitempty"`
+	AcmeDNSProvider   *string `json:"acme_dns_provider,omitempty"`
+	AcmeLastRenewalAt *string `json:"acme_last_renewal_at,omitempty"`
+	AcmeIssuedAt      *string `json:"acme_issued_at,omitempty"`
+	AcmeRenewAfter    *string `json:"acme_renew_after,omitempty"`
+	AcmeLastError     *string `json:"acme_last_error,omitempty"`
+	CertPath          *string `json:"cert_path,omitempty"`
+	CreatedAt         string  `json:"created_at"`
 }
 
 type AppGWListenerCreateRequest struct {
-	Hostname     string `json:"hostname"`
-	CustomDomain *bool  `json:"custom_domain,omitempty"`
+	Hostname           string            `json:"hostname"`
+	AcmeChallenge      *string           `json:"acme_challenge,omitempty"`
+	AcmeDNSProvider    *string           `json:"acme_dns_provider,omitempty"`
+	AcmeDNSCredentials map[string]string `json:"acme_dns_credentials,omitempty"`
 }
 
 // ─── Target Group ───────────────────────────────────────────────────────────

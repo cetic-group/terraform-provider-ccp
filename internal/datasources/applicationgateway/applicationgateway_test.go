@@ -30,7 +30,7 @@ func gwFixture(id, name, region string) map[string]any {
 		"created_at":          "2026-05-15T10:00:00Z",
 		"updated_at":          "2026-05-15T10:00:00Z",
 		"listeners": []map[string]any{
-			{"id": "l1", "appgw_id": id, "hostname": "api.example.com", "custom_domain": true, "acme_status": "issued", "created_at": "2026-05-15T10:01:00Z"},
+			{"id": "l1", "appgw_id": id, "hostname": "api.example.com", "acme_status": "issued", "acme_challenge": "http01", "created_at": "2026-05-15T10:01:00Z"},
 		},
 	}
 }
