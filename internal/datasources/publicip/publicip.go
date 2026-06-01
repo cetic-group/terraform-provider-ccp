@@ -31,6 +31,8 @@ type pipDSModel struct {
 	VMInstanceID     types.String `tfsdk:"vm_instance_id"`
 	LoadBalancerID   types.String `tfsdk:"load_balancer_id"`
 	LoadBalancerName types.String `tfsdk:"load_balancer_name"`
+	Label            types.String `tfsdk:"label"`
+	Description      types.String `tfsdk:"description"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 }
 
@@ -51,6 +53,8 @@ func (d *pipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 			"vm_instance_id":     schema.StringAttribute{Computed: true},
 			"load_balancer_id":   schema.StringAttribute{Computed: true},
 			"load_balancer_name": schema.StringAttribute{Computed: true},
+			"label":              schema.StringAttribute{Computed: true},
+			"description":        schema.StringAttribute{Computed: true},
 			"created_at":         schema.StringAttribute{Computed: true},
 		},
 	}
@@ -113,6 +117,8 @@ func (d *pipDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	setStrPtr(&state.VMInstanceID, found.VMInstanceID)
 	setStrPtr(&state.LoadBalancerID, found.LoadBalancerID)
 	setStrPtr(&state.LoadBalancerName, found.LoadBalancerName)
+	setStrPtr(&state.Label, found.Label)
+	setStrPtr(&state.Description, found.Description)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

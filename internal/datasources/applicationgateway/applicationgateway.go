@@ -25,8 +25,9 @@ type appgwDataSource struct{ client *client.Client }
 type listenerModel struct {
 	ID                types.String `tfsdk:"id"`
 	Hostname          types.String `tfsdk:"hostname"`
-	CustomDomain      types.Bool   `tfsdk:"custom_domain"`
 	AcmeStatus        types.String `tfsdk:"acme_status"`
+	AcmeChallenge     types.String `tfsdk:"acme_challenge"`
+	AcmeDNSProvider   types.String `tfsdk:"acme_dns_provider"`
 	AcmeLastRenewalAt types.String `tfsdk:"acme_last_renewal_at"`
 }
 
@@ -117,8 +118,9 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 					Attributes: map[string]schema.Attribute{
 						"id":                   schema.StringAttribute{Computed: true},
 						"hostname":             schema.StringAttribute{Computed: true},
-						"custom_domain":        schema.BoolAttribute{Computed: true},
 						"acme_status":          schema.StringAttribute{Computed: true},
+						"acme_challenge":       schema.StringAttribute{Computed: true},
+						"acme_dns_provider":    schema.StringAttribute{Computed: true},
 						"acme_last_renewal_at": schema.StringAttribute{Computed: true},
 					},
 				},
@@ -272,10 +274,19 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	// Listeners
 	for _, l := range found.Listeners {
 		lm := listenerModel{
-			ID:           types.StringValue(l.ID),
-			Hostname:     types.StringValue(l.Hostname),
-			CustomDomain: types.BoolValue(l.CustomDomain),
-			AcmeStatus:   types.StringValue(l.AcmeStatus),
+			ID:         types.StringValue(l.ID),
+			Hostname:   types.StringValue(l.Hostname),
+			AcmeStatus: types.StringValue(l.AcmeStatus),
+		}
+		if l.AcmeChallenge != nil {
+			lm.AcmeChallenge = types.StringValue(*l.AcmeChallenge)
+		} else {
+			lm.AcmeChallenge = types.StringNull()
+		}
+		if l.AcmeDNSProvider != nil {
+			lm.AcmeDNSProvider = types.StringValue(*l.AcmeDNSProvider)
+		} else {
+			lm.AcmeDNSProvider = types.StringNull()
 		}
 		if l.AcmeLastRenewalAt != nil {
 			lm.AcmeLastRenewalAt = types.StringValue(*l.AcmeLastRenewalAt)

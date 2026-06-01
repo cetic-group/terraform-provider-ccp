@@ -56,3 +56,31 @@ func TestClassifyDetachPoll(t *testing.T) {
 		}
 	}
 }
+
+// Les annotations client (label/description) doivent être mappées du record
+// API vers le state, et null quand absentes (pas de chaîne vide fantôme).
+func TestApplyPublicIPToModelLabels(t *testing.T) {
+	lbl, desc := "passerelle-prod", "IP fixe de la passerelle"
+	src := &client.PublicIP{
+		ID: "pip-1", PoolID: "pool-1", Region: "RNN",
+		IPAddress: "203.0.113.10", Status: client.PublicIPStatusAllocated,
+		Label: &lbl, Description: &desc,
+	}
+	var dst publicIPResourceModel
+	applyPublicIPToModel(src, &dst)
+	if dst.Label.ValueString() != "passerelle-prod" {
+		t.Errorf("label: got %q", dst.Label.ValueString())
+	}
+	if dst.Description.ValueString() != "IP fixe de la passerelle" {
+		t.Errorf("description: got %q", dst.Description.ValueString())
+	}
+
+	// Absent → null.
+	src2 := &client.PublicIP{ID: "pip-2", PoolID: "pool-1", Region: "RNN",
+		IPAddress: "203.0.113.11", Status: client.PublicIPStatusAllocated}
+	var dst2 publicIPResourceModel
+	applyPublicIPToModel(src2, &dst2)
+	if !dst2.Label.IsNull() || !dst2.Description.IsNull() {
+		t.Errorf("expected null label/description, got %v / %v", dst2.Label, dst2.Description)
+	}
+}

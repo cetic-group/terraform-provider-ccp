@@ -482,6 +482,17 @@ func (c *Client) AllocatePublicIP(ctx context.Context, req PublicIPAllocateReque
 	return &out, nil
 }
 
+// UpdatePublicIP patches the client-facing annotations (label + description)
+// of an allocated public IP. Both fields are sent explicitly — a nil pointer
+// clears the corresponding annotation server-side.
+func (c *Client) UpdatePublicIP(ctx context.Context, id string, req PublicIPUpdateRequest) (*PublicIP, error) {
+	var out PublicIP
+	if err := c.do(ctx, http.MethodPatch, "/v1/public-ips/"+id, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) ReleasePublicIP(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/public-ips/"+id, nil, nil)
 }
@@ -705,18 +716,9 @@ func (c *Client) DetachLoadBalancerPublicIP(ctx context.Context, id string) (*Lo
 	return &out, nil
 }
 
-func (c *Client) CreateLBListener(ctx context.Context, lbID string, req LBListenerCreateRequest) (*LBListener, error) {
-	var out LBListener
-	if err := c.do(ctx, http.MethodPost, "/v1/load-balancers/"+lbID+"/listeners", req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) DeleteLBListener(ctx context.Context, lbID, listenerID string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID, nil, nil)
-}
-
+// AddLBBackend adds a backend to an existing listener. Listeners themselves
+// can only be created in the initial POST /v1/load-balancers — there is no
+// endpoint to create/patch/delete a listener after the LB exists.
 func (c *Client) AddLBBackend(ctx context.Context, lbID, listenerID string, req LBBackendCreateRequest) (*LBBackend, error) {
 	var out LBBackend
 	if err := c.do(ctx, http.MethodPost, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends", req, &out); err != nil {
@@ -725,8 +727,27 @@ func (c *Client) AddLBBackend(ctx context.Context, lbID, listenerID string, req 
 	return &out, nil
 }
 
+func (c *Client) UpdateLBBackend(ctx context.Context, lbID, listenerID, backendID string, req LBBackendUpdateRequest) (*LBBackend, error) {
+	var out LBBackend
+	if err := c.do(ctx, http.MethodPatch, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends/"+backendID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) RemoveLBBackend(ctx context.Context, lbID, listenerID, backendID string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends/"+backendID, nil, nil)
+}
+
+// ListLBAcmeDNSProviders returns the supported DNS-01 providers for ACME, keyed
+// by provider id (e.g. "cloudflare"), with their label + expected credential
+// field names.
+func (c *Client) ListLBAcmeDNSProviders(ctx context.Context) (map[string]AcmeDNSProvider, error) {
+	out := map[string]AcmeDNSProvider{}
+	if err := c.do(ctx, http.MethodGet, "/v1/load-balancers/acme/dns-providers", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // ─── Container Scale Set ─────────────────────────────────────────────────────
@@ -1152,9 +1173,6 @@ func (c *Client) DeleteVnetPeering(ctx context.Context, id string) error {
 }
 
 // ─── VPC Peering ───────────────────────────────────────────────────────────
-
-
-
 
 // ─── Support Ticket ────────────────────────────────────────────────────────
 

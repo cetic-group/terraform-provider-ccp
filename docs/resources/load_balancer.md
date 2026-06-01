@@ -7,72 +7,117 @@ description: |-
 
 # ccp_load_balancer (Resource)
 
-Manages a load balancer on CETIC Cloud Platform. Each load balancer is highly available, with a floating virtual IP and automatic failover across availability zones — no downtime during node failures.
+Manages a CETIC Cloud Load Balancer. Listeners (TCP/HTTP/HTTPS) with weighted backends (container or VM instances) are declared in the resource and sent at creation time. HTTPS listeners can obtain a Let's Encrypt certificate automatically via ACME (`http01`/`dns01`). Supports public IP attachment via `public_ip_id`.
 
-Listeners and their backends are declared as nested blocks and are fully reconciled on every apply.
+~> **Note:** Load balancer provisioning is asynchronous. The provider polls until the load balancer reaches `active` status (up to 5 minutes).
 
-The capacity of the LB instance pair is controlled by `plan` — `small` (default, 1 vCPU / 512 MB), `medium` (2 vCPU / 1 GB) or `large` (4 vCPU / 2 GB). `plan` is immutable: changing it forces replacement of the load balancer.
-
-~> **Note:** Load balancer provisioning is asynchronous. The provider polls until the load balancer reaches `active` status, which typically takes 3 to 5 minutes.
+~> **Listeners are immutable.** Any change to a listener attribute other than its backends (e.g. protocol, port, algorithm, domain, ACME settings) forces replacement of the entire load balancer. Backends can be added, removed or updated in place.
 
 ## Example Usage
 
 ```hcl
-resource "ccp_public_ip" "web_lb" {
+resource "ccp_vpc" "prod" {
+  name   = "prod"
   region = "RNN"
 }
 
-resource "ccp_load_balancer" "web" {
-  name         = "web-lb"
-  region       = "RNN"
-  plan         = "medium"
-  vnet_id      = ccp_vnet.web.id
-  public_ip_id = ccp_public_ip.web_lb.id
-  tags         = ["web", "env:prod"]
-
-  listener {
-    name          = "http"
-    algorithm     = "round_robin"
-    protocol      = "http"
-    frontend_port = 80
-
-    backend {
-      container_id = ccp_container_instance.web_01.id
-      port         = 8080
-      weight       = 1
-    }
-
-    backend {
-      container_id = ccp_container_instance.web_02.id
-      port         = 8080
-      weight       = 1
-    }
-  }
-
-  listener {
-    name          = "https"
-    algorithm     = "round_robin"
-    protocol      = "tcp"
-    frontend_port = 443
-
-    backend {
-      container_id = ccp_container_instance.web_01.id
-      port         = 8443
-    }
-
-    backend {
-      container_id = ccp_container_instance.web_02.id
-      port         = 8443
-    }
-  }
+resource "ccp_vnet" "front" {
+  vpc_id = ccp_vpc.prod.id
+  name   = "front"
+  cidr   = "10.0.1.0/24"
+  snat   = true
 }
 
-output "lb_public_ip" {
-  value = ccp_public_ip.web_lb.ip_address
+resource "ccp_public_ip" "lb" {
+  region = "RNN"
+}
+
+resource "ccp_container_instance" "web" {
+  name     = "web-1"
+  region   = "RNN"
+  plan     = "small"
+  template = "ubuntu-24.04"
+  vnet_id  = ccp_vnet.front.id
+}
+
+resource "ccp_load_balancer" "web" {
+  name    = "web-lb"
+  region  = "RNN"
+  vnet_id = ccp_vnet.front.id
+  plan    = "small"
+
+  public_ip_id = ccp_public_ip.lb.id
+
+  # HTTPS listener with automatic Let's Encrypt certificate (HTTP-01 challenge)
+  listener {
+    protocol    = "https"
+    listen_port = 443
+    algorithm   = "roundrobin"
+
+    domain         = "www.example.com"
+    acme_challenge = "http01"
+
+    backend {
+      container_id = ccp_container_instance.web.id
+      port         = 8080
+    }
+  }
+
+  # HTTP listener (e.g. for redirect or plain HTTP traffic)
+  listener {
+    protocol    = "http"
+    listen_port = 80
+
+    backend {
+      container_id = ccp_container_instance.web.id
+      port         = 8080
+    }
+  }
 }
 
 output "lb_vip" {
   value = ccp_load_balancer.web.vip_address
+}
+
+output "lb_public_ip" {
+  value = ccp_load_balancer.web.public_ip_address
+}
+```
+
+### DNS-01 challenge (customer-owned domain via DNS provider)
+
+```hcl
+data "ccp_acme_dns_providers" "all" {}
+
+# Use data.ccp_acme_dns_providers.all.providers to discover valid
+# acme_dns_provider keys and the credential fields each expects.
+
+variable "cloudflare_token" {
+  type      = string
+  sensitive = true
+}
+
+resource "ccp_load_balancer" "api" {
+  name    = "api-lb"
+  region  = "RNN"
+  vnet_id = ccp_vnet.front.id
+
+  listener {
+    protocol    = "https"
+    listen_port = 443
+
+    domain             = "api.example.com"
+    acme_challenge     = "dns01"
+    acme_dns_provider  = "cloudflare"
+    acme_dns_credentials = {
+      api_token = var.cloudflare_token
+    }
+
+    backend {
+      container_id = ccp_container_instance.api.id
+      port         = 8080
+    }
+  }
 }
 ```
 
@@ -80,16 +125,16 @@ output "lb_vip" {
 
 ### Required
 
-- `name` - (Required) Name of the load balancer.
+- `name` - (Required) Human-readable name (1-100 chars).
 - `region` - (Required, Forces new resource) Region where the load balancer is created. One of: `RNN`, `PAR`, `ABJ`.
-- `vnet_id` - (Required, Forces new resource) UUID of the VNet where the load balancer's virtual IP (VIP) will be hosted. Backend instances must be reachable from this VNet.
+- `vnet_id` - (Required, Forces new resource) UUID of the VNet where the load balancer's virtual IP (VIP) will be hosted.
 
 ### Optional
 
-- `plan` - (Optional, Forces new resource) Capacity plan for the LB instance pair. One of: `small` (default, 1 vCPU / 512 MB, 4.99 €/month), `medium` (2 vCPU / 1 GB, 11.99 €/month) or `large` (4 vCPU / 2 GB, 27.99 €/month). Defaults to `small`. Changing the plan forces replacement — the platform does not support in-place resizing of the LB pair.
-- `public_ip_id` - (Optional) UUID of a public IP to attach to the load balancer. The public IP must be in the same region. Remove to detach.
-- `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
-- `listener` - (Optional) One or more listener blocks (see [Listener Reference](#listener-reference) below).
+- `plan` - (Optional, Forces new resource) Capacity plan. One of: `small` (default), `medium`, `large`. Changing the plan forces replacement.
+- `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Remove to detach.
+- `tags` - (Optional) Free-form tags (max 60 tags, max 50 chars each).
+- `listener` - (Optional) One or more `listener` blocks. See [Listener Reference](#listener-reference) below.
 
 ## Listener Reference
 
@@ -97,18 +142,32 @@ Each `listener` block supports:
 
 ### Required
 
-- `name` - (Required) Listener name (1-100 chars). Used as the stable key for reconciliation across applies.
-- `algorithm` - (Required) Load-balancing algorithm. One of: `round_robin`, `least_conn`, `ip_hash`.
-- `protocol` - (Required) Protocol. One of: `tcp`, `http`.
-- `frontend_port` - (Required) Port the load balancer listens on (1-65535).
+- `protocol` - (Required, Immutable) Protocol. One of: `tcp`, `http`, `https`.
+- `listen_port` - (Required, Immutable) Port the load balancer listens on (1-65535).
 
 ### Optional
 
-- `backend` - (Optional) One or more backend blocks (see [Backend Reference](#backend-reference) below).
+- `algorithm` - (Optional, Immutable) Load-balancing algorithm. One of: `roundrobin` (default), `leastconn`, `source`.
+- `health_check_enabled` - (Optional, Immutable) Enable backend health checks. Defaults to `true`.
+- `health_check_path` - (Optional, Immutable) HTTP path used for health checks (for `http`/`https` listeners).
+- `domain` - (Optional, Immutable) Fully-qualified domain name served by an `https` listener. Required when `acme_challenge` is set. Must be lowercase.
+- `acme_challenge` - (Optional, Immutable) ACME (Let's Encrypt) challenge type: `http01` or `dns01`. Requires `protocol = "https"` and `domain`. `dns01` additionally requires `acme_dns_provider` and `acme_dns_credentials`.
+- `acme_dns_provider` - (Optional, Immutable) DNS provider key for `dns01` (e.g. `cloudflare`, `route53`). See the [`ccp_acme_dns_providers`](../data-sources/acme_dns_providers.md) data source for the supported catalog.
+- `acme_dns_credentials` - (Optional, Sensitive, Immutable) DNS provider credentials for `dns01` (write-only — never returned by the API). Keys depend on the provider (see `ccp_acme_dns_providers`).
+- `backend` - (Optional) One or more `backend` blocks. Backends can be added, removed or updated in place without replacing the load balancer. See [Backend Reference](#backend-reference) below.
 
 ### Computed
 
 - `id` - The UUID of the listener.
+- `acme_status` - ACME certificate status: `pending` | `issuing` | `issued` | `renewing` | `error`.
+- `acme_last_error` - Last certificate issuance error, if any. Cleared when issuance succeeds.
+
+### Important semantics
+
+- **Listeners are sent in the initial create request.** The API does not support adding or modifying listeners after creation. Any change to an immutable listener field forces replacement of the whole load balancer.
+- **Backends are reconciled in place.** Adding, removing, or changing `weight` on a backend does not replace the load balancer.
+- **ACME requires** `protocol = "https"` and `domain`. For `dns01`, `acme_dns_provider` and `acme_dns_credentials` are also required.
+- `acme_status` and `acme_last_error` are read-only and reflect certificate issuance progress. A freshly created listener starts in `pending` and transitions to `issued` once the certificate is obtained.
 
 ## Backend Reference
 
@@ -116,17 +175,16 @@ Each `backend` block inside a `listener` supports:
 
 ### Required (exactly one)
 
-- `container_id` - UUID of a container instance to route traffic to.
-- `vm_instance_id` - UUID of a VM instance to route traffic to.
-- `scale_set_id` - UUID of a container scale set. Traffic is round-robined across all healthy instances of the scale set — the LB reconciles backends automatically as the scale set grows or shrinks.
+- `container_id` - (Optional) UUID of a container instance to route traffic to.
+- `vm_instance_id` - (Optional) UUID of a VM instance to route traffic to.
 
 ### Required
 
-- `port` - Backend port (1-65535). Must match the port the instance's service listens on.
+- `port` - (Required) Backend port (1-65535).
 
 ### Optional
 
-- `weight` - (Optional) Backend weight for weighted round-robin (1-100). Defaults to `1`.
+- `weight` - (Optional) Backend weight for weighted load balancing (0-256). Defaults to `1`. Weight changes are reconciled in place.
 
 ### Computed
 
@@ -140,6 +198,7 @@ In addition to all arguments above, the following attributes are exported:
 - `status` - Current status: `provisioning`, `active`, `updating`, or `error`.
 - `vip_address` - Private virtual IP address within the VNet.
 - `public_ip_address` - Public IP address if one is attached, otherwise empty.
+- `created_at` - RFC 3339 creation timestamp.
 
 ## Import
 
@@ -149,4 +208,4 @@ Load balancers can be imported using their UUID:
 terraform import ccp_load_balancer.web <lb_id>
 ```
 
-~> **Note:** After import, listeners and backends are read from the API state. Subsequent `terraform plan` will show the current listener/backend configuration.
+~> **Note:** After import, `acme_dns_credentials` cannot be recovered (write-only). If an imported listener uses `dns01`, declaring `acme_dns_credentials` in configuration will not cause a replacement — the provider carries over the prior credentials value from state across reads.

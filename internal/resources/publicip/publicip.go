@@ -67,11 +67,18 @@ type publicIPResourceModel struct {
 	VMInstanceID     types.String `tfsdk:"vm_instance_id"`
 	LoadBalancerID   types.String `tfsdk:"load_balancer_id"`
 	LoadBalancerName types.String `tfsdk:"load_balancer_name"`
+	Label            types.String `tfsdk:"label"`
+	Description      types.String `tfsdk:"description"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 }
 
 // uuidPattern is a permissive RFC 4122 matcher for CETIC Cloud resource IDs.
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// noEdgeWhitespace rejects values with leading/trailing whitespace — the API
+// trims them server-side, which would otherwise cause a perma-diff between
+// the configured and stored value.
+var noEdgeWhitespace = regexp.MustCompile(`^\S(.*\S)?$`)
 
 // Polling parameters.
 //
@@ -162,6 +169,26 @@ func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"label": schema.StringAttribute{
+				MarkdownDescription: "Optional display name for the IP (e.g. " +
+					"`passerelle-prod`, `ip-fixe-api`). Max 100 characters. " +
+					"Mutable in-place — changing it does not detach or recreate the IP.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(100),
+					stringvalidator.RegexMatches(noEdgeWhitespace,
+						"must not start or end with whitespace"),
+				},
+			},
+			"description": schema.StringAttribute{
+				MarkdownDescription: "Optional free-form description of what this IP " +
+					"is used for. Mutable in-place.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(noEdgeWhitespace,
+						"must not start or end with whitespace"),
 				},
 			},
 			"ip_address": schema.StringAttribute{
@@ -257,6 +284,14 @@ func (r *publicIPResource) Create(ctx context.Context, req resource.CreateReques
 	if !plan.PoolID.IsNull() && !plan.PoolID.IsUnknown() && plan.PoolID.ValueString() != "" {
 		v := plan.PoolID.ValueString()
 		allocReq.PoolID = &v
+	}
+	if !plan.Label.IsNull() && !plan.Label.IsUnknown() {
+		v := plan.Label.ValueString()
+		allocReq.Label = &v
+	}
+	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
+		v := plan.Description.ValueString()
+		allocReq.Description = &v
 	}
 
 	created, err := r.client.AllocatePublicIP(ctx, allocReq)
@@ -365,6 +400,27 @@ func (r *publicIPResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 	if !state.AttachedToType.IsNull() && !state.AttachedToType.IsUnknown() {
 		stateAttachType = state.AttachedToType.ValueString()
+	}
+
+	// Annotations (label/description) — mutable via PATCH, indépendant du flow
+	// attach/detach.
+	if !plan.Label.Equal(state.Label) || !plan.Description.Equal(state.Description) {
+		updReq := client.PublicIPUpdateRequest{}
+		if !plan.Label.IsNull() && !plan.Label.IsUnknown() {
+			v := plan.Label.ValueString()
+			updReq.Label = &v
+		}
+		if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
+			v := plan.Description.ValueString()
+			updReq.Description = &v
+		}
+		if _, err := r.client.UpdatePublicIP(ctx, id, updReq); err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to update public IP annotations",
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
+			)
+			return
+		}
 	}
 
 	switch {
@@ -642,6 +698,8 @@ func applyPublicIPToModel(src *client.PublicIP, dst *publicIPResourceModel) {
 	dst.VMInstanceID = stringPtrToValue(src.VMInstanceID)
 	dst.LoadBalancerID = stringPtrToValue(src.LoadBalancerID)
 	dst.LoadBalancerName = stringPtrToValue(src.LoadBalancerName)
+	dst.Label = stringPtrToValue(src.Label)
+	dst.Description = stringPtrToValue(src.Description)
 	dst.CreatedAt = types.StringValue(src.CreatedAt.Format(time.RFC3339))
 
 	switch {

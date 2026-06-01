@@ -199,12 +199,24 @@ type PublicIP struct {
 	VMInstanceID     *string   `json:"vm_instance_id,omitempty"`
 	LoadBalancerID   *string   `json:"load_balancer_id,omitempty"`
 	LoadBalancerName *string   `json:"load_balancer_name,omitempty"`
+	Label            *string   `json:"label,omitempty"`
+	Description      *string   `json:"description,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
 type PublicIPAllocateRequest struct {
-	Region string  `json:"region"`
-	PoolID *string `json:"pool_id,omitempty"`
+	Region      string  `json:"region"`
+	PoolID      *string `json:"pool_id,omitempty"`
+	Label       *string `json:"label,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
+// PublicIPUpdateRequest mirrors PATCH /v1/public-ips/{id}. Both fields are
+// always marshalled (no omitempty): the backend applies any field present in
+// the JSON body, and an explicit null clears the annotation.
+type PublicIPUpdateRequest struct {
+	Label       *string `json:"label"`
+	Description *string `json:"description"`
 }
 
 type PublicIPAttachRequest struct {
@@ -367,45 +379,71 @@ type LoadBalancer struct {
 }
 
 type LBListener struct {
-	ID           string      `json:"id"`
-	Name         string      `json:"name"`
-	Algorithm    string      `json:"algorithm"`
-	Protocol     string      `json:"protocol"`
-	FrontendPort int         `json:"frontend_port"`
-	Backends     []LBBackend `json:"backends"`
+	ID                 string      `json:"id"`
+	Protocol           string      `json:"protocol"` // tcp | http | https
+	ListenPort         int         `json:"listen_port"`
+	Algorithm          string      `json:"algorithm"` // roundrobin | leastconn | source
+	HealthCheckEnabled bool        `json:"health_check_enabled"`
+	HealthCheckPath    *string     `json:"health_check_path,omitempty"`
+	Backends           []LBBackend `json:"backends"`
+	// ACME / Let's Encrypt (read-only on responses; credentials never returned)
+	Domain          *string `json:"domain,omitempty"`
+	AcmeChallenge   *string `json:"acme_challenge,omitempty"`
+	AcmeStatus      *string `json:"acme_status,omitempty"`
+	AcmeLastError   *string `json:"acme_last_error,omitempty"`
+	AcmeDNSProvider *string `json:"acme_dns_provider,omitempty"`
+	AcmeIssuedAt    *string `json:"acme_issued_at,omitempty"`
+	AcmeRenewAfter  *string `json:"acme_renew_after,omitempty"`
 }
 
 type LBBackend struct {
 	ID          string  `json:"id"`
 	ContainerID *string `json:"container_id,omitempty"`
 	VMID        *string `json:"vm_instance_id,omitempty"`
-	ScaleSetID  *string `json:"scale_set_id,omitempty"`
 	Port        int     `json:"port"`
 	Weight      int     `json:"weight"`
 }
 
 type LBListenerCreateRequest struct {
-	Name         string `json:"name"`
-	Algorithm    string `json:"algorithm"`
-	Protocol     string `json:"protocol"`
-	FrontendPort int    `json:"frontend_port"`
+	Protocol           string                   `json:"protocol"`
+	ListenPort         int                      `json:"listen_port"`
+	Algorithm          string                   `json:"algorithm,omitempty"`
+	HealthCheckEnabled *bool                    `json:"health_check_enabled,omitempty"`
+	HealthCheckPath    *string                  `json:"health_check_path,omitempty"`
+	Backends           []LBBackendCreateRequest `json:"backends,omitempty"`
+	Domain             *string                  `json:"domain,omitempty"`
+	AcmeChallenge      *string                  `json:"acme_challenge,omitempty"`
+	AcmeDNSProvider    *string                  `json:"acme_dns_provider,omitempty"`
+	AcmeDNSCredentials map[string]string        `json:"acme_dns_credentials,omitempty"`
 }
 
 type LBBackendCreateRequest struct {
 	ContainerID *string `json:"container_id,omitempty"`
 	VMID        *string `json:"vm_instance_id,omitempty"`
-	ScaleSetID  *string `json:"scale_set_id,omitempty"`
 	Port        int     `json:"port"`
 	Weight      int     `json:"weight,omitempty"`
 }
 
+type LBBackendUpdateRequest struct {
+	Port   *int `json:"port,omitempty"`
+	Weight *int `json:"weight,omitempty"`
+}
+
 type LoadBalancerCreateRequest struct {
-	Name       string   `json:"name"`
-	Region     string   `json:"region"`
-	Plan       string   `json:"plan,omitempty"`
-	VnetID     string   `json:"vnet_id"`
-	PublicIPID *string  `json:"public_ip_id,omitempty"`
-	Tags       []string `json:"tags,omitempty"`
+	Name       string                    `json:"name"`
+	Region     string                    `json:"region"`
+	Plan       string                    `json:"plan,omitempty"`
+	VnetID     string                    `json:"vnet_id"`
+	PublicIPID *string                   `json:"public_ip_id,omitempty"`
+	Listeners  []LBListenerCreateRequest `json:"listeners,omitempty"`
+	Tags       []string                  `json:"tags,omitempty"`
+}
+
+// AcmeDNSProvider describes one supported DNS-01 provider (label + the
+// credential field names expected in acme_dns_credentials).
+type AcmeDNSProvider struct {
+	Label  string   `json:"label"`
+	Fields []string `json:"fields"`
 }
 
 type LoadBalancerUpdateRequest struct {
