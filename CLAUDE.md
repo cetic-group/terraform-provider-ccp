@@ -1,9 +1,9 @@
-# terraform-provider-cetic-cloud-platform — CLAUDE.md
+# terraform-provider-ccp — CLAUDE.md
 
 > Provider Terraform officiel pour CETIC Cloud Platform.
 > Source de vérité backend : `cetic-cloud-platform/apps/api/`.
-> Repo public : https://github.com/cetic-group/terraform-provider-cetic-cloud-platform
-> Terraform Registry : `cetic-group/cetic-cloud-platform`
+> Repo public : https://github.com/cetic-group/terraform-provider-ccp
+> Terraform Registry : `cetic-group/ccp`
 
 ---
 
@@ -16,14 +16,14 @@
 1. **`docs/index.md`** — typiquement 2-3 occurrences :
    ```hcl
    required_providers {
-     cetic-cloud-platform = {                   # local name canonique depuis v1.0.0
-       source  = "cetic-group/cetic-cloud-platform"
+     ccp = {                                    # local name = ccp depuis v4.0.0
+       source  = "cetic-group/ccp"
        version = "~> X.Y"   # ← bump à la version qu'on tag
      }
    }
    ```
-   Local name canonique = `cetic-cloud-platform` (matche le snippet "Use Provider"
-   du Registry). NE PAS revenir à l'alias `ccp` dans les exemples primaires.
+   Local name = `ccp` (matche le snippet "Use Provider" du Registry ET le
+   préfixe des ressources `ccp_*` → plus besoin de `provider = ...` par bloc).
 
 2. **`README.md`** — section "Installation" + exemples + badges : aligner sur `~> X.Y` (compat majeure) ou `>= X.Y.Z` (lock à la min).
 
@@ -64,7 +64,7 @@ gh run list --limit 3
 gh run watch  # attends que goreleaser finisse (~4 min)
 
 # 5. Vérifier sur Terraform Registry (latency ~5 min)
-#    https://registry.terraform.io/providers/cetic-group/cetic-cloud-platform/latest
+#    https://registry.terraform.io/providers/cetic-group/ccp/latest
 ```
 
 ### Versionnage SemVer
@@ -83,9 +83,10 @@ Idéalement faire une PR sur `cetic-cloud-terraform-modules` juste après le rel
 
 ### Live Registry
 
-**Latest** : `v3.2.0` (2026-05-29). Pinned via `~> 3.0` partout (couvre les minors/patches — pas de bump exemples requis).
+**Latest** : `v4.0.0` (2026-06-01) — **adresse Registry renommée** `cetic-group/cetic-cloud-platform` → **`cetic-group/ccp`** + TypeName `ccp`. Exemples pinnés `~> 4.0`. **Migration consommateur** : `source = "cetic-group/ccp"`, bloc `ccp = {}`, `terraform init -upgrade`. L'ancienne adresse n'est plus publiée. Module path Go = `github.com/cetic-group/terraform-provider-ccp`. Ressources `ccp_*` inchangées. Cascade : modules `cetic-cloud-terraform-modules` v0.22.0 (`source = "cetic-group/ccp"`, `>= 4.0.0`) + docs monorepo.
 
 **Historique récent** :
+- `v3.2.1` — dernière version sous l'ancienne adresse `cetic-group/cetic-cloud-platform`.
 - `v3.2.0` — feat : `ccp_k8s_cluster.initial_pool` expose `labels` (map) + `taints` (set `{key,value?,effect}`), parité avec `ccp_k8s_node_pool`. Le backend cluster-create acceptait déjà labels/taints sur l'initial pool (`K8sNodePoolCreate`), seul le client provider ne les envoyait pas. Mutables in-place : l'`Update` réconcilie le pool initial (replicas + min/max + labels + taints) via `UpdateK8sNodePool`. Optional (non-Computed) car `stateFromAPI` préserve le plan (`currentInitial`), pas de readback → pas de perma-diff. PR #43.
 - `v3.1.2` — fix : `ccp_k8s_node_pool` — désactiver l'autoscaler (retirer `min_size`/`max_size`) ne lève plus « inconsistent result: was null, but now 0 ». `setState` normalise l'état désactivé renvoyé par l'API (0/0) vers null/null : comme `min_size`/`max_size` sont `Optional` (non-Computed), le state final doit == la config (null). L'autoscaler est désactivé ⟺ `max_size` absent ou 0 → on mappe alors **les deux** à null ; quand activé (`max_size > 0`), on garde les valeurs réelles, y compris `min_size=0` (scale-to-zero). Bug latent depuis v0.5.0, exposé en désactivant l'autoscaler d'un pool existant. PR #42.
 - `v3.1.1` — fix : `ccp_k8s_cluster.initial_pool` — le retrait de `min_size`/`max_size` **désactive** l'autoscaler (envoie `0`/`0` au lieu de ne rien envoyer). Le PATCH backend ne peut pas effacer un `None` mais applique `0` → annotations autoscaler `min=0/max=0` = autoscaler off, pool figé à `replicas`. Toggle par présence cohérent avec `ccp_k8s_node_pool` et la console. Lève la limite documentée en v3.1.0 (« recréer le pool pour retirer »). PR #41.
@@ -173,8 +174,8 @@ examples/                    # Exemples auto-testés (acceptance tests)
 
 ### Metadata.TypeName — hardcoded `ccp_*` (depuis v1.0.0)
 
-Le provider's `Metadata.TypeName = "cetic-cloud-platform"` (matche le snippet
-Registry). Mais les **resource/datasource types** restent en `ccp_*`. Le
+Le provider's `Metadata.TypeName = "ccp"` (matche le snippet Registry ET le
+préfixe). Les **resource/datasource types** restent en `ccp_*`. Le
 découplage se fait en hardcodant chaque `Metadata` :
 
 ```go
@@ -183,8 +184,9 @@ func (r *vpcResource) Metadata(_ context.Context, _ resource.MetadataRequest, re
 }
 ```
 
-**Piège** : `req.ProviderTypeName` vaudrait `cetic-cloud-platform` → resources
-exposées comme `cetic-cloud-platform_vpc` (cassé pour les consommateurs).
+**Piège** : `req.ProviderTypeName` vaudrait `ccp` → ici ça coïnciderait, mais
+on garde le hardcode `ccp_<r>` pour rester robuste à un futur rename du TypeName
+(et parce que des resources ont un préfixe composite, ex `ccp_db_*`).
 **Toute nouvelle resource/datasource doit suivre ce pattern.**
 
 Sed safety check (post-rename) :
@@ -305,7 +307,7 @@ Sinon le schema crash au load avec `Reserved Root Attribute/Block Name`. Préfé
 ## Build local
 
 ```bash
-go build -o ./terraform-provider-cetic-cloud-platform .
+go build -o ./terraform-provider-ccp .
 ```
 
 Le binaire est ensuite picked up par les modules consommateurs si leur `~/.terraformrc` a un `dev_overrides` qui pointe vers ce dossier.
