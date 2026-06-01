@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vm_scale_set Resource - cetic-cloud-platform"
+page_title: "ccp_vm_scale_set Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a VM scale set (auto-scaling group of virtual machines) on CETIC Cloud Platform.

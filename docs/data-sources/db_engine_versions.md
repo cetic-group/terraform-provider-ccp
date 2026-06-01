@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_db_engine_versions Data Source - cetic-cloud-platform"
+page_title: "ccp_db_engine_versions Data Source - ccp"
 subcategory: "Catalogs"
 description: |-
   Lists active DB engine versions exposed to clients.

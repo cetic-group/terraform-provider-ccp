@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_db_pg_instance Data Source - cetic-cloud-platform"
+page_title: "ccp_db_pg_instance Data Source - ccp"
 subcategory: "Databases"
 description: |-
   Look up a PostgreSQL database instance.

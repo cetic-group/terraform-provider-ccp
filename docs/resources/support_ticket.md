@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_support_ticket Resource - cetic-cloud-platform"
+page_title: "ccp_support_ticket Resource - ccp"
 subcategory: "Account"
 description: |-
   Manages a support ticket on CETIC Cloud Platform.

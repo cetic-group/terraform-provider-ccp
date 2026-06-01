@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_k8s_cluster Data Source - cetic-cloud-platform"
+page_title: "ccp_k8s_cluster Data Source - ccp"
 subcategory: "Kubernetes"
 description: |-
   Look up an existing CETIC Cloud Kubernetes (CCKS) cluster by ID or by (name, region).

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_regions Data Source - cetic-cloud-platform"
+page_title: "ccp_regions Data Source - ccp"
 subcategory: "Networking"
 description: |-
   Lists available regions on CETIC Cloud Platform.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_pricing Data Source - terraform-provider-cetic-cloud-platform"
+page_title: "ccp_pricing Data Source - terraform-provider-ccp"
 subcategory: "Billing"
 description: |-
   Lists the live pricing grid (resource_pricing). Filter by resource_type and/or plan.

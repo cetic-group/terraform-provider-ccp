@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_container_templates Data Source - cetic-cloud-platform"
+page_title: "ccp_container_templates Data Source - ccp"
 subcategory: "Catalogs"
 description: |-
   Lists active container templates available on CETIC Cloud Platform.

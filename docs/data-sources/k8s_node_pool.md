@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_k8s_node_pool Data Source - cetic-cloud-platform"
+page_title: "ccp_k8s_node_pool Data Source - ccp"
 subcategory: "Kubernetes"
 description: |-
   Look up a Kubernetes node pool by (id, cluster_id) or (name, cluster_id).

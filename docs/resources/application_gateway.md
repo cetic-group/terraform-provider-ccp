@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_application_gateway Resource - cetic-cloud-platform"
+page_title: "ccp_application_gateway Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a CETIC Cloud Application Gateway (L7 HTTP/HTTPS reverse proxy with TLS, rate limiting and WAF).

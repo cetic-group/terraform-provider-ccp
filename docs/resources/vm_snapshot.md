@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vm_snapshot Resource - cetic-cloud-platform"
+page_title: "ccp_vm_snapshot Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a snapshot of a VM instance on CETIC Cloud Platform.

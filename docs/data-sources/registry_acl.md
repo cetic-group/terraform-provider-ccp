@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_registry_acl Data Source - cetic-cloud-platform"
+page_title: "ccp_registry_acl Data Source - ccp"
 subcategory: "Registry"
 description: |-
   Look up a registry ACL by ID.

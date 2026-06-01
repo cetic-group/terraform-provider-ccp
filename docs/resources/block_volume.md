@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_block_volume Resource - cetic-cloud-platform"
+page_title: "ccp_block_volume Resource - ccp"
 subcategory: "Storage"
 description: |-
   Manages a block storage volume on CETIC Cloud Platform.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vm_templates Data Source - cetic-cloud-platform"
+page_title: "ccp_vm_templates Data Source - ccp"
 subcategory: "Catalogs"
 description: |-
   Lists active VM templates available on CETIC Cloud Platform.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_ipaas_pool Resource - cetic-cloud-platform"
+page_title: "ccp_ipaas_pool Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a public IP pool on CETIC Cloud Platform.

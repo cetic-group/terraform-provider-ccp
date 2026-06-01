@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_registry Data Source - cetic-cloud-platform"
+page_title: "ccp_registry Data Source - ccp"
 subcategory: "Registry"
 description: |-
   Look up an existing CETIC Container Registry by ID or by (name, region).

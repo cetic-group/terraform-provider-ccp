@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_public_ip Resource - cetic-cloud-platform"
+page_title: "ccp_public_ip Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a public IP address on CETIC Cloud Platform.

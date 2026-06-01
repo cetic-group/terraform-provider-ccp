@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_secret Resource - cetic-cloud-platform"
+page_title: "ccp_secret Resource - ccp"
 subcategory: "Secret Manager"
 description: |-
   Manages an encrypted secret in the CETIC Cloud Secret Manager — a generic key/value blob, K8s-agnostic.

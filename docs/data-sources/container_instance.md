@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_container_instance Data Source - cetic-cloud-platform"
+page_title: "ccp_container_instance Data Source - ccp"
 subcategory: "Compute"
 description: |-
   Look up an LXC container instance by ID or by (name, region).

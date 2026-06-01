@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client/testutil"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_registry_acl Resource - cetic-cloud-platform"
+page_title: "ccp_registry_acl Resource - ccp"
 subcategory: "Registry"
 description: |-
   Grants a CETIC Container Registry user permissions on a repository pattern.

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
-	ccppm "github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/planmodifier"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccppm "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"

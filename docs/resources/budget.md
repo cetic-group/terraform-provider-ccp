@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_budget Resource - terraform-provider-cetic-cloud-platform"
+page_title: "ccp_budget Resource - terraform-provider-ccp"
 subcategory: "Billing"
 description: |-
   Monthly budget cap for the current tenant + email alerts at configurable thresholds + optional hard-stop.

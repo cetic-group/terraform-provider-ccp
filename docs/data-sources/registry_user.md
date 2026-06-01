@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_registry_user Data Source - cetic-cloud-platform"
+page_title: "ccp_registry_user Data Source - ccp"
 subcategory: "Registry"
 description: |-
   Look up a registry user by username.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_organization Resource - cetic-cloud-platform"
+page_title: "ccp_organization Resource - ccp"
 subcategory: "Identity"
 description: |-
   Manages an organization on CETIC Cloud Platform.

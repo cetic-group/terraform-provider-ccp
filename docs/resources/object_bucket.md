@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_object_bucket Resource - cetic-cloud-platform"
+page_title: "ccp_object_bucket Resource - ccp"
 subcategory: "Storage"
 description: |-
   Manages an S3-compatible object storage bucket on CETIC Cloud Platform.

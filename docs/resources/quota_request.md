@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_quota_request Resource - cetic-cloud-platform"
+page_title: "ccp_quota_request Resource - ccp"
 subcategory: "Account"
 description: |-
   Submits a quota increase request on CETIC Cloud Platform.

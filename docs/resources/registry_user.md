@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_registry_user Resource - cetic-cloud-platform"
+page_title: "ccp_registry_user Resource - ccp"
 subcategory: "Registry"
 description: |-
   Manages a non-admin user of a CETIC Container Registry.

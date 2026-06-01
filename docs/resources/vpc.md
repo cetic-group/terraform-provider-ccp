@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vpc Resource - cetic-cloud-platform"
+page_title: "ccp_vpc Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a VPC (Virtual Private Cloud) on CETIC Cloud Platform.

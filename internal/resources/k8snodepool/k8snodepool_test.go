@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 )
 
 func ptr(i int) *int { return &i }

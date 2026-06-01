@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_support_plan Data Source - terraform-provider-cetic-cloud-platform"
+page_title: "ccp_support_plan Data Source - terraform-provider-ccp"
 subcategory: "Support"
 description: |-
   Read-only catalogue entry for a CETIC support plan.

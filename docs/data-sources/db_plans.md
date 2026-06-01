@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_db_plans Data Source - cetic-cloud-platform"
+page_title: "ccp_db_plans Data Source - ccp"
 subcategory: "Catalogs"
 description: |-
   Lists database plans (CPU/memory tiers) available for managed DB instances.

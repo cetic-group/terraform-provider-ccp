@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_organizations Data Source - cetic-cloud-platform"
+page_title: "ccp_organizations Data Source - ccp"
 subcategory: "Identity"
 description: |-
   Lists organizations accessible to the authenticated API key on CETIC Cloud Platform.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_service_account Resource - cetic-cloud-platform"
+page_title: "ccp_service_account Resource - ccp"
 subcategory: "Identity"
 description: |-
   Manages a CETIC Cloud service account — a token-based machine identity that derives permissions from IAM role assignments.

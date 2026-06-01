@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_block_volume Data Source - cetic-cloud-platform"
+page_title: "ccp_block_volume Data Source - ccp"
 subcategory: "Storage"
 description: |-
   Look up a Block Volume (Ceph RBD) by ID or (name, region).

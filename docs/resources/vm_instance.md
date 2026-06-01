@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vm_instance Resource - cetic-cloud-platform"
+page_title: "ccp_vm_instance Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a virtual machine instance on CETIC Cloud Platform.

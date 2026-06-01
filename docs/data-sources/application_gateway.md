@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_application_gateway Data Source - cetic-cloud-platform"
+page_title: "ccp_application_gateway Data Source - ccp"
 subcategory: "Networking"
 description: |-
   Look up an existing CETIC Cloud Application Gateway by id or by (name, region).

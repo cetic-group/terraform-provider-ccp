@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_secret Data Source - cetic-cloud-platform"
+page_title: "ccp_secret Data Source - ccp"
 subcategory: "Secret Manager"
 description: |-
   Look up CETIC Cloud secret metadata by id or by name. Never returns plaintext data.
