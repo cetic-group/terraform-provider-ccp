@@ -199,12 +199,24 @@ type PublicIP struct {
 	VMInstanceID     *string   `json:"vm_instance_id,omitempty"`
 	LoadBalancerID   *string   `json:"load_balancer_id,omitempty"`
 	LoadBalancerName *string   `json:"load_balancer_name,omitempty"`
+	Label            *string   `json:"label,omitempty"`
+	Description      *string   `json:"description,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
 type PublicIPAllocateRequest struct {
-	Region string  `json:"region"`
-	PoolID *string `json:"pool_id,omitempty"`
+	Region      string  `json:"region"`
+	PoolID      *string `json:"pool_id,omitempty"`
+	Label       *string `json:"label,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
+// PublicIPUpdateRequest mirrors PATCH /v1/public-ips/{id}. Both fields are
+// always marshalled (no omitempty): the backend applies any field present in
+// the JSON body, and an explicit null clears the annotation.
+type PublicIPUpdateRequest struct {
+	Label       *string `json:"label"`
+	Description *string `json:"description"`
 }
 
 type PublicIPAttachRequest struct {

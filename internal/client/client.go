@@ -482,6 +482,17 @@ func (c *Client) AllocatePublicIP(ctx context.Context, req PublicIPAllocateReque
 	return &out, nil
 }
 
+// UpdatePublicIP patches the client-facing annotations (label + description)
+// of an allocated public IP. Both fields are sent explicitly — a nil pointer
+// clears the corresponding annotation server-side.
+func (c *Client) UpdatePublicIP(ctx context.Context, id string, req PublicIPUpdateRequest) (*PublicIP, error) {
+	var out PublicIP
+	if err := c.do(ctx, http.MethodPatch, "/v1/public-ips/"+id, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) ReleasePublicIP(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/public-ips/"+id, nil, nil)
 }
