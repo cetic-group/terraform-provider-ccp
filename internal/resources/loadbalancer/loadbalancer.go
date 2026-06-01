@@ -1,13 +1,17 @@
 // Package loadbalancer implements the ccp_load_balancer Terraform resource.
 //
-// The resource manages the full lifecycle of a load balancer including listeners
-// and their backends. Listeners and backends declared in the Terraform config are
-// reconciled on every apply — additions and removals are handled automatically.
+// The resource manages the full lifecycle of a load balancer including its
+// listeners and their backends. Listeners are sent in the initial POST that
+// creates the LB — the backend exposes NO endpoint to add, patch or delete a
+// listener afterwards. Any change to an immutable listener field therefore
+// forces replacement of the whole LB (see ModifyPlan). Backends, on the other
+// hand, can be reconciled in place (add/update/remove) after creation.
 package loadbalancer
 
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
@@ -16,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -28,6 +33,7 @@ var (
 	_ resource.Resource                = (*lbResource)(nil)
 	_ resource.ResourceWithConfigure   = (*lbResource)(nil)
 	_ resource.ResourceWithImportState = (*lbResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*lbResource)(nil)
 )
 
 func New() resource.Resource { return &lbResource{} }
@@ -40,18 +46,24 @@ type lbBackendModel struct {
 	ID          types.String `tfsdk:"id"`
 	ContainerID types.String `tfsdk:"container_id"`
 	VMID        types.String `tfsdk:"vm_instance_id"`
-	ScaleSetID  types.String `tfsdk:"scale_set_id"`
 	Port        types.Int64  `tfsdk:"port"`
 	Weight      types.Int64  `tfsdk:"weight"`
 }
 
 type lbListenerModel struct {
-	ID           types.String     `tfsdk:"id"`
-	Name         types.String     `tfsdk:"name"`
-	Algorithm    types.String     `tfsdk:"algorithm"`
-	Protocol     types.String     `tfsdk:"protocol"`
-	FrontendPort types.Int64      `tfsdk:"frontend_port"`
-	Backends     []lbBackendModel `tfsdk:"backend"`
+	ID                 types.String     `tfsdk:"id"`
+	Protocol           types.String     `tfsdk:"protocol"`
+	ListenPort         types.Int64      `tfsdk:"listen_port"`
+	Algorithm          types.String     `tfsdk:"algorithm"`
+	HealthCheckEnabled types.Bool       `tfsdk:"health_check_enabled"`
+	HealthCheckPath    types.String     `tfsdk:"health_check_path"`
+	Domain             types.String     `tfsdk:"domain"`
+	AcmeChallenge      types.String     `tfsdk:"acme_challenge"`
+	AcmeDNSProvider    types.String     `tfsdk:"acme_dns_provider"`
+	AcmeDNSCredentials types.Map        `tfsdk:"acme_dns_credentials"`
+	AcmeStatus         types.String     `tfsdk:"acme_status"`
+	AcmeLastError      types.String     `tfsdk:"acme_last_error"`
+	Backends           []lbBackendModel `tfsdk:"backend"`
 }
 
 type lbResourceModel struct {
@@ -69,14 +81,16 @@ type lbResourceModel struct {
 	CreatedAt       types.String      `tfsdk:"created_at"`
 }
 
-func (r *lbResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *lbResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "ccp_load_balancer"
 }
 
 func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud Load Balancer. " +
-			"Supports listeners (TCP/HTTP) with weighted backends (container instances or VM instances). " +
+			"Listeners (TCP/HTTP/HTTPS) with weighted backends (container or VM instances) " +
+			"are declared in the resource and sent at creation time. HTTPS listeners can " +
+			"obtain a Let's Encrypt certificate automatically via ACME (`http01`/`dns01`). " +
 			"Supports public IP attachment via `public_ip_id`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -95,10 +109,8 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"plan": schema.StringAttribute{
-				MarkdownDescription: "Capacity plan: `small` (1 vCPU / 512 MB, default), " +
-					"`medium` (2 vCPU / 1 GB) or `large` (4 vCPU / 2 GB). " +
-					"Changing the plan forces replacement — resizing the underlying " +
-					"LB instance pair in place is not supported.",
+				MarkdownDescription: "Capacity plan: `small` (default), `medium` or `large`. " +
+					"Changing the plan forces replacement.",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString("small"),
@@ -130,7 +142,8 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 			"status": schema.StringAttribute{
 				MarkdownDescription: "Provisioning status: `provisioning` | `active` | `updating` | `error`.",
 				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				// No UseStateForUnknown: status is volatile (transitions to
+				// `updating` async on apply) — must stay known-after-apply.
 			},
 			"tags": schema.ListAttribute{
 				MarkdownDescription: "Free-form tags (max 60, max 50 chars each).",
@@ -146,7 +159,10 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 		},
 		Blocks: map[string]schema.Block{
 			"listener": schema.ListNestedBlock{
-				MarkdownDescription: "Traffic listener. Each listener binds a frontend port and forwards to a set of backends.",
+				MarkdownDescription: "Traffic listener. Listeners are sent in the initial create request — " +
+					"changing an immutable listener field (protocol, listen port, algorithm, health check, " +
+					"domain or ACME settings) forces replacement of the whole load balancer. Backends can be " +
+					"reconciled in place.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -154,36 +170,87 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
-						"name": schema.StringAttribute{
-							MarkdownDescription: "Listener name (1-100 chars).",
-							Required:            true,
-							Validators:          []validator.String{stringvalidator.LengthBetween(1, 100)},
-						},
-						"algorithm": schema.StringAttribute{
-							MarkdownDescription: "Load-balancing algorithm: `round_robin`, `least_conn`, `ip_hash`.",
-							Required:            true,
-							Validators: []validator.String{
-								stringvalidator.OneOf("round_robin", "least_conn", "ip_hash"),
-							},
-						},
 						"protocol": schema.StringAttribute{
-							MarkdownDescription: "Protocol: `tcp` or `http`.",
+							MarkdownDescription: "Protocol: `tcp`, `http` or `https`.",
 							Required:            true,
 							Validators: []validator.String{
-								stringvalidator.OneOf("tcp", "http"),
+								stringvalidator.OneOf("tcp", "http", "https"),
 							},
 						},
-						"frontend_port": schema.Int64Attribute{
+						"listen_port": schema.Int64Attribute{
 							MarkdownDescription: "Port the load balancer listens on (1-65535).",
 							Required:            true,
 							Validators: []validator.Int64{
 								int64validator.Between(1, 65535),
 							},
 						},
+						"algorithm": schema.StringAttribute{
+							MarkdownDescription: "Load-balancing algorithm: `roundrobin` (default), `leastconn` or `source`.",
+							Optional:            true,
+							Computed:            true,
+							Default:             stringdefault.StaticString("roundrobin"),
+							Validators: []validator.String{
+								stringvalidator.OneOf("roundrobin", "leastconn", "source"),
+							},
+						},
+						"health_check_enabled": schema.BoolAttribute{
+							MarkdownDescription: "Enable backend health checks. Defaults to true.",
+							Optional:            true,
+							Computed:            true,
+							Default:             booldefault.StaticBool(true),
+						},
+						"health_check_path": schema.StringAttribute{
+							MarkdownDescription: "HTTP path used for health checks (for `http`/`https` listeners).",
+							Optional:            true,
+						},
+						"domain": schema.StringAttribute{
+							MarkdownDescription: "Domain name served by an `https` listener. Required when ACME is enabled. " +
+								"Must be a lowercase fully-qualified domain name — the backend lowercases and strips " +
+								"input, so any other form would drift from the stored value.",
+							Optional: true,
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(
+									regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`),
+									"must be a lowercase fully-qualified domain name",
+								),
+							},
+						},
+						"acme_challenge": schema.StringAttribute{
+							MarkdownDescription: "ACME (Let's Encrypt) challenge type: `http01` or `dns01`. " +
+								"Requires `protocol = \"https\"` and `domain`. `dns01` additionally requires " +
+								"`acme_dns_provider` + `acme_dns_credentials`.",
+							Optional: true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("http01", "dns01"),
+							},
+						},
+						"acme_dns_provider": schema.StringAttribute{
+							MarkdownDescription: "DNS-01 provider id (e.g. `cloudflare`, `route53`). " +
+								"See the `ccp_acme_dns_providers` data source for the supported list. " +
+								"Required for `acme_challenge = \"dns01\"`.",
+							Optional: true,
+						},
+						"acme_dns_credentials": schema.MapAttribute{
+							MarkdownDescription: "DNS provider credentials for `dns01` (write-only — never returned by the API). " +
+								"Keys depend on the provider (see `ccp_acme_dns_providers`).",
+							ElementType: types.StringType,
+							Optional:    true,
+							Sensitive:   true,
+						},
+						"acme_status": schema.StringAttribute{
+							MarkdownDescription: "ACME certificate status: `pending` | `issuing` | `issued` | `renewing` | `error`.",
+							Computed:            true,
+							// No UseStateForUnknown: ACME status is volatile.
+						},
+						"acme_last_error": schema.StringAttribute{
+							MarkdownDescription: "Last certificate issuance error, if any. Cleared when issuance succeeds.",
+							Computed:            true,
+							// No UseStateForUnknown: volatile, like acme_status.
+						},
 					},
 					Blocks: map[string]schema.Block{
 						"backend": schema.ListNestedBlock{
-							MarkdownDescription: "Backend target. Exactly one of `container_id`, `vm_instance_id`, or `scale_set_id` must be set.",
+							MarkdownDescription: "Backend target. Exactly one of `container_id` or `vm_instance_id` must be set.",
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
 									"id": schema.StringAttribute{
@@ -199,10 +266,6 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 										MarkdownDescription: "UUID of the VM instance to use as a backend.",
 										Optional:            true,
 									},
-									"scale_set_id": schema.StringAttribute{
-										MarkdownDescription: "UUID of a container or VM scale set to use as a backend. The load balancer auto-discovers the current set of replicas and reconciles their addresses periodically.",
-										Optional:            true,
-									},
 									"port": schema.Int64Attribute{
 										MarkdownDescription: "Backend port (1-65535).",
 										Required:            true,
@@ -211,10 +274,13 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 										},
 									},
 									"weight": schema.Int64Attribute{
-										MarkdownDescription: "Backend weight for weighted round-robin (1-100). Defaults to 1.",
+										MarkdownDescription: "Backend weight (0-256). Defaults to 1. Weight changes are reconciled in place.",
 										Optional:            true,
 										Computed:            true,
 										Default:             int64default.StaticInt64(1),
+										Validators: []validator.Int64{
+											int64validator.Between(0, 256),
+										},
 									},
 								},
 							},
@@ -239,7 +305,81 @@ func (r *lbResource) Configure(_ context.Context, req resource.ConfigureRequest,
 	r.client = c
 }
 
-func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel, []string) {
+// ModifyPlan forces replacement of the whole LB when an immutable listener
+// field changes. Listeners cannot be added/removed/patched after creation
+// (no backend endpoint), so the only safe reconciliation is destroy+create.
+// Backend blocks and Computed-only fields are excluded — they reconcile in
+// place in Update(). Per the framework rules, ModifyPlan only appends to
+// RequiresReplace; it never rewrites Required attribute values.
+func (r *lbResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Create (no prior state) or destroy (no plan) — nothing to compare.
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan, state lbResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if listenersRequireReplace(plan.Listeners, state.Listeners) {
+		resp.RequiresReplace = append(resp.RequiresReplace, path.Root("listener"))
+	}
+}
+
+// listenersRequireReplace returns true when the set of listeners differs on any
+// immutable field (count, protocol, listen_port, algorithm, health check,
+// domain, ACME settings). Backend blocks and weight are NOT considered — those
+// reconcile in place. ACME credentials are write-only and never compared.
+// Listeners are matched by (protocol, listen_port).
+func listenersRequireReplace(plan, state []lbListenerModel) bool {
+	if len(plan) != len(state) {
+		return true
+	}
+	stateByKey := make(map[string]lbListenerModel, len(state))
+	for _, l := range state {
+		stateByKey[listenerKey(l)] = l
+	}
+	for _, p := range plan {
+		s, ok := stateByKey[listenerKey(p)]
+		if !ok {
+			// A listener with a new (protocol, listen_port) pair appeared.
+			return true
+		}
+		if listenerImmutableChanged(p, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// listenerKey is the identity used to match plan↔state/API listeners.
+// (protocol, listen_port) is unique de facto.
+func listenerKey(l lbListenerModel) string {
+	return fmt.Sprintf("%s:%d", l.Protocol.ValueString(), l.ListenPort.ValueInt64())
+}
+
+// listenerImmutableChanged compares two listeners (already matched by key) on
+// the fields that cannot be mutated after creation.
+func listenerImmutableChanged(a, b lbListenerModel) bool {
+	if !a.Protocol.Equal(b.Protocol) ||
+		!a.ListenPort.Equal(b.ListenPort) ||
+		!a.Algorithm.Equal(b.Algorithm) ||
+		!a.HealthCheckEnabled.Equal(b.HealthCheckEnabled) ||
+		!a.HealthCheckPath.Equal(b.HealthCheckPath) ||
+		!a.Domain.Equal(b.Domain) ||
+		!a.AcmeChallenge.Equal(b.AcmeChallenge) ||
+		!a.AcmeDNSProvider.Equal(b.AcmeDNSProvider) {
+		return true
+	}
+	return false
+}
+
+// stateFromAPI maps the API load balancer onto the Terraform model. Listeners
+// from the API are matched to the prior plan/state listeners by (protocol,
+// listen_port) so we can carry over write-only credentials (never returned by
+// the API) and avoid a perma-diff. `prior` may be nil (e.g. on import).
+func stateFromAPI(ctx context.Context, lb *client.LoadBalancer, prior []lbListenerModel) (lbResourceModel, []string) {
 	m := lbResourceModel{
 		ID:        types.StringValue(lb.ID),
 		Name:      types.StringValue(lb.Name),
@@ -249,21 +389,9 @@ func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel
 		Status:    types.StringValue(lb.Status),
 		CreatedAt: types.StringValue(lb.CreatedAt),
 	}
-	if lb.PublicIPID != nil {
-		m.PublicIPID = types.StringValue(*lb.PublicIPID)
-	} else {
-		m.PublicIPID = types.StringNull()
-	}
-	if lb.VIPAddress != nil {
-		m.VIPAddress = types.StringValue(*lb.VIPAddress)
-	} else {
-		m.VIPAddress = types.StringNull()
-	}
-	if lb.PublicIPAddress != nil {
-		m.PublicIPAddress = types.StringValue(*lb.PublicIPAddress)
-	} else {
-		m.PublicIPAddress = types.StringNull()
-	}
+	setOptStr(&m.PublicIPID, lb.PublicIPID)
+	setOptStr(&m.VIPAddress, lb.VIPAddress)
+	setOptStr(&m.PublicIPAddress, lb.PublicIPAddress)
 
 	tags, diag := types.ListValueFrom(ctx, types.StringType, lb.Tags)
 	var diagStrs []string
@@ -274,15 +402,35 @@ func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel
 	}
 	m.Tags = tags
 
-	// Map listeners from API
+	priorByKey := make(map[string]lbListenerModel, len(prior))
+	for _, l := range prior {
+		priorByKey[listenerKey(l)] = l
+	}
+
 	for _, l := range lb.Listeners {
 		lm := lbListenerModel{
-			ID:           types.StringValue(l.ID),
-			Name:         types.StringValue(l.Name),
-			Algorithm:    types.StringValue(l.Algorithm),
-			Protocol:     types.StringValue(l.Protocol),
-			FrontendPort: types.Int64Value(int64(l.FrontendPort)),
+			ID:                 types.StringValue(l.ID),
+			Protocol:           types.StringValue(l.Protocol),
+			ListenPort:         types.Int64Value(int64(l.ListenPort)),
+			Algorithm:          types.StringValue(l.Algorithm),
+			HealthCheckEnabled: types.BoolValue(l.HealthCheckEnabled),
 		}
+		setOptStr(&lm.HealthCheckPath, l.HealthCheckPath)
+		setOptStr(&lm.Domain, l.Domain)
+		setOptStr(&lm.AcmeChallenge, l.AcmeChallenge)
+		setOptStr(&lm.AcmeDNSProvider, l.AcmeDNSProvider)
+		setOptStr(&lm.AcmeStatus, l.AcmeStatus)
+		setOptStr(&lm.AcmeLastError, l.AcmeLastError)
+
+		// acme_dns_credentials is write-only — carry over the prior value
+		// (never mark Unknown or Null, otherwise perma-diff).
+		key := fmt.Sprintf("%s:%d", l.Protocol, l.ListenPort)
+		if p, ok := priorByKey[key]; ok {
+			lm.AcmeDNSCredentials = p.AcmeDNSCredentials
+		} else {
+			lm.AcmeDNSCredentials = types.MapNull(types.StringType)
+		}
+
 		for _, b := range l.Backends {
 			bm := lbBackendModel{
 				ID:     types.StringValue(b.ID),
@@ -292,19 +440,12 @@ func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel
 			if b.ContainerID != nil {
 				bm.ContainerID = types.StringValue(*b.ContainerID)
 				bm.VMID = types.StringNull()
-				bm.ScaleSetID = types.StringNull()
 			} else if b.VMID != nil {
 				bm.VMID = types.StringValue(*b.VMID)
 				bm.ContainerID = types.StringNull()
-				bm.ScaleSetID = types.StringNull()
-			} else if b.ScaleSetID != nil {
-				bm.ScaleSetID = types.StringValue(*b.ScaleSetID)
-				bm.ContainerID = types.StringNull()
-				bm.VMID = types.StringNull()
 			} else {
 				bm.ContainerID = types.StringNull()
 				bm.VMID = types.StringNull()
-				bm.ScaleSetID = types.StringNull()
 			}
 			lm.Backends = append(lm.Backends, bm)
 		}
@@ -312,6 +453,56 @@ func stateFromAPI(ctx context.Context, lb *client.LoadBalancer) (lbResourceModel
 	}
 
 	return m, diagStrs
+}
+
+func setOptStr(dst *types.String, src *string) {
+	if src != nil {
+		*dst = types.StringValue(*src)
+	} else {
+		*dst = types.StringNull()
+	}
+}
+
+// listenerCreateReq builds the API create request for a listener from the plan.
+func listenerCreateReq(ctx context.Context, l lbListenerModel) client.LBListenerCreateRequest {
+	req := client.LBListenerCreateRequest{
+		Protocol:   l.Protocol.ValueString(),
+		ListenPort: int(l.ListenPort.ValueInt64()),
+	}
+	if !l.Algorithm.IsNull() && !l.Algorithm.IsUnknown() && l.Algorithm.ValueString() != "" {
+		req.Algorithm = l.Algorithm.ValueString()
+	}
+	if !l.HealthCheckEnabled.IsNull() && !l.HealthCheckEnabled.IsUnknown() {
+		v := l.HealthCheckEnabled.ValueBool()
+		req.HealthCheckEnabled = &v
+	}
+	if !l.HealthCheckPath.IsNull() && !l.HealthCheckPath.IsUnknown() && l.HealthCheckPath.ValueString() != "" {
+		v := l.HealthCheckPath.ValueString()
+		req.HealthCheckPath = &v
+	}
+	if !l.Domain.IsNull() && !l.Domain.IsUnknown() && l.Domain.ValueString() != "" {
+		v := l.Domain.ValueString()
+		req.Domain = &v
+	}
+	if !l.AcmeChallenge.IsNull() && !l.AcmeChallenge.IsUnknown() && l.AcmeChallenge.ValueString() != "" {
+		v := l.AcmeChallenge.ValueString()
+		req.AcmeChallenge = &v
+	}
+	if !l.AcmeDNSProvider.IsNull() && !l.AcmeDNSProvider.IsUnknown() && l.AcmeDNSProvider.ValueString() != "" {
+		v := l.AcmeDNSProvider.ValueString()
+		req.AcmeDNSProvider = &v
+	}
+	if !l.AcmeDNSCredentials.IsNull() && !l.AcmeDNSCredentials.IsUnknown() {
+		creds := map[string]string{}
+		l.AcmeDNSCredentials.ElementsAs(ctx, &creds, false)
+		if len(creds) > 0 {
+			req.AcmeDNSCredentials = creds
+		}
+	}
+	for _, b := range l.Backends {
+		req.Backends = append(req.Backends, backendCreateReq(b))
+	}
+	return req
 }
 
 func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -338,6 +529,10 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 		plan.Tags.ElementsAs(ctx, &tags, false)
 		createReq.Tags = tags
 	}
+	// Listeners (with their backends) are created in this single POST.
+	for _, l := range plan.Listeners {
+		createReq.Listeners = append(createReq.Listeners, listenerCreateReq(ctx, l))
+	}
 
 	created, err := r.client.CreateLoadBalancer(ctx, createReq)
 	if err != nil {
@@ -345,64 +540,13 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 		return
 	}
 
-	// Poll until active
 	final, err := pollUntilReady(ctx, r.client, created.ID, 5*time.Minute)
 	if err != nil {
 		resp.Diagnostics.AddError("LB provisioning timed out or failed", err.Error())
 		return
 	}
 
-	// Create listeners and their backends
-	for i, lPlan := range plan.Listeners {
-		lReq := client.LBListenerCreateRequest{
-			Name:         lPlan.Name.ValueString(),
-			Algorithm:    lPlan.Algorithm.ValueString(),
-			Protocol:     lPlan.Protocol.ValueString(),
-			FrontendPort: int(lPlan.FrontendPort.ValueInt64()),
-		}
-		createdL, err := r.client.CreateLBListener(ctx, final.ID, lReq)
-		if err != nil {
-			resp.Diagnostics.AddError(fmt.Sprintf("Failed to create listener %q", lPlan.Name.ValueString()), err.Error())
-			return
-		}
-		plan.Listeners[i].ID = types.StringValue(createdL.ID)
-
-		for j, bPlan := range lPlan.Backends {
-			bReq := client.LBBackendCreateRequest{
-				Port:   int(bPlan.Port.ValueInt64()),
-				Weight: int(bPlan.Weight.ValueInt64()),
-			}
-			if !bPlan.ContainerID.IsNull() && !bPlan.ContainerID.IsUnknown() && bPlan.ContainerID.ValueString() != "" {
-				v := bPlan.ContainerID.ValueString()
-				bReq.ContainerID = &v
-			} else if !bPlan.VMID.IsNull() && !bPlan.VMID.IsUnknown() && bPlan.VMID.ValueString() != "" {
-				v := bPlan.VMID.ValueString()
-				bReq.VMID = &v
-			} else if !bPlan.ScaleSetID.IsNull() && !bPlan.ScaleSetID.IsUnknown() && bPlan.ScaleSetID.ValueString() != "" {
-				v := bPlan.ScaleSetID.ValueString()
-				bReq.ScaleSetID = &v
-			}
-			createdB, err := r.client.AddLBBackend(ctx, final.ID, createdL.ID, bReq)
-			if err != nil {
-				resp.Diagnostics.AddError(fmt.Sprintf("Failed to add backend to listener %q", lPlan.Name.ValueString()), err.Error())
-				return
-			}
-			plan.Listeners[i].Backends[j].ID = types.StringValue(createdB.ID)
-		}
-	}
-
-	// Re-fetch to get consistent server state
-	final, err = r.client.GetLoadBalancer(ctx, final.ID)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to re-read LB after creation", err.Error())
-		return
-	}
-
-	state, diags := stateFromAPI(ctx, final)
-	// Preserve plan listener/backend IDs we just set (server may not return them inline)
-	if len(state.Listeners) == 0 && len(plan.Listeners) > 0 {
-		state.Listeners = plan.Listeners
-	}
+	state, diags := stateFromAPI(ctx, final, plan.Listeners)
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}
@@ -424,7 +568,7 @@ func (r *lbResource) Read(ctx context.Context, req resource.ReadRequest, resp *r
 		resp.Diagnostics.AddError("Failed to read Load Balancer", err.Error())
 		return
 	}
-	newState, diags := stateFromAPI(ctx, got)
+	newState, diags := stateFromAPI(ctx, got, state.Listeners)
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}
@@ -441,7 +585,7 @@ func (r *lbResource) Update(ctx context.Context, req resource.UpdateRequest, res
 
 	id := state.ID.ValueString()
 
-	// 1. Patch name + tags
+	// 1. Patch name + tags.
 	var updReq client.LoadBalancerUpdateRequest
 	patchNeeded := false
 	if !plan.Name.Equal(state.Name) {
@@ -464,7 +608,7 @@ func (r *lbResource) Update(ctx context.Context, req resource.UpdateRequest, res
 		}
 	}
 
-	// 2. Public IP attach/detach
+	// 2. Public IP attach/detach.
 	if !plan.PublicIPID.Equal(state.PublicIPID) {
 		if plan.PublicIPID.IsNull() || plan.PublicIPID.ValueString() == "" {
 			if _, err := r.client.DetachLoadBalancerPublicIP(ctx, id); err != nil {
@@ -480,103 +624,67 @@ func (r *lbResource) Update(ctx context.Context, req resource.UpdateRequest, res
 		}
 	}
 
-	// 3. Reconcile listeners: remove state listeners not in plan (matched by name)
-	planListenersByName := map[string]lbListenerModel{}
-	for _, l := range plan.Listeners {
-		planListenersByName[l.Name.ValueString()] = l
-	}
-	stateListenersByName := map[string]lbListenerModel{}
+	// 3. Reconcile backends per listener. Listeners themselves are immutable
+	//    (ModifyPlan forces replacement on any change), so we match plan↔state
+	//    listeners by (protocol, listen_port) and only touch their backends.
+	stateListenersByKey := map[string]lbListenerModel{}
 	for _, l := range state.Listeners {
-		stateListenersByName[l.Name.ValueString()] = l
+		stateListenersByKey[listenerKey(l)] = l
 	}
 
-	for name, stL := range stateListenersByName {
-		if _, ok := planListenersByName[name]; !ok {
-			if err := r.client.DeleteLBListener(ctx, id, stL.ID.ValueString()); err != nil && !client.IsNotFound(err) {
-				resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete listener %q", name), err.Error())
-				return
+	for _, pL := range plan.Listeners {
+		stL, exists := stateListenersByKey[listenerKey(pL)]
+		if !exists {
+			// Should be unreachable: a changed listener key triggers replace.
+			continue
+		}
+		lID := stL.ID.ValueString()
+
+		planBackendsByKey := map[string]lbBackendModel{}
+		for _, b := range pL.Backends {
+			planBackendsByKey[backendKey(b)] = b
+		}
+		stateBackendsByKey := map[string]lbBackendModel{}
+		for _, b := range stL.Backends {
+			stateBackendsByKey[backendKey(b)] = b
+		}
+
+		// Remove backends present in state but not in plan.
+		for key, stB := range stateBackendsByKey {
+			if _, ok := planBackendsByKey[key]; !ok {
+				if err := r.client.RemoveLBBackend(ctx, id, lID, stB.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+					resp.Diagnostics.AddError("Failed to remove backend", err.Error())
+					return
+				}
 			}
 		}
-	}
-
-	// 4. Add plan listeners not in state; for existing ones reconcile backends
-	for i, pL := range plan.Listeners {
-		name := pL.Name.ValueString()
-		if stL, exists := stateListenersByName[name]; exists {
-			// Listener exists — carry over its ID and reconcile backends
-			plan.Listeners[i].ID = stL.ID
-			lID := stL.ID.ValueString()
-
-			planBackendsByKey := map[string]lbBackendModel{}
-			for _, b := range pL.Backends {
-				planBackendsByKey[backendKey(b)] = b
-			}
-			stateBackendsByKey := map[string]lbBackendModel{}
-			for _, b := range stL.Backends {
-				stateBackendsByKey[backendKey(b)] = b
-			}
-
-			// Remove backends not in plan
-			for key, stB := range stateBackendsByKey {
-				if _, ok := planBackendsByKey[key]; !ok {
-					if err := r.client.RemoveLBBackend(ctx, id, lID, stB.ID.ValueString()); err != nil && !client.IsNotFound(err) {
-						resp.Diagnostics.AddError("Failed to remove backend", err.Error())
+		// Add new backends; reconcile weight on existing ones via UpdateLBBackend.
+		for _, pB := range pL.Backends {
+			key := backendKey(pB)
+			if stB, ok := stateBackendsByKey[key]; ok {
+				if !pB.Weight.Equal(stB.Weight) {
+					w := int(pB.Weight.ValueInt64())
+					if _, err := r.client.UpdateLBBackend(ctx, id, lID, stB.ID.ValueString(), client.LBBackendUpdateRequest{Weight: &w}); err != nil {
+						resp.Diagnostics.AddError("Failed to update backend weight", err.Error())
 						return
 					}
 				}
-			}
-			// Add backends not in state
-			for j, pB := range pL.Backends {
-				key := backendKey(pB)
-				if stB, ok := stateBackendsByKey[key]; ok {
-					plan.Listeners[i].Backends[j].ID = stB.ID
-				} else {
-					bReq := backendCreateReq(pB)
-					createdB, err := r.client.AddLBBackend(ctx, id, lID, bReq)
-					if err != nil {
-						resp.Diagnostics.AddError("Failed to add backend", err.Error())
-						return
-					}
-					plan.Listeners[i].Backends[j].ID = types.StringValue(createdB.ID)
-				}
-			}
-		} else {
-			// New listener
-			lReq := client.LBListenerCreateRequest{
-				Name:         pL.Name.ValueString(),
-				Algorithm:    pL.Algorithm.ValueString(),
-				Protocol:     pL.Protocol.ValueString(),
-				FrontendPort: int(pL.FrontendPort.ValueInt64()),
-			}
-			createdL, err := r.client.CreateLBListener(ctx, id, lReq)
-			if err != nil {
-				resp.Diagnostics.AddError(fmt.Sprintf("Failed to create listener %q", name), err.Error())
-				return
-			}
-			plan.Listeners[i].ID = types.StringValue(createdL.ID)
-
-			for j, bPlan := range pL.Backends {
-				bReq := backendCreateReq(bPlan)
-				createdB, err := r.client.AddLBBackend(ctx, id, createdL.ID, bReq)
-				if err != nil {
+			} else {
+				if _, err := r.client.AddLBBackend(ctx, id, lID, backendCreateReq(pB)); err != nil {
 					resp.Diagnostics.AddError("Failed to add backend", err.Error())
 					return
 				}
-				plan.Listeners[i].Backends[j].ID = types.StringValue(createdB.ID)
 			}
 		}
 	}
 
-	// Re-fetch final state
+	// Re-fetch final state.
 	final, err := pollUntilReady(ctx, r.client, id, 2*time.Minute)
 	if err != nil {
 		resp.Diagnostics.AddError("LB update did not stabilize", err.Error())
 		return
 	}
-	newState, diags := stateFromAPI(ctx, final)
-	if len(newState.Listeners) == 0 && len(plan.Listeners) > 0 {
-		newState.Listeners = plan.Listeners
-	}
+	newState, diags := stateFromAPI(ctx, final, plan.Listeners)
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}
@@ -608,11 +716,15 @@ func (r *lbResource) ImportState(ctx context.Context, req resource.ImportStateRe
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// backendKey returns a stable string key for backend deduplication during reconcile.
+// backendKey returns a stable string key for backend deduplication during
+// reconcile. The identity is (target, port) where target is the container or
+// VM id — a single backend cannot point to both (XOR enforced server-side).
 func backendKey(b lbBackendModel) string {
 	target := b.ContainerID.ValueString()
 	if target == "" {
 		target = "vm:" + b.VMID.ValueString()
+	} else {
+		target = "ct:" + target
 	}
 	return fmt.Sprintf("%s:%d", target, b.Port.ValueInt64())
 }
