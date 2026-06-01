@@ -66,8 +66,7 @@ terraform {
 }
 
 provider "ccp" {
-  api_key  = var.ccp_api_key                       # or env CCP_API_KEY
-  endpoint = "https://api.cloud.cetic-group.com"   # optional, env CCP_API_URL
+  api_key = var.ccp_api_key # or env CCP_API_KEY
 }
 
 variable "ccp_api_key" {
@@ -82,7 +81,6 @@ variable "ccp_api_key" {
 | Argument | Environment Variable | Required | Description |
 |---|---|---|---|
 | `api_key` | `CCP_API_KEY` | Yes | API key prefixed `ccp_live_`. Generate in console → Settings → API Keys. |
-| `endpoint` | `CCP_API_URL` | No | Override the API base URL. Defaults to `https://api.cloud.cetic-group.com`. |
 
 ## Example: full stack
 

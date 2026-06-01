@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "ccp" {
-  # api_key et api_url depuis env CCP_API_KEY / CCP_API_URL
+  # api_key depuis env CCP_API_KEY
 }
 
 # ─── Pré-requis réseau ──────────────────────────────────────────────────────

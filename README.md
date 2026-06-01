@@ -78,7 +78,6 @@ and are shown **only once** at creation.
 
 ```bash
 export CCP_API_KEY="ccp_live_..."
-export CCP_API_URL="https://api.cloud.cetic-group.com"   # optional, this is the default
 ```
 
 ### 3. Declare the provider
@@ -204,12 +203,10 @@ output "accessible_orgs" {
 | Argument   | Env var       | Default                       | Description                    |
 |------------|---------------|-------------------------------|--------------------------------|
 | `api_key`  | `CCP_API_KEY`  | _(required)_                          | API key, format `ccp_live_*`.        |
-| `endpoint` | `CCP_API_URL` | `https://api.cloud.cetic-group.com`   | Base URL of the CETIC Cloud API.    |
 
 ```hcl
 provider "ccp" {
-  # api_key  = "ccp_live_..."             # prefer the env var
-  # endpoint = "https://api.cloud.cetic-group.com"
+  # api_key = "ccp_live_..."   # prefer the env var CCP_API_KEY
 }
 ```
 
