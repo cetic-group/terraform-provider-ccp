@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vnet_ip_reservation Resource - cetic-cloud-platform"
+page_title: "ccp_vnet_ip_reservation Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a private IP reservation within a VNet on CETIC Cloud Platform.

@@ -3,7 +3,7 @@ package publicip
 import (
 	"testing"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 )
 
 // Régression : le poll d'attache traitait `attaching` comme un état inattendu

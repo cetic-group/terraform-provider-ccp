@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_appgw_target_group_member Resource - cetic-cloud-platform"
+page_title: "ccp_appgw_target_group_member Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a single backend (member) inside an Application Gateway target group.

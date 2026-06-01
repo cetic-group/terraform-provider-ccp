@@ -5,38 +5,38 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > **Declaring the provider.**
 >
 > The provider is published on the Terraform Registry as
-> `cetic-group/cetic-cloud-platform`. Resource type names use the
+> `cetic-group/ccp`. Resource type names use the
 > fixed prefix `ccp_` (e.g. `ccp_vpc`, `ccp_vm_instance`).
 >
 > ```hcl
 > terraform {
 >   required_providers {
->     cetic-cloud-platform = {
->       source  = "cetic-group/cetic-cloud-platform"
->       version = "~> 3.0"
+>     ccp = {
+>       source  = "cetic-group/ccp"
+>       version = "~> 4.0"
 >     }
 >   }
 > }
 >
-> provider "cetic-cloud-platform" {}
+> provider "ccp" {}
 >
 > resource "ccp_vpc" "main" {
->   provider = cetic-cloud-platform
->   name     = "production"
->   region   = "RNN"
+>   name   = "production"
+>   region = "RNN"
 > }
 > ```
 
-> **Status — v1.1.0**
+> **Status — v4.0.0 (breaking: Registry address renamed)**
 >
-> v1.0.0 renamed the provider's TypeName to `cetic-cloud-platform` so the
-> Terraform Registry's "Use Provider" snippet works as-is. v1.0.1 fixed a
-> perma-diff on `ccp_public_ip.attached_to_id` when the IP was managed
-> via another resource. v1.1.0 adds plan-time SNAT egress validation on
-> compute resources with `user_data`, and makes `public_ip_id` mutable
-> on `ccp_vm_instance` / `ccp_container_instance` (no more recreate).
-> Resource type names use the fixed prefix `ccp_*` regardless of the
-> local alias you pick.
+> v4.0.0 renames the provider on the Terraform Registry from
+> `cetic-group/cetic-cloud-platform` to **`cetic-group/ccp`** and sets the
+> provider TypeName (default local name) back to `ccp`, matching the `ccp_`
+> resource prefix. **Migration:** update `source = "cetic-group/ccp"` in your
+> `required_providers`, rename the local block to `ccp = { ... }`, run
+> `terraform init -upgrade`. The old `cetic-group/cetic-cloud-platform`
+> address is no longer published. Resource type names are unchanged
+> (`ccp_*`), so no resource blocks need editing beyond dropping any now-
+> redundant `provider = cetic-cloud-platform` lines.
 >
 > **41+ resources + 45 data sources** implemented. v0.24.0 adds 28 new
 > singular-lookup data sources covering VPCs, VNets, VNet peerings, VM and
@@ -86,21 +86,21 @@ export CCP_API_URL="https://api.cloud.cetic-group.com"   # optional, this is the
 ```hcl
 terraform {
   required_providers {
-    cetic-cloud-platform = {
-      source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 3.0"
+    ccp = {
+      source  = "cetic-group/ccp"
+      version = "~> 4.0"
     }
   }
 }
 
-provider "cetic-cloud-platform" {}
+provider "ccp" {}
 ```
 
 > The snippet above matches the Terraform Registry's "Use Provider"
-> suggestion. Every `resource` / `data` block then carries
-> `provider = cetic-cloud-platform`. Resource type names use the fixed
-> prefix `ccp_*` regardless of the local alias chosen in
-> `required_providers`.
+> suggestion. Because the local name `ccp` matches the `ccp_` resource
+> prefix, you don't need `provider = ...` on each block. Resource type
+> names use the fixed prefix `ccp_*` regardless of the local alias chosen
+> in `required_providers`.
 
 A full working example (SSH key, VPC, two VNets, region listing) lives in
 [`examples/basic/main.tf`](./examples/basic/main.tf).
@@ -160,23 +160,23 @@ Each CETIC Cloud API key is **bound to a single organization**
 key via Terraform's provider aliases:
 
 ```hcl
-provider "cetic-cloud-platform" {
+provider "ccp" {
   # default — reads CCP_API_KEY (org "prod")
 }
 
-provider "cetic-cloud-platform" {
+provider "ccp" {
   alias    = "staging"
   api_key  = var.ccp_staging_key   # org "staging"
 }
 
 resource "ccp_vpc" "prod" {
-  provider = cetic-cloud-platform
+  provider = ccp
   name     = "prod"
   region   = "RNN"
 }
 
 resource "ccp_vpc" "staging" {
-  provider = cetic-cloud-platform.staging
+  provider = ccp.staging
   name     = "staging"
   region   = "RNN"
 }
@@ -207,7 +207,7 @@ output "accessible_orgs" {
 | `endpoint` | `CCP_API_URL` | `https://api.cloud.cetic-group.com`   | Base URL of the CETIC Cloud API.    |
 
 ```hcl
-provider "cetic-cloud-platform" {
+provider "ccp" {
   # api_key  = "ccp_live_..."             # prefer the env var
   # endpoint = "https://api.cloud.cetic-group.com"
 }
@@ -225,7 +225,7 @@ make build
 
 # Build + install into the local Terraform plugin cache so a sibling
 # terraform init can pick it up:
-#   ~/.terraform.d/plugins/registry.terraform.io/cetic-group/cetic-cloud-platform/0.3.0/<os>_<arch>/
+#   ~/.terraform.d/plugins/registry.terraform.io/cetic-group/ccp/0.3.0/<os>_<arch>/
 make install
 
 # Other helpers

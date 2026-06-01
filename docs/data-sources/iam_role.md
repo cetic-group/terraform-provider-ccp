@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_iam_role Data Source - cetic-cloud-platform"
+page_title: "ccp_iam_role Data Source - ccp"
 subcategory: "Identity"
 description: |-
   Look up a CETIC Cloud IAM role by ID, or by name (with optional built-in filter).

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_object_storage_key Data Source - cetic-cloud-platform"
+page_title: "ccp_object_storage_key Data Source - ccp"
 subcategory: "Storage"
 description: |-
   Look up an Object Storage subuser key (metadata only).

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_appgw_target_group Resource - cetic-cloud-platform"
+page_title: "ccp_appgw_target_group Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a backend pool (target group) on a CETIC Cloud Application Gateway.

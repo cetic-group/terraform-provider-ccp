@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_db_ferretdb_instance Resource - cetic-cloud-platform"
+page_title: "ccp_db_ferretdb_instance Resource - ccp"
 subcategory: "Databases"
 description: |-
   Manages a managed FerretDB (MongoDB-compatible) instance on CETIC Cloud Platform.

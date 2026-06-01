@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_iam_role Resource - cetic-cloud-platform"
+page_title: "ccp_iam_role Resource - ccp"
 subcategory: "Identity"
 description: |-
   Manages a custom CETIC Cloud IAM role (Roles v1) — AWS-style policy document with statements (effect, actions, resources, conditions).

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_container_instance Resource - cetic-cloud-platform"
+page_title: "ccp_container_instance Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a container instance on CETIC Cloud Platform.

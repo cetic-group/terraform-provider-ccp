@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_commit Resource - terraform-provider-cetic-cloud-platform"
+page_title: "ccp_commit Resource - terraform-provider-ccp"
 subcategory: "Billing"
 description: |-
   Commitment-based discount on the tenant's overall consumption (-10% monthly or -20% yearly).

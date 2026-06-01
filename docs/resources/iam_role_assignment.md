@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_iam_role_assignment Resource - cetic-cloud-platform"
+page_title: "ccp_iam_role_assignment Resource - ccp"
 subcategory: "Identity"
 description: |-
   Attaches a CETIC Cloud IAM role to a principal (org member, API key, service account, CCKS workload).

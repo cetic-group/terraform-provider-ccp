@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_db_pg_credentials Data Source - cetic-cloud-platform"
+page_title: "ccp_db_pg_credentials Data Source - ccp"
 subcategory: "Databases"
 description: |-
   Fetches the admin credentials of a PostgreSQL managed instance.

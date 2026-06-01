@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_registry Resource - cetic-cloud-platform"
+page_title: "ccp_registry Resource - ccp"
 subcategory: "Registry"
 description: |-
   Manages a CETIC Container Registry (CCR) — a private OCI artifact registry hosted in your tenant.

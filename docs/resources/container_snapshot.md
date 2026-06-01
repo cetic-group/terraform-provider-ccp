@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_container_snapshot Resource - cetic-cloud-platform"
+page_title: "ccp_container_snapshot Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a snapshot of a container instance on CETIC Cloud Platform.

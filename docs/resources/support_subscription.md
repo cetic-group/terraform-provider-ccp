@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_support_subscription Resource - terraform-provider-cetic-cloud-platform"
+page_title: "ccp_support_subscription Resource - terraform-provider-ccp"
 subcategory: "Support"
 description: |-
   Active CETIC support subscription for the current tenant.

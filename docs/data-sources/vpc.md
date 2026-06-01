@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vpc Data Source - cetic-cloud-platform"
+page_title: "ccp_vpc Data Source - ccp"
 subcategory: "Networking"
 description: |-
   Look up an existing VPC by ID or by (name, region).

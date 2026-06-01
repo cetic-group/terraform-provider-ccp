@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_api_key Resource - cetic-cloud-platform"
+page_title: "ccp_api_key Resource - ccp"
 subcategory: "Identity"
 description: |-
   Manages a machine API key (ccp_live_) on CETIC Cloud Platform.

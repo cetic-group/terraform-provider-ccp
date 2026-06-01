@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vm_instance Data Source - cetic-cloud-platform"
+page_title: "ccp_vm_instance Data Source - ccp"
 subcategory: "Compute"
 description: |-
   Look up a VM instance by ID or by (name, region).

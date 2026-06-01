@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_public_ip Data Source - cetic-cloud-platform"
+page_title: "ccp_public_ip Data Source - ccp"
 subcategory: "Networking"
 description: |-
   Look up a Public IP by ID or by IP address.

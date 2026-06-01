@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_object_storage_key Resource - cetic-cloud-platform"
+page_title: "ccp_object_storage_key Resource - ccp"
 subcategory: "Storage"
 description: |-
   Manages a scoped S3 access key for object storage on CETIC Cloud Platform.

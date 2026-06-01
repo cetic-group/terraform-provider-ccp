@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_k8s_node_pool Resource - cetic-cloud-platform"
+page_title: "ccp_k8s_node_pool Resource - ccp"
 subcategory: "Kubernetes"
 description: |-
   Manages a node pool within a Kubernetes cluster on CETIC Cloud Platform.

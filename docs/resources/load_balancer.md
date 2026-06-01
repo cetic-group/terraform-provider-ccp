@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_load_balancer Resource - cetic-cloud-platform"
+page_title: "ccp_load_balancer Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a load balancer on CETIC Cloud Platform.

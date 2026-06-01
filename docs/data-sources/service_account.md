@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_service_account Data Source - cetic-cloud-platform"
+page_title: "ccp_service_account Data Source - ccp"
 subcategory: "Identity"
 description: |-
   Look up a service account.

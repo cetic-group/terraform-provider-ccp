@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_custom_template Resource - cetic-cloud-platform"
+page_title: "ccp_custom_template Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a custom template — a reusable snapshot of an existing container or VM.

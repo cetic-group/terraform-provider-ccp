@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vnet Resource - cetic-cloud-platform"
+page_title: "ccp_vnet Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a VNet (subnet) inside a VPC on CETIC Cloud Platform.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_ssh_key Data Source - cetic-cloud-platform"
+page_title: "ccp_ssh_key Data Source - ccp"
 subcategory: "Identity"
 description: |-
   Look up an SSH key.

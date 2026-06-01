@@ -32,8 +32,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/snatvalidator"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"

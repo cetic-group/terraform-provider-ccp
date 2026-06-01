@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vnet_peering Resource - cetic-cloud-platform"
+page_title: "ccp_vnet_peering Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a peering connection between two VNets on CETIC Cloud Platform.

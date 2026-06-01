@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/appgwvalidators"
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"

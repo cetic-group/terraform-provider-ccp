@@ -123,7 +123,7 @@ Create `examples/myresource/main.tf`:
 terraform {
   required_providers {
     ccp = {
-      source = "cetic-group/cetic-cloud-platform"
+      source = "cetic-group/ccp"
     }
   }
 }

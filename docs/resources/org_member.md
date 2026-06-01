@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_org_member Resource - cetic-cloud-platform"
+page_title: "ccp_org_member Resource - ccp"
 subcategory: "Identity"
 description: |-
   Manages a member and their role within an organization on CETIC Cloud Platform.

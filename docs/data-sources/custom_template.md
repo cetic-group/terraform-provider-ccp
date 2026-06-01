@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_custom_template Data Source - cetic-cloud-platform"
+page_title: "ccp_custom_template Data Source - ccp"
 subcategory: "Compute"
 description: |-
   Look up a tenant-owned custom template.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_container_scale_set Resource - cetic-cloud-platform"
+page_title: "ccp_container_scale_set Resource - ccp"
 subcategory: "Compute"
 description: |-
   Manages a container scale set (auto-scaling group of containers) on CETIC Cloud Platform.

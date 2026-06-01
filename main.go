@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/cetic-group/terraform-provider-cetic-cloud-platform/internal/provider"
+	"github.com/cetic-group/terraform-provider-ccp/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 

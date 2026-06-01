@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_iam_policy_document Data Source - cetic-cloud-platform"
+page_title: "ccp_iam_policy_document Data Source - ccp"
 subcategory: "Identity"
 description: |-
   Renders a CETIC Cloud IAM PolicyDocument (Roles v1) from ergonomic HCL blocks — pure local transformation, no API call.

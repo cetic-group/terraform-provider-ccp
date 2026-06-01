@@ -1,4 +1,4 @@
-module github.com/cetic-group/terraform-provider-cetic-cloud-platform
+module github.com/cetic-group/terraform-provider-ccp
 
 go 1.22.0
 

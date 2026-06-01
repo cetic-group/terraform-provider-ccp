@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_promo_codes_available Data Source - terraform-provider-cetic-cloud-platform"
+page_title: "ccp_promo_codes_available Data Source - terraform-provider-ccp"
 subcategory: "Billing"
 description: |-
   Lists publicly-available promo codes the current tenant can apply.

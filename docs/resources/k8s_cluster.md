@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_k8s_cluster Resource - cetic-cloud-platform"
+page_title: "ccp_k8s_cluster Resource - ccp"
 subcategory: "Kubernetes"
 description: |-
   Manages a Kubernetes cluster on CETIC Cloud Platform.

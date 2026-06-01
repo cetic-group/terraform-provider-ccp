@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_db_mysql_instance Resource - cetic-cloud-platform"
+page_title: "ccp_db_mysql_instance Resource - ccp"
 subcategory: "Databases"
 description: |-
   Manages a managed MySQL-compatible instance (MariaDB) on CETIC Cloud Platform.

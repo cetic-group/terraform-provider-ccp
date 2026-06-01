@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vnet_firewall_rule Resource - cetic-cloud-platform"
+page_title: "ccp_vnet_firewall_rule Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a firewall rule for a VNet on CETIC Cloud Platform.

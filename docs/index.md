@@ -10,28 +10,26 @@ The **CETIC Cloud Platform** (CCP) provider lets you manage infrastructure resou
 
 ## Quick start
 
-Declare the provider with the canonical local name `cetic-cloud-platform`
-(this matches the Terraform Registry's "Use Provider" snippet). The
-resource type prefix `ccp_` is independent of the provider's local name —
-that's why every `resource` / `data` block in the new style explicitly
-references `provider = cetic-cloud-platform`.
+Declare the provider with the local name `ccp` (this matches both the
+Terraform Registry's "Use Provider" snippet and the `ccp_` resource type
+prefix, so you no longer need `provider = ...` on every block).
 
 ```hcl
 terraform {
   required_providers {
-    cetic-cloud-platform = {
-      source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 3.0"
+    ccp = {
+      source  = "cetic-group/ccp"
+      version = "~> 4.0"
     }
   }
 }
 
-provider "cetic-cloud-platform" {
+provider "ccp" {
   api_key = var.ccp_api_key   # or env CCP_API_KEY
 }
 
 resource "ccp_vpc" "main" {
-  provider = cetic-cloud-platform
+  provider = ccp
   name     = "production"
   region   = "RNN"
 }
@@ -50,7 +48,7 @@ export CCP_API_KEY="ccp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 Or pass it directly in the provider block (use a variable, not a literal):
 
 ```hcl
-provider "cetic-cloud-platform" {
+provider "ccp" {
   api_key = var.ccp_api_key
 }
 ```
@@ -60,14 +58,14 @@ provider "cetic-cloud-platform" {
 ```hcl
 terraform {
   required_providers {
-    cetic-cloud-platform = {
-      source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 3.0"
+    ccp = {
+      source  = "cetic-group/ccp"
+      version = "~> 4.0"
     }
   }
 }
 
-provider "cetic-cloud-platform" {
+provider "ccp" {
   api_key  = var.ccp_api_key                       # or env CCP_API_KEY
   endpoint = "https://api.cloud.cetic-group.com"   # optional, env CCP_API_URL
 }
@@ -88,26 +86,26 @@ variable "ccp_api_key" {
 
 ## Example: full stack
 
-The example below creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP. The provider is declared with local name `cetic-cloud-platform`, so every resource block sets `provider = cetic-cloud-platform`.
+The example below creates an SSH key, a VPC with two subnets, a container, and a VM with a public IP. The provider's local name `ccp` matches the `ccp_` resource prefix, so no per-block `provider = ...` is needed.
 
 ```hcl
 terraform {
   required_providers {
-    cetic-cloud-platform = {
-      source  = "cetic-group/cetic-cloud-platform"
-      version = "~> 3.0"
+    ccp = {
+      source  = "cetic-group/ccp"
+      version = "~> 4.0"
     }
   }
 }
 
-provider "cetic-cloud-platform" {
+provider "ccp" {
   api_key = var.ccp_api_key
 }
 
 # Identity
 
 resource "ccp_ssh_key" "ops" {
-  provider   = cetic-cloud-platform
+  provider = ccp
   name       = "ops-team"
   public_key = file("~/.ssh/id_ed25519.pub")
 }
@@ -115,14 +113,14 @@ resource "ccp_ssh_key" "ops" {
 # Network
 
 resource "ccp_vpc" "main" {
-  provider = cetic-cloud-platform
+  provider = ccp
   name     = "production"
   region   = "RNN"
   tags     = ["env:prod"]
 }
 
 resource "ccp_vnet" "web" {
-  provider = cetic-cloud-platform
+  provider = ccp
   vpc_id   = ccp_vpc.main.id
   name     = "web-tier"
   cidr     = "10.0.1.0/24"
@@ -130,7 +128,7 @@ resource "ccp_vnet" "web" {
 }
 
 resource "ccp_vnet" "data" {
-  provider = cetic-cloud-platform
+  provider = ccp
   vpc_id   = ccp_vpc.main.id
   name     = "data-tier"
   cidr     = "10.0.2.0/24"
@@ -140,14 +138,14 @@ resource "ccp_vnet" "data" {
 # Public IP for the web container
 
 resource "ccp_public_ip" "web" {
-  provider = cetic-cloud-platform
+  provider = ccp
   region   = "RNN"
 }
 
 # Compute
 
 resource "ccp_container_instance" "web" {
-  provider    = cetic-cloud-platform
+  provider = ccp
   name        = "web-01"
   region      = "RNN"
   plan        = "small"
@@ -164,7 +162,7 @@ resource "ccp_container_instance" "web" {
 }
 
 resource "ccp_vm_instance" "app" {
-  provider    = cetic-cloud-platform
+  provider = ccp
   name        = "app-server"
   region      = "RNN"
   plan        = "medium"

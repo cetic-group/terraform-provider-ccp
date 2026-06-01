@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_k8s_templates Data Source - cetic-cloud-platform"
+page_title: "ccp_k8s_templates Data Source - ccp"
 subcategory: "Catalogs"
 description: |-
   Lists Kubernetes node OS templates available on CETIC Cloud.

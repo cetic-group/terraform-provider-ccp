@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_appgw_route Resource - cetic-cloud-platform"
+page_title: "ccp_appgw_route Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages an L7 route (condition + policies) on an Application Gateway listener.

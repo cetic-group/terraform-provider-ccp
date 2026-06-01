@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vnet_peering Data Source - cetic-cloud-platform"
+page_title: "ccp_vnet_peering Data Source - ccp"
 subcategory: "Networking"
 description: |-
   Look up a VNet peering by ID.

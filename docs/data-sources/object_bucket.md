@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_object_bucket Data Source - cetic-cloud-platform"
+page_title: "ccp_object_bucket Data Source - ccp"
 subcategory: "Storage"
 description: |-
   Look up an S3 Object Bucket by ID or (name, region).

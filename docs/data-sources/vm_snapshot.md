@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_vm_snapshot Data Source - cetic-cloud-platform"
+page_title: "ccp_vm_snapshot Data Source - ccp"
 subcategory: "Compute"
 description: |-
   Look up a VM snapshot.

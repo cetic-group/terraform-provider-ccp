@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_ssh_key Resource - cetic-cloud-platform"
+page_title: "ccp_ssh_key Resource - ccp"
 subcategory: "Identity"
 description: |-
   Manages an SSH public key on CETIC Cloud Platform.

@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_api_key Data Source - cetic-cloud-platform"
+page_title: "ccp_api_key Data Source - ccp"
 subcategory: "Identity"
 description: |-
   Look up an API key (metadata only).

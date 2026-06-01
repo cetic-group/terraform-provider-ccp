@@ -1,5 +1,5 @@
 ---
-page_title: "ccp_appgw_listener Resource - cetic-cloud-platform"
+page_title: "ccp_appgw_listener Resource - ccp"
 subcategory: "Networking"
 description: |-
   Manages a hostname + TLS cert listener on a CETIC Cloud Application Gateway.
