@@ -4,6 +4,48 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] — 2026-06-01
+
+### Added — `ccp_public_ip` label + description
+
+- **`ccp_public_ip.label`** (Optional, max 100 chars) and
+  **`ccp_public_ip.description`** (Optional) — client-facing annotations,
+  mutable in-place via the backend PATCH endpoint (no detach / no replace).
+- The `ccp_public_ip` **data source** now exposes `label` and `description`.
+- Docs: allocating several IPs at once is done with Terraform's native
+  `count` meta-argument (example added). The CLI (`cetic ip allocate
+  --quantity`) and the `network/public-ip` module (variable `quantity`)
+  wrap the same capability.
+
+### Added — Let's Encrypt (ACME) on `ccp_load_balancer` + `ccp_appgw_listener`
+
+- `ccp_load_balancer` listeners now support `protocol = "https"` with
+  automatic Let's Encrypt certificates: `domain`, `acme_challenge`
+  (`http01` | `dns01`), `acme_dns_provider`, `acme_dns_credentials`
+  (sensitive), plus `health_check_enabled` / `health_check_path` and the
+  computed `acme_status` / `acme_last_error`.
+- `ccp_appgw_listener` now supports `acme_challenge`, `acme_dns_provider`,
+  `acme_dns_credentials` (sensitive) — without `acme_challenge` the backend
+  never issues a certificate.
+- New data source **`ccp_acme_dns_providers`** — catalog of supported
+  DNS-01 providers and their credential fields.
+
+### Fixed — `ccp_load_balancer` / `ccp_appgw_listener` schema corrections
+
+The previous listener implementations were **non-functional** (they called
+endpoints that do not exist and sent fields the API ignores), so these
+corrections are shipped as fixes rather than a major bump:
+
+- LB listeners are now sent in the initial `POST /v1/load-balancers` call
+  (the API does not support adding listeners afterwards — any listener
+  change now forces LB replacement). Backends remain reconcilable in-place.
+- LB listener fields renamed/aligned: `frontend_port` → `listen_port`,
+  algorithm values are `roundrobin` | `leastconn` | `source`.
+- **Removed** `ccp_load_balancer` `listener.name` and `backend.scale_set_id`
+  (never existed backend-side).
+- **Removed** `ccp_appgw_listener.custom_domain` (silently ignored by the
+  API — use `acme_challenge = "dns01"` for customer-owned domains).
+
 ## [0.22.0] — 2026-05-26
 
 ### Added — `ccp_k8s_cluster` data source

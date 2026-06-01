@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.0"
+      version = "~> 4.1"
     }
   }
 }
@@ -68,8 +68,9 @@ resource "ccp_application_gateway" "web" {
 }
 
 resource "ccp_appgw_listener" "api" {
-  appgw_id = ccp_application_gateway.web.id
-  hostname = "api.example.com"
+  appgw_id       = ccp_application_gateway.web.id
+  hostname       = "api.example.com"
+  acme_challenge = "http01"
 }
 
 resource "ccp_appgw_target_group" "api_pool" {
