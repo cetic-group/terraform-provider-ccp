@@ -66,3 +66,5 @@ resource "ccp_appgw_listener" "admin" {
 ```
 terraform import ccp_appgw_listener.api <appgw_id>/<listener_id>
 ```
+
+~> **Note:** `acme_dns_credentials` is write-only and is not recoverable on import. If the imported listener uses a DNS-01 certificate, declaring `acme_dns_credentials` in your configuration after import will propose a replacement of the listener.

@@ -10,12 +10,14 @@ package appgwlistener
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -108,7 +110,7 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Sensitive:   true,
 				ElementType: types.StringType,
 				PlanModifiers: []planmodifier.Map{
-					mapRequiresReplace{},
+					mapplanmodifier.RequiresReplace(),
 				},
 			},
 			"acme_status": schema.StringAttribute{
@@ -140,26 +142,6 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Computed:            true,
 			},
 		},
-	}
-}
-
-// mapRequiresReplace forces replacement on any change to a Map attribute.
-// The framework's stdlib does not ship a `RequiresReplace()` for Map.
-type mapRequiresReplace struct{}
-
-func (mapRequiresReplace) Description(_ context.Context) string {
-	return "Any change to this attribute forces resource replacement."
-}
-func (m mapRequiresReplace) MarkdownDescription(ctx context.Context) string {
-	return m.Description(ctx)
-}
-func (mapRequiresReplace) PlanModifyMap(_ context.Context, req planmodifier.MapRequest, resp *planmodifier.MapResponse) {
-	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
-		// Create or destroy — never trigger replace.
-		return
-	}
-	if !req.PlanValue.Equal(req.StateValue) {
-		resp.RequiresReplace = true
 	}
 }
 
@@ -287,16 +269,5 @@ func (r *listenerResource) ImportState(ctx context.Context, req resource.ImportS
 }
 
 func splitID(id string) []string {
-	parts := []string{}
-	cur := ""
-	for _, ch := range id {
-		if ch == '/' {
-			parts = append(parts, cur)
-			cur = ""
-			continue
-		}
-		cur += string(ch)
-	}
-	parts = append(parts, cur)
-	return parts
+	return strings.SplitN(id, "/", 2)
 }
