@@ -291,6 +291,34 @@ func (r *xResource) ValidateConfig(ctx context.Context, req resource.ValidateCon
 
 Exemple historique : `ccp_registry.ValidateConfig` v0.11.0 → tout `make validate` sur `cetic-cloud-terraform-modules` cassait pour les consumers qui n'explicitaient pas `expose_public`/`expose_private`. Fix v0.11.1.
 
+### 5. La réponse API ne renvoie pas tous les champs du model → "inconsistent result after apply"
+
+Cause typique : `applyToModel` mappe **inconditionnellement** tous les champs de la struct client vers le model
+(`m.X = types.StringValue(api.X)`), mais le schéma de réponse de l'API (`*Response` Pydantic) **n'inclut pas ce champ**
+→ Go le désérialise en zero value (`""`) → la valeur configurée est écrasée → Terraform refuse le state.
+
+→ **Avant d'écrire un mapping, comparer champ par champ la struct Go client avec le schéma `*Response` de l'API**
+(`apps/api/app/schemas/*.py` côté plateforme). Pour tout champ absent de la réponse : préserver la valeur
+configurée/connue (`if api.X != "" { m.X = ... }`).
+
+→ **Les fixtures de test doivent refléter le VRAI contrat de réponse** — une fixture qui simule un champ que l'API ne
+renvoie pas masque exactement ce bug (c'est ce qui est arrivé).
+
+Exemples historiques (saga apply kidshop, 2026-06-02) : `ccp_application_gateway.vpc_id` (fix v4.1.2),
+`ccp_appgw_target_group_member.target_group_id` (fix v4.1.3).
+
+### 6. L'API n'expose que des endpoints LIST → 405 sur les Read
+
+Cause typique : le client provider suppose un `GET /<collection>/{id}` qui n'existe pas — l'API CCP n'expose souvent
+que le LIST pour les sous-ressources (listeners, target groups, routes, members). Le 405 n'apparaît qu'au **premier
+refresh** (Create/Delete marchent), donc pas détecté à l'apply initial.
+
+→ **Vérifier les `@router.get(...)` réellement déclarés côté plateforme** avant d'écrire un client. Pour les
+sous-ressources sans GET individuel : pattern **list + filtre client-side** (cf. `GetAppGWListener`, et depuis
+v4.1.4 `GetAppGWTargetGroup`/`GetAppGWRoute`/`ListAppGWTargetGroupMembers`).
+
+Exemple historique : fix v4.1.4 — `terraform plan` échouait en 405 sur toute infra AppGW existante.
+
 ## Mots réservés Terraform
 
 Ne **jamais** utiliser comme nom d'attribut :
