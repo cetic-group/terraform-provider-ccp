@@ -54,7 +54,7 @@ resource "ccp_container_instance" "api_02" {
 resource "ccp_application_gateway" "web" {
   name         = "web-appgw"
   region       = "RNN"
-  plan         = "medium"
+  plan         = "appgw-medium"
   vpc_id       = ccp_vpc.demo.id
   vnet_id      = ccp_vnet.web.id
   public_ip_id = ccp_public_ip.appgw.id

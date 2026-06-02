@@ -28,7 +28,7 @@ resource "ccp_public_ip" "appgw" {
 resource "ccp_application_gateway" "web" {
   name         = "web-appgw"
   region       = "RNN"
-  plan         = "medium"
+  plan         = "appgw-medium"
   vpc_id       = ccp_vpc.main.id
   vnet_id      = ccp_vnet.web.id
   public_ip_id = ccp_public_ip.appgw.id
@@ -79,7 +79,7 @@ resource "ccp_appgw_route" "api_v1" {
 
 - `name` - (Required) Human-readable name of the gateway (1-100 chars).
 - `region` - (Required, Forces new resource) Region code (`RNN`, `PAR`, `ABJ`).
-- `plan` - (Required) Capacity plan. One of: `small`, `medium`, `large`.
+- `plan` - (Required) Capacity plan key, e.g. `appgw-small`, `appgw-medium`, `appgw-large`. Validated server-side against the live plan catalog — backoffice-defined plans are accepted without a provider upgrade.
 - `vpc_id` - (Required, Forces new resource) UUID of the VPC the gateway is provisioned in.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet the gateway VIP is hosted on. Backends declared via target group members must be reachable from this VNet.
 
