@@ -125,12 +125,20 @@ func (c *Client) ListAppGWTargetGroups(ctx context.Context, appgwID string) ([]A
 	return out, nil
 }
 
+// GetAppGWTargetGroup — the API does not expose a single-entity GET
+// (GET /target-groups/{id} → 405 Method Not Allowed). We list and filter
+// client-side, same pattern as GetAppGWListener.
 func (c *Client) GetAppGWTargetGroup(ctx context.Context, appgwID, tgID string) (*AppGWTargetGroup, error) {
-	var out AppGWTargetGroup
-	if err := c.do(ctx, http.MethodGet, "/v1/app-gateways/"+appgwID+"/target-groups/"+tgID, nil, &out); err != nil {
+	list, err := c.ListAppGWTargetGroups(ctx, appgwID)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	for i := range list {
+		if list[i].ID == tgID {
+			return &list[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: fmt.Sprintf("/v1/app-gateways/%s/target-groups/%s", appgwID, tgID), Detail: "appgw target group not found"}
 }
 
 func (c *Client) CreateAppGWTargetGroup(ctx context.Context, appgwID string, req AppGWTargetGroupCreateRequest) (*AppGWTargetGroup, error) {
@@ -155,12 +163,16 @@ func (c *Client) DeleteAppGWTargetGroup(ctx context.Context, appgwID, tgID strin
 
 // ─── Target Group Member ─────────────────────────────────────────────────────
 
+// ListAppGWTargetGroupMembers — the API does not expose a member list
+// endpoint (GET /target-groups/{id}/members does not exist). Members are
+// embedded in the target-group list response — we resolve the TG and
+// return its embedded members.
 func (c *Client) ListAppGWTargetGroupMembers(ctx context.Context, appgwID, tgID string) ([]AppGWTargetGroupMember, error) {
-	var out []AppGWTargetGroupMember
-	if err := c.do(ctx, http.MethodGet, "/v1/app-gateways/"+appgwID+"/target-groups/"+tgID+"/members", nil, &out); err != nil {
+	tg, err := c.GetAppGWTargetGroup(ctx, appgwID, tgID)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return tg.Members, nil
 }
 
 func (c *Client) GetAppGWTargetGroupMember(ctx context.Context, appgwID, tgID, memberID string) (*AppGWTargetGroupMember, error) {
@@ -206,12 +218,19 @@ func (c *Client) ListAppGWRoutes(ctx context.Context, appgwID string) ([]AppGWRo
 	return out, nil
 }
 
+// GetAppGWRoute — the API does not expose a single-entity GET
+// (GET /routes/{id} → 405 Method Not Allowed). We list and filter client-side.
 func (c *Client) GetAppGWRoute(ctx context.Context, appgwID, routeID string) (*AppGWRoute, error) {
-	var out AppGWRoute
-	if err := c.do(ctx, http.MethodGet, "/v1/app-gateways/"+appgwID+"/routes/"+routeID, nil, &out); err != nil {
+	list, err := c.ListAppGWRoutes(ctx, appgwID)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	for i := range list {
+		if list[i].ID == routeID {
+			return &list[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: fmt.Sprintf("/v1/app-gateways/%s/routes/%s", appgwID, routeID), Detail: "appgw route not found"}
 }
 
 func (c *Client) CreateAppGWRoute(ctx context.Context, appgwID string, req AppGWRouteCreateRequest) (*AppGWRoute, error) {

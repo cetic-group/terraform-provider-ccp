@@ -4,6 +4,28 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.4] — 2026-06-02
+
+### Fixed — AppGW : les Read utilisaient des endpoints GET inexistants (HTTP 405)
+
+The API only exposes **list** endpoints for AppGW sub-resources — there is no
+single-entity GET. Three client functions called non-existent endpoints, breaking
+`terraform plan`/`refresh` as soon as the resources existed in state:
+
+- `GetAppGWTargetGroup` called `GET /target-groups/{id}` → **405**. Now lists and
+  filters client-side (same pattern as listeners).
+- `ListAppGWTargetGroupMembers` called `GET /target-groups/{id}/members` (does not
+  exist). Members are embedded in the target-group list response — now resolved
+  from there.
+- `GetAppGWRoute` called `GET /routes/{id}` → **405**. Now lists and filters.
+
+### Known gap (not fixed here)
+
+- `PATCH /target-groups/{tg_id}/members/{member_id}` does not exist API-side:
+  updating a member `weight`/`enabled` in place will fail with 405. Workaround:
+  taint the member to force a replace. Tracked for a follow-up (either API endpoint
+  or RequiresReplace on those attributes).
+
 ## [4.1.3] — 2026-06-02
 
 ### Fixed — `ccp_appgw_target_group_member` : "Provider produced inconsistent result after apply" (.target_group_id)
