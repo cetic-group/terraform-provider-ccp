@@ -28,10 +28,10 @@ import (
 )
 
 var (
-	_ resource.Resource                    = (*memberResource)(nil)
-	_ resource.ResourceWithConfigure       = (*memberResource)(nil)
-	_ resource.ResourceWithImportState     = (*memberResource)(nil)
-	_ resource.ResourceWithValidateConfig  = (*memberResource)(nil)
+	_ resource.Resource                   = (*memberResource)(nil)
+	_ resource.ResourceWithConfigure      = (*memberResource)(nil)
+	_ resource.ResourceWithImportState    = (*memberResource)(nil)
+	_ resource.ResourceWithValidateConfig = (*memberResource)(nil)
 )
 
 func New() resource.Resource { return &memberResource{} }
@@ -191,7 +191,12 @@ func (r *memberResource) ValidateConfig(ctx context.Context, req resource.Valida
 
 func applyToModel(mm *client.AppGWTargetGroupMember, m *memberResourceModel) {
 	m.ID = types.StringValue(mm.ID)
-	m.TargetGroupID = types.StringValue(mm.TargetGroupID)
+	// The API response (AppgwTargetGroupMemberResponse) does NOT include
+	// target_group_id — never overwrite the configured/known value with an
+	// empty string ("Provider produced inconsistent result after apply").
+	if mm.TargetGroupID != "" {
+		m.TargetGroupID = types.StringValue(mm.TargetGroupID)
+	}
 	m.Port = types.Int64Value(mm.Port)
 	m.Weight = types.Int64Value(mm.Weight)
 	m.Enabled = types.BoolValue(mm.Enabled)

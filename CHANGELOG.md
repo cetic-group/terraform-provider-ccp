@@ -4,6 +4,18 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.3] — 2026-06-02
+
+### Fixed — `ccp_appgw_target_group_member` : "Provider produced inconsistent result after apply" (.target_group_id)
+
+- Same class of bug as v4.1.2 (vpc_id), on the member resource: the API response
+  (`AppgwTargetGroupMemberResponse`) does **not** include `target_group_id`, and the
+  provider overwrote the configured value with an empty string after create/read.
+- `applyToModel` now preserves the configured/known `target_group_id` when the API
+  omits it. Regression test added.
+- With this fix, the full AppGW chain (gateway → listeners → target groups → members
+  → routes) applies cleanly end-to-end.
+
 ## [4.1.2] — 2026-06-02
 
 ### Fixed — `ccp_application_gateway` : "Provider produced inconsistent result after apply" (.vpc_id)
