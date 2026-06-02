@@ -4,6 +4,22 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] — 2026-06-02
+
+### Fixed — `ccp_application_gateway.plan` : validation client-side supprimée
+
+- The hardcoded `OneOf("small", "medium", "large")` validator on
+  `ccp_application_gateway.plan` rejected every plan key the live API
+  actually accepts (`appgw-small`, `appgw-medium`, `appgw-large` — DB-driven
+  via `compute_plans`, kind=`appgw`). Net effect: **no application gateway
+  could be created through Terraform at all** (client-side validation and
+  server-side validation had an empty intersection).
+- The client-side validator is removed entirely: plan keys are now validated
+  **server-side only**, against the live plan catalog. Backoffice-defined
+  plans are accepted without a provider release (same philosophy as
+  containers / VMs since platform v1.7.0).
+- Docs + example updated to use the canonical `appgw-*` keys.
+
 ## [4.1.0] — 2026-06-01
 
 ### Added — `ccp_public_ip` label + description

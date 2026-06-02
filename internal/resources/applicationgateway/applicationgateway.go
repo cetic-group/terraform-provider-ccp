@@ -99,10 +99,10 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"plan": schema.StringAttribute{
-				MarkdownDescription: "Capacity plan: `small` (50 routes / 100 req/s), " +
-					"`medium` (200 routes / 1000 req/s) or `large` (1000 routes / 10000 req/s).",
-				Required:   true,
-				Validators: []validator.String{stringvalidator.OneOf(appgwvalidators.AppGWPlans...)},
+				MarkdownDescription: "Capacity plan key, e.g. `appgw-small`, `appgw-medium`, `appgw-large`. " +
+					"Validated server-side against the live plan catalog (`compute_plans`, kind=`appgw`) — " +
+					"no hardcoded list, so backoffice-defined plans are accepted without a provider release.",
+				Required: true,
 			},
 			"vpc_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the VPC the gateway is provisioned in. **Immutable**.",

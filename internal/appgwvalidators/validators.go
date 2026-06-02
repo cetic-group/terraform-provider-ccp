@@ -128,8 +128,10 @@ var HCProtocols = []string{"http", "https", "tcp"}
 // HCMethods accepted on target group hc_method (HTTP verbs).
 var HCMethods = []string{"GET", "HEAD", "POST", "OPTIONS"}
 
-// AppGWPlans accepted on the gateway plan.
-var AppGWPlans = []string{"small", "medium", "large"}
+// NOTE: the gateway `plan` attribute is intentionally NOT validated client-side.
+// Plan keys are dynamic (DB-driven `compute_plans`, kind='appgw') and validated
+// by the API at create/update time — a hardcoded list here would require a
+// provider release for every new backoffice plan (cf. v4.1.1).
 
 // HTTPMethods accepted on route method_match (full HTTP verb set).
 var HTTPMethods = []string{"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "CONNECT", "TRACE"}
