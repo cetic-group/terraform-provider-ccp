@@ -13,7 +13,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   required_providers {
 >     ccp = {
 >       source  = "cetic-group/ccp"
->       version = "~> 4.1"
+>       version = "~> 4.2"
 >     }
 >   }
 > }
@@ -87,7 +87,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.1"
+      version = "~> 4.2"
     }
   }
 }

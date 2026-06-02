@@ -4,6 +4,15 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] — 2026-06-02
+
+### Added — `ccp_public_ip` data source can now look up an IP by `label`
+
+The `ccp_public_ip` data source can now look up an IP by `label` (in addition
+to `id` / `ip_address`). Provide exactly one of the three. Ambiguous labels
+(matching more than one public IP) raise an explicit error directing you to use
+`id` or `ip_address` instead.
+
 ## [4.1.4] — 2026-06-02
 
 ### Fixed — AppGW : les Read utilisaient des endpoints GET inexistants (HTTP 405)
