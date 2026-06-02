@@ -9,17 +9,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 )
 
 func fixtureCreating(id string) map[string]any {
+	// NOTE: pas de "vpc_id" — la vraie API (AppGwResponse) ne renvoie PAS ce champ.
+	// Les fixtures doivent refléter le contrat réel pour attraper les régressions
+	// de mapping (cf. fix v4.1.2 : vpc_id écrasé par "" après apply).
 	return map[string]any{
 		"id":                  id,
 		"name":                "web-appgw",
 		"region":              "RNN",
-		"plan":                "medium",
-		"vpc_id":              "vpc-1",
+		"plan":                "appgw-medium",
 		"vnet_id":             "vnet-1",
 		"status":              "creating",
 		"force_https":         true,
@@ -148,5 +152,31 @@ func TestDelete_Idempotent(t *testing.T) {
 	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
 	if err := c.DeleteApplicationGateway(context.Background(), id); err != nil {
 		t.Fatalf("DeleteApplicationGateway: %v", err)
+	}
+}
+
+func TestApplyToModel_PreservesVpcIDWhenAPIOmitsIt(t *testing.T) {
+	// La vraie API (AppGwResponse) ne renvoie pas vpc_id. applyToModel ne doit
+	// jamais écraser la valeur configurée par une chaîne vide — sinon Terraform
+	// échoue avec "Provider produced inconsistent result after apply" (fix v4.1.2).
+	m := appgwResourceModel{
+		VpcID: types.StringValue("vpc-from-config"),
+	}
+	gw := &client.ApplicationGateway{
+		ID:     "appgw-9",
+		Name:   "web-appgw",
+		Region: "RNN",
+		Plan:   "appgw-small",
+		VnetID: "vnet-1",
+		Status: "active",
+		// VpcID volontairement absent (zero value) — comme la vraie réponse API.
+	}
+	applyToModel(context.Background(), gw, &m)
+
+	if got := m.VpcID.ValueString(); got != "vpc-from-config" {
+		t.Fatalf("VpcID doit être préservé quand l'API ne le renvoie pas, got %q", got)
+	}
+	if m.VnetID.ValueString() != "vnet-1" {
+		t.Fatalf("VnetID doit être mappé depuis la réponse, got %q", m.VnetID.ValueString())
 	}
 }

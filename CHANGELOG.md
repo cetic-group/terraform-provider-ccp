@@ -4,6 +4,19 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.2] — 2026-06-02
+
+### Fixed — `ccp_application_gateway` : "Provider produced inconsistent result after apply" (.vpc_id)
+
+- The platform API response (`AppGwResponse`) does **not** include `vpc_id`. The provider
+  unconditionally mapped that (absent) field onto the Terraform state, overwriting the
+  configured value with an empty string — every `terraform apply` creating a gateway
+  failed with *Provider produced inconsistent result after apply: .vpc_id was X, but now ""*
+  (the gateway itself WAS created server-side).
+- `applyToModel` now preserves the configured/known `vpc_id` when the API omits it.
+- Test fixtures no longer fake a `vpc_id` in API responses (they now mirror the real
+  contract), and a regression test covers the preserve-on-omit behaviour.
+
 ## [4.1.1] — 2026-06-02
 
 ### Fixed — `ccp_application_gateway.plan` : validation client-side supprimée
