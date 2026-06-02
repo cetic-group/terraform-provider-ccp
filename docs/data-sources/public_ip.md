@@ -2,12 +2,12 @@
 page_title: "ccp_public_ip Data Source - ccp"
 subcategory: "Networking"
 description: |-
-  Look up a Public IP by ID or by IP address.
+  Look up a Public IP by ID, IP address, or label.
 ---
 
 # ccp_public_ip (Data Source)
 
-Look up a Public IP. Provide exactly one of `id` or `ip_address`.
+Look up a Public IP. Provide exactly one of `id`, `ip_address`, or `label`.
 
 ## Example Usage
 
@@ -16,15 +16,31 @@ data "ccp_public_ip" "front" {
   ip_address = "203.0.113.10"
 }
 
+# Look up by its label (display name).
+data "ccp_public_ip" "gw" {
+  label = "passerelle-prod"
+}
+
 output "front_label" {
   value = data.ccp_public_ip.front.label
+}
+
+output "gw_ip" {
+  value = data.ccp_public_ip.gw.ip_address
 }
 ```
 
 ## Argument Reference
 
-- `id` - (Optional) UUID of the public IP. Conflicts with `ip_address`.
-- `ip_address` - (Optional) IPv4 address to look up. Conflicts with `id`.
+Provide exactly **one** of the following lookup keys:
+
+- `id` - (Optional) UUID of the public IP.
+- `ip_address` - (Optional) IPv4 address to look up.
+- `label` - (Optional) Display name of the public IP to look up.
+
+~> **Labels are not unique.** Several public IPs may carry the same `label`. If
+more than one IP matches the requested label, the lookup fails with an explicit
+error and you must disambiguate using `id` or `ip_address` instead.
 
 ## Attributes Reference
 

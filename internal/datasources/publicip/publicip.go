@@ -42,7 +42,9 @@ func (d *pipDataSource) Metadata(_ context.Context, req datasource.MetadataReque
 
 func (d *pipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Public IP by `id`, or by `ip_address`.",
+		MarkdownDescription: "Look up a Public IP by `id`, `ip_address`, or `label`. Provide exactly one. " +
+			"Labels are not guaranteed unique — if more than one Public IP carries the same `label`, " +
+			"the lookup fails with an explicit error and you must disambiguate with `id` or `ip_address`.",
 		Attributes: map[string]schema.Attribute{
 			"id":                 schema.StringAttribute{Optional: true, Computed: true},
 			"ip_address":         schema.StringAttribute{Optional: true, Computed: true},
@@ -53,7 +55,7 @@ func (d *pipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 			"vm_instance_id":     schema.StringAttribute{Computed: true},
 			"load_balancer_id":   schema.StringAttribute{Computed: true},
 			"load_balancer_name": schema.StringAttribute{Computed: true},
-			"label":              schema.StringAttribute{Computed: true},
+			"label":              schema.StringAttribute{Optional: true, Computed: true},
 			"description":        schema.StringAttribute{Computed: true},
 			"created_at":         schema.StringAttribute{Computed: true},
 		},
@@ -81,9 +83,16 @@ func (d *pipDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 
 	hasID := !cfg.ID.IsNull() && !cfg.ID.IsUnknown() && cfg.ID.ValueString() != ""
 	hasAddr := !cfg.IPAddress.IsNull() && !cfg.IPAddress.IsUnknown() && cfg.IPAddress.ValueString() != ""
+	hasLabel := !cfg.Label.IsNull() && !cfg.Label.IsUnknown() && cfg.Label.ValueString() != ""
 
-	if (hasID && hasAddr) || (!hasID && !hasAddr) {
-		resp.Diagnostics.AddError("Lookup arguments", "Provide exactly one of `id` or `ip_address`.")
+	n := 0
+	for _, b := range []bool{hasID, hasAddr, hasLabel} {
+		if b {
+			n++
+		}
+	}
+	if n != 1 {
+		resp.Diagnostics.AddError("Lookup arguments", "Provide exactly one of `id`, `ip_address` or `label`.")
 		return
 	}
 
@@ -93,15 +102,9 @@ func (d *pipDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		return
 	}
 
-	var found *client.PublicIP
-	for i := range list {
-		if (hasID && list[i].ID == cfg.ID.ValueString()) || (hasAddr && list[i].IPAddress == cfg.IPAddress.ValueString()) {
-			found = &list[i]
-			break
-		}
-	}
+	found, summary, detail := selectPublicIP(list, cfg.ID.ValueString(), cfg.IPAddress.ValueString(), cfg.Label.ValueString(), hasID, hasAddr, hasLabel)
 	if found == nil {
-		resp.Diagnostics.AddError("Public IP not found", "No matching public IP.")
+		resp.Diagnostics.AddError(summary, detail)
 		return
 	}
 
@@ -121,6 +124,40 @@ func (d *pipDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	setStrPtr(&state.Description, found.Description)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// selectPublicIP picks the single Public IP matching the active lookup key.
+// Exactly one of hasID/hasAddr/hasLabel must be true (enforced by the caller).
+// It returns (nil, summary, detail) describing an error diagnostic when no IP
+// matches or, for label lookups, when more than one IP shares the label.
+func selectPublicIP(list []client.PublicIP, id, addr, label string, hasID, hasAddr, hasLabel bool) (*client.PublicIP, string, string) {
+	if hasLabel {
+		var match *client.PublicIP
+		count := 0
+		for i := range list {
+			if list[i].Label != nil && *list[i].Label == label {
+				count++
+				if match == nil {
+					match = &list[i]
+				}
+			}
+		}
+		switch count {
+		case 0:
+			return nil, "Public IP not found", fmt.Sprintf("No public IP matches label %q.", label)
+		case 1:
+			return match, "", ""
+		default:
+			return nil, "Ambiguous lookup", fmt.Sprintf("Multiple public IPs match label %q — labels are not unique; use `id` or `ip_address` instead.", label)
+		}
+	}
+
+	for i := range list {
+		if (hasID && list[i].ID == id) || (hasAddr && list[i].IPAddress == addr) {
+			return &list[i], "", ""
+		}
+	}
+	return nil, "Public IP not found", "No matching public IP."
 }
 
 func setStrPtr(dst *types.String, src *string) {
