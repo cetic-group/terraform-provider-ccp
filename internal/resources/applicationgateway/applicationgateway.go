@@ -231,7 +231,12 @@ func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwRe
 	m.Name = types.StringValue(gw.Name)
 	m.Region = types.StringValue(gw.Region)
 	m.Plan = types.StringValue(gw.Plan)
-	m.VpcID = types.StringValue(gw.VpcID)
+	// The API response (AppGwResponse) does NOT include vpc_id — never overwrite
+	// the configured/known value with an empty string, otherwise Terraform errors
+	// with "Provider produced inconsistent result after apply".
+	if gw.VpcID != "" {
+		m.VpcID = types.StringValue(gw.VpcID)
+	}
 	m.VnetID = types.StringValue(gw.VnetID)
 	m.Status = types.StringValue(gw.Status)
 	m.CreatedAt = types.StringValue(gw.CreatedAt)
