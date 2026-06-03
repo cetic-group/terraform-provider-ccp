@@ -26,6 +26,7 @@ type vpcDSModel struct {
 	ID        types.String `tfsdk:"id"`
 	Name      types.String `tfsdk:"name"`
 	Region    types.String `tfsdk:"region"`
+	Cidr      types.String `tfsdk:"cidr"`
 	VlanID    types.Int64  `tfsdk:"vlan_id"`
 	SDNType   types.String `tfsdk:"sdn_type"`
 	Status    types.String `tfsdk:"status"`
@@ -56,6 +57,7 @@ func (d *vpcDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 				Optional:            true,
 				Computed:            true,
 			},
+			"cidr":       schema.StringAttribute{Computed: true},
 			"vlan_id":    schema.Int64Attribute{Computed: true},
 			"sdn_type":   schema.StringAttribute{Computed: true},
 			"status":     schema.StringAttribute{Computed: true},
@@ -142,6 +144,11 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		SDNType:   types.StringValue(found.SDNType),
 		Status:    types.StringValue(found.Status),
 		CreatedAt: types.StringValue(found.CreatedAt.Format(time.RFC3339)),
+	}
+	if found.CIDR != nil {
+		state.Cidr = types.StringValue(*found.CIDR)
+	} else {
+		state.Cidr = types.StringNull()
 	}
 	if found.VlanID != nil {
 		state.VlanID = types.Int64Value(int64(*found.VlanID))

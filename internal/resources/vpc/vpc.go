@@ -64,6 +64,7 @@ type vpcResourceModel struct {
 	ID        types.String `tfsdk:"id"`
 	Name      types.String `tfsdk:"name"`
 	Region    types.String `tfsdk:"region"`
+	Cidr      types.String `tfsdk:"cidr"`
 	Tags      types.List   `tfsdk:"tags"`
 	VlanID    types.Int64  `tfsdk:"vlan_id"`
 	SDNType   types.String `tfsdk:"sdn_type"`
@@ -126,6 +127,17 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"cidr": schema.StringAttribute{
+				MarkdownDescription: "Private address block of the VPC (RFC1918, `/16` to `/24` mask). " +
+					"Auto-allocated by the platform when omitted. VNets created inside the VPC must be " +
+					"sub-ranges of this block. Immutable after creation — changing it forces replacement.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"tags": schema.ListAttribute{
@@ -205,9 +217,17 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// Pass the CIDR only when the user set it; nil tells the API to
+	// auto-allocate a /16. ValueStringPointer yields nil for null/unknown.
+	var cidr *string
+	if !plan.Cidr.IsNull() && !plan.Cidr.IsUnknown() {
+		cidr = plan.Cidr.ValueStringPointer()
+	}
+
 	created, err := r.client.CreateVPC(ctx, client.VPCCreateRequest{
 		Name:   plan.Name.ValueString(),
 		Region: plan.Region.ValueString(),
+		CIDR:   cidr,
 		Tags:   tags,
 	})
 	if err != nil {
@@ -393,6 +413,13 @@ func applyVPCToModel(ctx context.Context, src *client.VPC, dst *vpcResourceModel
 	dst.SDNType = types.StringValue(src.SDNType)
 	dst.Status = types.StringValue(src.Status)
 	dst.CreatedAt = types.StringValue(src.CreatedAt.Format(time.RFC3339))
+
+	// CIDR is null on legacy VPCs predating the field.
+	if src.CIDR != nil {
+		dst.Cidr = types.StringValue(*src.CIDR)
+	} else {
+		dst.Cidr = types.StringNull()
+	}
 
 	if src.VlanID != nil {
 		dst.VlanID = types.Int64Value(int64(*src.VlanID))

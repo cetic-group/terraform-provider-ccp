@@ -27,10 +27,14 @@ type SSHKeyCreateRequest struct {
 }
 
 // VPC represents a VPC resource. Status: active | deleting | error.
+//
+// CIDR is the private (RFC1918) address block of the VPC. It may be null on
+// legacy VPCs created before the field existed, hence *string.
 type VPC struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Region    string    `json:"region"`
+	CIDR      *string   `json:"cidr,omitempty"`
 	VlanID    *int      `json:"vlan_id,omitempty"`
 	SDNType   string    `json:"sdn_type"`
 	Status    string    `json:"status"`
@@ -39,9 +43,11 @@ type VPC struct {
 }
 
 type VPCCreateRequest struct {
-	Name   string   `json:"name"`
-	Region string   `json:"region"`
-	Tags   []string `json:"tags,omitempty"`
+	Name   string `json:"name"`
+	Region string `json:"region"`
+	// CIDR is optional — when nil the platform auto-allocates a /16.
+	CIDR *string  `json:"cidr,omitempty"`
+	Tags []string `json:"tags,omitempty"`
 }
 
 // VNet represents a VNet resource (nested under VPC). Status: active | deleting | error.
