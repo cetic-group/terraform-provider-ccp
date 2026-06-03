@@ -136,6 +136,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any, out any)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("X-CCP-Client", "terraform")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

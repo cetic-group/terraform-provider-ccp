@@ -4,6 +4,16 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.1] — unreleased
+
+### Added — header `X-CCP-Client: terraform` sur toutes les requêtes API
+
+Toutes les requêtes HTTP émises par le provider portent désormais le header
+`X-CCP-Client: terraform`. La plateforme l'utilise pour classer l'origine des
+actions dans son journal d'activité de façon **déterministe** (jusqu'ici le
+backend devait deviner via le User-Agent `terraform-provider-ccp/*`, qui
+reste envoyé en complément).
+
 ## [4.2.0] — 2026-06-02
 
 ### Added — `ccp_public_ip` data source can now look up an IP by `label`
