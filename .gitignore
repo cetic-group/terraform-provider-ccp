@@ -1,2 +1,4 @@
 /terraform-provider-cetic-cloud-platform
 /terraform-provider-cetic-cloud-platform_*
+/terraform-provider-ccp
+/terraform-provider-ccp_*

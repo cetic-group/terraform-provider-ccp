@@ -11,7 +11,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.2"
+      version = "~> 4.3"
     }
   }
 }
@@ -46,6 +46,7 @@ resource "ccp_ssh_key" "admin" {
 resource "ccp_vpc" "prod" {
   name   = "prod"
   region = "RNN"
+  cidr   = "10.0.0.0/16" # omit to let the platform auto-allocate a /16
   tags   = ["env:prod", "tier:public"]
 }
 
