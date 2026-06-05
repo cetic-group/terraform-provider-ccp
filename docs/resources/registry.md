@@ -46,17 +46,15 @@ resource "ccp_vnet" "registry" {
 }
 
 resource "ccp_registry" "private" {
-  name             = "ccr-prod"
-  region           = "RNN"
-  vpc_id           = ccp_vpc.main.id
-  vnet_id          = ccp_vnet.registry.id
-  exposure         = "private"
-  gc_schedule_cron = "0 3 * * 0" # Sunday 03:00 UTC
-  tags             = ["env:prod"]
+  name           = "ccr-prod"
+  region         = "RNN"
+  expose_public  = false
+  expose_private = true
+  tags           = ["env:prod"]
 }
 
-output "registry_hostname" {
-  value = ccp_registry.private.hostname
+output "registry_url" {
+  value = ccp_registry.private.url
 }
 
 output "registry_admin_password" {
@@ -68,18 +66,12 @@ output "registry_admin_password" {
 ### Public registry (HTTP-01 Let's Encrypt, reachable from the internet)
 
 ```hcl
-resource "ccp_public_ip" "registry" {
-  region = "RNN"
-}
-
 resource "ccp_registry" "public" {
-  name         = "ccr-public"
-  region       = "RNN"
-  vpc_id       = ccp_vpc.main.id
-  vnet_id      = ccp_vnet.registry.id
-  exposure     = "public"
-  public_ip_id = ccp_public_ip.registry.id
-  tags         = ["env:prod"]
+  name           = "ccr-public"
+  region         = "RNN"
+  expose_public  = true
+  expose_private = false
+  tags           = ["env:prod"]
 }
 ```
 
@@ -89,25 +81,17 @@ resource "ccp_registry" "public" {
 
 - `name` - (Required) Human-readable name (1-100 chars).
 - `region` - (Required, Forces new resource) Region code. One of: `RNN`, `PAR`, `ABJ`.
-- `vpc_id` - (Required, Forces new resource) UUID of the VPC the registry runs in.
-- `vnet_id` - (Required, Forces new resource) UUID of the VNet the registry runs in.
-- `exposure` - (Required, Forces new resource) `public` or `private`.
-  - `public` issues a Let's Encrypt cert via HTTP-01 and exposes the registry
-    on the internet (a `public_ip_id` should also be set).
-  - `private` issues via DNS-01 IONOS — the registry is only reachable from
-    peer VNets / VPN clients.
 
 ### Optional
 
-- `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public
-  entrypoint. Required when `exposure = "public"`. Set/unset to attach/detach
-  on subsequent applies.
+- `expose_public` - (Optional) When `true`, the registry is reachable from the
+  internet via the public gateway (Let's Encrypt cert via HTTP-01). Defaults to `false`.
+- `expose_private` - (Optional) When `true`, the registry is reachable from peer
+  VNets / VPN clients via the private gateway (cert via DNS-01 IONOS). Defaults to
+  `false`. At least one of `expose_public` / `expose_private` should be `true`.
 - `image_tag` - (Optional, Computed) Tag of the upstream `registry` image to
   deploy. Defaults to the platform-managed default (currently `2.8`). Pin to
   opt out of platform-driven bumps.
-- `gc_schedule_cron` - (Optional, Computed) 5-field cron expression for the
-  weekly garbage-collection job. Defaults to `0 3 * * 0` (Sunday 03:00 UTC).
-  GC pauses pushes for ~30-60s.
 - `tags` - (Optional, Computed) Free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
@@ -116,7 +100,8 @@ In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the registry.
 - `slug` - URL-safe slug derived from `name`, used as the hostname prefix.
-- `hostname` - Fully qualified hostname (e.g. `ccr-prod.cloud.cetic-group.com`).
+- `url` - Fully qualified registry URL (e.g. `https://ccr-prod.cloud.cetic-group.com`).
+- `gc_schedule_cron` - 5-field cron expression of the weekly garbage-collection job (server-managed, read-only).
 - `public_ip` - Public IPv4 address currently routing traffic, if any.
 - `status` - Provisioning status: `provisioning`, `active`, `updating`, `error`, `deleting`.
 - `storage_used_mb` - Approximate storage used by registry blobs (megabytes), refreshed periodically.

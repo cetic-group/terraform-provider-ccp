@@ -18,15 +18,13 @@ resource "ccp_organization" "engineering" {
 }
 
 resource "ccp_org_member" "alice" {
-  org_id = ccp_organization.engineering.id
-  email  = "alice@acme.example.com"
-  role   = "admin"
+  email = "alice@acme.example.com"
+  role  = "admin"
 }
 
 resource "ccp_org_member" "bob" {
-  org_id = ccp_organization.engineering.id
-  email  = "bob@acme.example.com"
-  role   = "member"
+  email = "bob@acme.example.com"
+  role  = "member"
 }
 
 output "org_id" {

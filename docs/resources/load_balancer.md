@@ -33,11 +33,12 @@ resource "ccp_public_ip" "lb" {
 }
 
 resource "ccp_container_instance" "web" {
-  name     = "web-1"
-  region   = "RNN"
-  plan     = "small"
-  template = "ubuntu-24.04"
-  vnet_id  = ccp_vnet.front.id
+  name          = "web-1"
+  region        = "RNN"
+  plan          = "small"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.front.id
+  root_password = var.root_password
 }
 
 resource "ccp_load_balancer" "web" {

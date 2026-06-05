@@ -9,14 +9,14 @@ description: |-
 
 Creates a point-in-time snapshot of a VM instance. Snapshots capture the full disk state and can be used to restore the VM to a known-good state via the console or CLI. Up to 2 free snapshots are included per instance.
 
-~> **Note:** Snapshots are immutable after creation. Any change to `vm_instance_id` or `name` forces the existing snapshot to be deleted and a new one to be created.
+~> **Note:** Snapshots are immutable after creation. Any change to `vm_id` or `name` forces the existing snapshot to be deleted and a new one to be created.
 
 ## Example Usage
 
 ```hcl
 # Snapshot before applying a kernel upgrade
 resource "ccp_vm_snapshot" "pre_kernel_upgrade" {
-  vm_instance_id = ccp_vm_instance.app.id
+  vm_id = ccp_vm_instance.app.id
   name           = "before-kernel-6.8-upgrade"
 }
 ```
@@ -25,8 +25,12 @@ resource "ccp_vm_snapshot" "pre_kernel_upgrade" {
 
 ### Required
 
-- `vm_instance_id` - (Required, Forces new resource) UUID of the VM instance to snapshot.
+- `vm_id` - (Required, Forces new resource) UUID of the VM instance to snapshot.
 - `name` - (Required, Forces new resource) Name of the snapshot. Must be unique within the VM instance.
+
+### Optional
+
+- `description` - (Optional, Forces new resource) Free-form description of the snapshot.
 
 ## Attributes Reference
 

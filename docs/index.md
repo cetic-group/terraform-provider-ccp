@@ -136,8 +136,10 @@ resource "ccp_vnet" "data" {
 # Public IP for the web container
 
 resource "ccp_public_ip" "web" {
-  provider = ccp
-  region   = "RNN"
+  provider         = ccp
+  region           = "RNN"
+  attached_to_id   = ccp_container_instance.web.id
+  attached_to_type = "container"
 }
 
 # Compute
@@ -148,9 +150,10 @@ resource "ccp_container_instance" "web" {
   region      = "RNN"
   plan        = "small"
   template    = "ubuntu-24.04"
-  vnet_id     = ccp_vnet.web.id
-  ssh_key_ids = [ccp_ssh_key.ops.id]
-  tags        = ["web", "env:prod"]
+  vnet_id       = ccp_vnet.web.id
+  ssh_key_ids   = [ccp_ssh_key.ops.id]
+  root_password = var.root_password
+  tags          = ["web", "env:prod"]
 
   user_data = <<-EOF
     #!/bin/bash
@@ -165,9 +168,10 @@ resource "ccp_vm_instance" "app" {
   region      = "RNN"
   plan        = "medium"
   template    = "ubuntu-24.04"
-  vnet_id     = ccp_vnet.web.id
-  ssh_key_ids = [ccp_ssh_key.ops.id]
-  tags        = ["app", "env:prod"]
+  vnet_id       = ccp_vnet.web.id
+  ssh_key_ids   = [ccp_ssh_key.ops.id]
+  root_password = var.root_password
+  tags          = ["app", "env:prod"]
 }
 
 # Outputs

@@ -9,14 +9,15 @@ description: |-
 
 Creates and manages a support ticket with the CETIC Cloud team. Use this resource to report incidents, request assistance, or ask technical questions. Tickets are tracked through to resolution and support chat is available from the console.
 
-~> **Note:** `subject` and `message` are immutable after creation — changing either forces a new ticket. Only `priority` can be updated in place. Destroying this resource closes the ticket.
+~> **Note:** `subject`, `category` and `body` are immutable after creation — changing any forces a new ticket. Only `priority` can be updated in place. Destroying this resource closes the ticket.
 
 ## Example Usage
 
 ```hcl
 resource "ccp_support_ticket" "container_unreachable" {
   subject  = "Container unreachable after VNet migration"
-  message  = <<-EOT
+  category = "network"
+  body     = <<-EOT
     Container ID: ${ccp_container_instance.web.id}
     Region: RNN
     Issue: SSH connection times out since moving the container to VNet ${ccp_vnet.web.id}.
@@ -32,7 +33,8 @@ resource "ccp_support_ticket" "container_unreachable" {
 ### Required
 
 - `subject` - (Required, Forces new resource) Short summary of the issue (max 200 characters). Used as the ticket title in the console.
-- `message` - (Required, Forces new resource) Detailed description of the issue or request. Include resource IDs, region, steps to reproduce, and any error messages.
+- `category` - (Required, Forces new resource) Ticket category. One of: `bug`, `feature`, `billing`, `network`, `infra`, `question`.
+- `body` - (Required, Forces new resource) Detailed description of the issue or request. Include resource IDs, region, steps to reproduce, and any error messages.
 
 ### Optional
 
