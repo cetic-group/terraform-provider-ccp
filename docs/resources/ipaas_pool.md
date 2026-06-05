@@ -16,18 +16,9 @@ Manages a public IP pool from which tenant public IPs are allocated. IPaaS (IP a
 ```hcl
 # BGP-routed IPaaS pool for the Rennes region
 resource "ccp_ipaas_pool" "orange_rnn_01" {
-  name   = "orange-rnn-01"
-  region = "RNN"
-  cidr   = "198.51.100.0/28"
-  kind   = "ipaas_routed"
-}
-
-# Legacy OPNsense pool (existing deployments only)
-resource "ccp_ipaas_pool" "legacy_rnn" {
-  name   = "opnsense-legacy"
-  region = "RNN"
-  cidr   = "203.0.113.0/29"
-  kind   = "legacy"
+  region  = "RNN"
+  cidr    = "198.51.100.0/28"
+  gateway = "198.51.100.1"
 }
 ```
 
@@ -35,10 +26,14 @@ resource "ccp_ipaas_pool" "legacy_rnn" {
 
 ### Required
 
-- `name` - (Required) Human-readable name for the pool.
 - `region` - (Required, Forces new resource) Region where the pool is allocated. One of: `RNN`, `PAR`, `ABJ`.
 - `cidr` - (Required, Forces new resource) CIDR block of the IP pool (e.g. `198.51.100.0/28`). Must be a valid IPv4 CIDR with prefix length between `/24` and `/29`.
-- `kind` - (Required, Forces new resource) Pool type. One of: `ipaas_routed` (BGP-announced via edge node), `legacy` (OPNsense DNAT).
+- `gateway` - (Required, Forces new resource) Gateway IP of the pool (first usable address, reserved by the upstream routing).
+
+### Optional
+
+- `edge_id` - (Optional) UUID of the edge node that announces this pool over BGP.
+- `is_active` - (Optional, Computed) Whether the pool is available for allocation. Defaults to `true`.
 
 ## Attributes Reference
 

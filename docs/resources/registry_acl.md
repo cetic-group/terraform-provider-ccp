@@ -23,11 +23,10 @@ push to a single namespace.
 
 ```hcl
 resource "ccp_registry" "main" {
-  name     = "ccr-prod"
-  region   = "RNN"
-  vpc_id   = ccp_vpc.main.id
-  vnet_id  = ccp_vnet.registry.id
-  exposure = "private"
+  name           = "ccr-prod"
+  region         = "RNN"
+  expose_public  = false
+  expose_private = true
 }
 
 resource "ccp_registry_user" "alice" {
