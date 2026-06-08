@@ -47,7 +47,7 @@ resource "ccp_appgw_listener" "admin" {
 ### Optional
 
 - `acme_challenge` - (Optional, Forces new resource) ACME (Let's Encrypt) challenge type used to issue the listener's TLS certificate: `http01` or `dns01`. `dns01` additionally requires `acme_dns_provider` and `acme_dns_credentials`. **Without this attribute, no TLS certificate is ever issued for the listener.**
-- `acme_dns_provider` - (Optional, Forces new resource) DNS provider key used for the `dns01` challenge. See the [`ccp_acme_dns_providers`](../data-sources/acme_dns_providers.md) data source for the supported catalog. Required when `acme_challenge = "dns01"`.
+- `acme_dns_provider` - (Optional, Forces new resource) DNS provider key used for the `dns01` challenge (e.g. `cloudflare`, `route53`, `ionos`). See the [`ccp_acme_dns_providers`](../data-sources/acme_dns_providers.md) data source for the supported catalog. Required when `acme_challenge = "dns01"`. The `ionos` provider expects `prefix` and `secret` credentials.
 - `acme_dns_credentials` - (Optional, Sensitive, Forces new resource) DNS provider credentials for the `dns01` challenge (write-only — never returned by the API). The expected keys depend on the provider (see `ccp_acme_dns_providers`). Required when `acme_challenge = "dns01"`.
 
 ## Attributes Reference

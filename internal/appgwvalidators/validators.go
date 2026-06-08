@@ -114,7 +114,7 @@ func CIDRList() validator.List { return cidrListValidator{} }
 // ─── Constant enums (re-exported for code reuse in schemas) ─────────────────
 
 // Algorithms accepted on target groups.
-var Algorithms = []string{"roundrobin", "leastconn", "source"}
+var Algorithms = []string{"roundrobin", "leastconn", "source", "random"}
 
 // PathMatchTypes accepted on route path_match_type.
 var PathMatchTypes = []string{"prefix", "exact", "regex"}
