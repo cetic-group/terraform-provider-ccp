@@ -38,6 +38,7 @@ resource "ccp_container_instance" "api_01" {
   template = "ubuntu-24.04"
   vnet_id  = ccp_vnet.web.id
   tags     = ["api", "env:prod"]
+  root_password = "ChangeMe123!"
 }
 
 resource "ccp_container_instance" "api_02" {
@@ -47,6 +48,7 @@ resource "ccp_container_instance" "api_02" {
   template = "ubuntu-24.04"
   vnet_id  = ccp_vnet.web.id
   tags     = ["api", "env:prod"]
+  root_password = "ChangeMe123!"
 }
 
 # ─── Application Gateway ───────────────────────────────────────────────────
