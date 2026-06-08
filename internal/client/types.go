@@ -388,7 +388,7 @@ type LBListener struct {
 	ID                 string      `json:"id"`
 	Protocol           string      `json:"protocol"` // tcp | http | https
 	ListenPort         int         `json:"listen_port"`
-	Algorithm          string      `json:"algorithm"` // roundrobin | leastconn | source
+	Algorithm          string      `json:"algorithm"` // roundrobin | leastconn | source | random
 	HealthCheckEnabled bool        `json:"health_check_enabled"`
 	HealthCheckPath    *string     `json:"health_check_path,omitempty"`
 	Backends           []LBBackend `json:"backends"`

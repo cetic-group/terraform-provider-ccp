@@ -122,6 +122,44 @@ resource "ccp_load_balancer" "api" {
 }
 ```
 
+The `ionos` provider expects `prefix` and `secret` credentials:
+
+```hcl
+variable "ionos_prefix" {
+  type      = string
+  sensitive = true
+}
+
+variable "ionos_secret" {
+  type      = string
+  sensitive = true
+}
+
+resource "ccp_load_balancer" "api_ionos" {
+  name    = "api-lb-ionos"
+  region  = "RNN"
+  vnet_id = ccp_vnet.front.id
+
+  listener {
+    protocol    = "https"
+    listen_port = 443
+
+    domain             = "api.example.com"
+    acme_challenge     = "dns01"
+    acme_dns_provider  = "ionos"
+    acme_dns_credentials = {
+      prefix = var.ionos_prefix
+      secret = var.ionos_secret
+    }
+
+    backend {
+      container_id = ccp_container_instance.api.id
+      port         = 8080
+    }
+  }
+}
+```
+
 ## Argument Reference
 
 ### Required
@@ -148,12 +186,12 @@ Each `listener` block supports:
 
 ### Optional
 
-- `algorithm` - (Optional, Immutable) Load-balancing algorithm. One of: `roundrobin` (default), `leastconn`, `source`.
+- `algorithm` - (Optional, Immutable) Load-balancing algorithm. One of: `roundrobin` (default), `leastconn`, `source`, `random`.
 - `health_check_enabled` - (Optional, Immutable) Enable backend health checks. Defaults to `true`.
 - `health_check_path` - (Optional, Immutable) HTTP path used for health checks (for `http`/`https` listeners).
 - `domain` - (Optional, Immutable) Fully-qualified domain name served by an `https` listener. Required when `acme_challenge` is set. Must be lowercase.
 - `acme_challenge` - (Optional, Immutable) ACME (Let's Encrypt) challenge type: `http01` or `dns01`. Requires `protocol = "https"` and `domain`. `dns01` additionally requires `acme_dns_provider` and `acme_dns_credentials`.
-- `acme_dns_provider` - (Optional, Immutable) DNS provider key for `dns01` (e.g. `cloudflare`, `route53`). See the [`ccp_acme_dns_providers`](../data-sources/acme_dns_providers.md) data source for the supported catalog.
+- `acme_dns_provider` - (Optional, Immutable) DNS provider key for `dns01` (e.g. `cloudflare`, `route53`, `ionos`). See the [`ccp_acme_dns_providers`](../data-sources/acme_dns_providers.md) data source for the supported catalog.
 - `acme_dns_credentials` - (Optional, Sensitive, Immutable) DNS provider credentials for `dns01` (write-only — never returned by the API). Keys depend on the provider (see `ccp_acme_dns_providers`).
 - `backend` - (Optional) One or more `backend` blocks. Backends can be added, removed or updated in place without replacing the load balancer. See [Backend Reference](#backend-reference) below.
 

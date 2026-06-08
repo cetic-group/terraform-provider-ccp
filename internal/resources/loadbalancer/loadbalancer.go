@@ -185,12 +185,12 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 							},
 						},
 						"algorithm": schema.StringAttribute{
-							MarkdownDescription: "Load-balancing algorithm: `roundrobin` (default), `leastconn` or `source`.",
+							MarkdownDescription: "Load-balancing algorithm: `roundrobin` (default), `leastconn`, `source` or `random`.",
 							Optional:            true,
 							Computed:            true,
 							Default:             stringdefault.StaticString("roundrobin"),
 							Validators: []validator.String{
-								stringvalidator.OneOf("roundrobin", "leastconn", "source"),
+								stringvalidator.OneOf("roundrobin", "leastconn", "source", "random"),
 							},
 						},
 						"health_check_enabled": schema.BoolAttribute{
@@ -225,7 +225,7 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 							},
 						},
 						"acme_dns_provider": schema.StringAttribute{
-							MarkdownDescription: "DNS-01 provider id (e.g. `cloudflare`, `route53`). " +
+							MarkdownDescription: "DNS-01 provider id (e.g. `cloudflare`, `route53`, `ionos`). " +
 								"See the `ccp_acme_dns_providers` data source for the supported list. " +
 								"Required for `acme_challenge = \"dns01\"`.",
 							Optional: true,

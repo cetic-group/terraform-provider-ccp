@@ -40,7 +40,7 @@ resource "ccp_appgw_target_group" "api_pool" {
 
 ### Optional
 
-- `algorithm` - (Optional, default `roundrobin`) Load-balancing algorithm. One of: `roundrobin`, `leastconn`, `source` (client IP hash).
+- `algorithm` - (Optional, default `roundrobin`) Load-balancing algorithm. One of: `roundrobin`, `leastconn`, `source` (client IP hash), `random`.
 - `hc_protocol` - (Optional, default `http`) Health-check protocol. One of: `http`, `https`, `tcp`.
 - `hc_method` - (Optional, default `GET`) HTTP method used for health checks. Ignored when `hc_protocol = tcp`.
 - `hc_path` - (Optional, default `/`) Health-check URL path. Ignored when `hc_protocol = tcp`.

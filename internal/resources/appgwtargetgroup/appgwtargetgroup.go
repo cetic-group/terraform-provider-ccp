@@ -79,8 +79,8 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				Validators:          []validator.String{stringvalidator.LengthBetween(1, 100)},
 			},
 			"algorithm": schema.StringAttribute{
-				MarkdownDescription: "Load-balancing algorithm: `roundrobin` (default), `leastconn` or `source` " +
-					"(client IP hash).",
+				MarkdownDescription: "Load-balancing algorithm: `roundrobin` (default), `leastconn`, `source` " +
+					"(client IP hash) or `random`.",
 				Optional:   true,
 				Computed:   true,
 				Default:    stringdefault.StaticString("roundrobin"),
