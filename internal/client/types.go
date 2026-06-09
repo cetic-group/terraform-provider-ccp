@@ -1154,6 +1154,40 @@ type VnetFirewallRuleCreateRequest struct {
 	Position   int     `json:"position,omitempty"`
 }
 
+// ─── Bastion (secure SSH access) ─────────────────────────────────────────────
+//
+// A Bastion is a managed secure-SSH-access appliance that fronts the private
+// instances of a VPC: operators reach their otherwise-unreachable private
+// hosts through a single audited entry point. Teardown is asynchronous (the
+// API accepts the DELETE then reclaims the appliance in the background), so
+// callers must PollUntilDeleted after issuing the delete.
+//
+// Status: provisioning | active | error | deleting.
+type Bastion struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Region       string    `json:"region"`
+	VpcID        string    `json:"vpc_id"`
+	Status       string    `json:"status"`
+	EndpointHost *string   `json:"endpoint_host,omitempty"`
+	EndpointPort *int      `json:"endpoint_port,omitempty"`
+	ErrorMessage *string   `json:"error_message,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type BastionCreateRequest struct {
+	Name   string `json:"name"`
+	Region string `json:"region"`
+	VpcID  string `json:"vpc_id"`
+}
+
+const (
+	BastionStatusProvisioning = "provisioning"
+	BastionStatusActive       = "active"
+	BastionStatusError        = "error"
+	BastionStatusDeleting     = "deleting"
+)
+
 // LxcTemplate represents an LXC container template (admin-managed catalog).
 // GET /v1/templates
 type LxcTemplate struct {

@@ -227,6 +227,28 @@ func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKey, error) {
 	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: "/v1/ssh-keys/" + id, Detail: "ssh key not found"}
 }
 
+// ─── Bastions (secure SSH access) ────────────────────────────────────────────
+
+func (c *Client) CreateBastion(ctx context.Context, req BastionCreateRequest) (*Bastion, error) {
+	var out Bastion
+	if err := c.do(ctx, http.MethodPost, "/v1/bastions", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetBastion(ctx context.Context, id string) (*Bastion, error) {
+	var out Bastion
+	if err := c.do(ctx, http.MethodGet, "/v1/bastions/"+id, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteBastion(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/bastions/"+id, nil, nil)
+}
+
 // ─── VPCs ────────────────────────────────────────────────────────────────────
 
 func (c *Client) ListVPCs(ctx context.Context) ([]VPC, error) {

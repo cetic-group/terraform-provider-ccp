@@ -58,6 +58,7 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/appgwtargetgroup"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/appgwtargetgroupmember"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/applicationgateway"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/bastion"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/blockvolume"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/budget"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/commit"
@@ -200,6 +201,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		appgwtargetgroup.New,
 		appgwtargetgroupmember.New,
 		appgwroute.New,
+		bastion.New,
 		containerscaleset.New,
 		vmscaleset.New,
 		k8scluster.New,
