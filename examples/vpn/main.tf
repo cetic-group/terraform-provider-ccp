@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.6"
+      version = "~> 4.7"
     }
   }
 }
@@ -60,6 +60,18 @@ resource "ccp_vpn_peer" "router" {
   public_key = "REPLACE_WITH_YOUR_WIREGUARD_PUBLIC_KEY="
 }
 
+# ─── Peer C: site-to-site (connect a remote network) ─────────────────────────
+# `peer_type = "site"` terminates a tunnel to a remote router; `site_cidrs`
+# lists the remote subnets reachable through it. `config` is the WireGuard
+# configuration to load onto that remote router — treat it as a secret.
+
+resource "ccp_vpn_peer" "branch_site" {
+  gateway_id = ccp_vpn_gateway.ops.id
+  name       = "branch-office"
+  peer_type  = "site"
+  site_cidrs = ["192.168.50.0/24", "192.168.60.0/24"]
+}
+
 # ─── Access policy (singleton per gateway) ───────────────────────────────────
 # Without a policy the gateway grants peers full access. Defining one switches
 # the gateway to deny-by-default gated by these rules. Requires an ADMIN token.
@@ -69,8 +81,9 @@ resource "ccp_vpn_policy" "ops" {
   gateway_id = ccp_vpn_gateway.ops.id
 
   groups = {
-    (ccp_vpn_peer.laptop.name) = ["admins"]
-    (ccp_vpn_peer.router.name) = ["sites"]
+    (ccp_vpn_peer.laptop.name)      = ["admins"]
+    (ccp_vpn_peer.router.name)      = ["sites"]
+    (ccp_vpn_peer.branch_site.name) = ["sites"]
   }
 
   rules = [
@@ -104,5 +117,11 @@ output "vpn_public_key" {
 output "laptop_wireguard_config" {
   description = "Ready-to-use client config for the laptop peer (contains its private key)"
   value       = ccp_vpn_peer.laptop.config
+  sensitive   = true
+}
+
+output "branch_site_wireguard_config" {
+  description = "WireGuard config to load onto the remote branch-office router"
+  value       = ccp_vpn_peer.branch_site.config
   sensitive   = true
 }

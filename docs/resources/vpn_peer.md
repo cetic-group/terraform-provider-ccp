@@ -12,7 +12,14 @@ Manages a **VPN peer** — a registered WireGuard client of a [`ccp_vpn_gateway`
 - **Model A — bring-your-own-key.** You generate a WireGuard keypair yourself and pass the public key via `public_key`. The platform never sees a private key, so the returned `config` is a skeleton with no `PrivateKey` line. `store_private_key` / `one_time` have no effect.
 - **Model B — server-generated.** You omit `public_key`. The platform generates a keypair and (when `store_private_key` is `true`, the default) returns a ready-to-use `config` containing the **private key**. Set `one_time = true` to make the config retrievable only once.
 
-~> **Note:** `gateway_id` and `name` are immutable after creation. Changing either, or any Model-B knob, forces replacement. The CETIC Cloud API has no peer-update endpoint.
+A peer is also one of two **types**, selected by `peer_type`:
+
+- **`client`** (default) — a roaming WireGuard client (laptop, phone, …) that dials in and is assigned a single tunnel IP.
+- **`site`** — a remote router/gateway terminating a **site-to-site** tunnel. You list the remote subnets via `site_cidrs`, and the returned `config` is the WireGuard configuration to load onto that remote router.
+
+~> **Note:** `gateway_id`, `name`, `peer_type`, and `site_cidrs` are immutable after creation. Changing any of them, or any Model-B knob, forces replacement. The CETIC Cloud API has no peer-update endpoint.
+
+~> **Note (site-to-site):** A `site` peer **requires** `site_cidrs` — the platform rejects a `site` peer without it (HTTP 409). For `client` peers, leave `site_cidrs` unset.
 
 ~> **Note (sensitive):** In Model B the `config` attribute embeds the peer's private key and is marked **sensitive**. It is returned **only at create time**; the API never re-exposes it on read, so the provider preserves it in state. After `terraform import` the `config` cannot be recovered.
 
@@ -46,6 +53,28 @@ resource "ccp_vpn_peer" "router" {
 }
 ```
 
+### Site-to-site — connect a remote network
+
+```hcl
+resource "ccp_vpn_peer" "branch_site" {
+  gateway_id = ccp_vpn_gateway.ops.id
+  name       = "branch-office"
+  peer_type  = "site"
+
+  # Remote subnets reachable through this site-to-site tunnel.
+  site_cidrs = ["192.168.50.0/24", "192.168.60.0/24"]
+
+  # Omit public_key to let the platform generate the remote router's keypair
+  # (Model B); the returned `config` is loaded onto the remote router.
+}
+
+# The WireGuard config for the remote router — handle as a secret.
+output "branch_router_config" {
+  value     = ccp_vpn_peer.branch_site.config
+  sensitive = true
+}
+```
+
 ## Argument Reference
 
 ### Required
@@ -55,6 +84,8 @@ resource "ccp_vpn_peer" "router" {
 
 ### Optional
 
+- `peer_type` - (Optional, Computed, Forces new resource) Kind of peer: `client` (default) for a roaming WireGuard client that dials in, or `site` for a remote router terminating a site-to-site tunnel. Must be one of `client` or `site`.
+- `site_cidrs` - (Optional, Forces new resource) List of remote subnets (CIDRs) reachable through a site-to-site tunnel. **Required when `peer_type` is `site`** (the API returns 409 otherwise); leave unset for `client` peers.
 - `public_key` - (Optional, Computed, Forces new resource) WireGuard public key of the client. Set it for **Model A** (bring-your-own-key); omit it for **Model B** (server-generated), in which case it is populated from the response.
 - `store_private_key` - (Optional, Computed, Forces new resource) **Model B only.** When `true` (default) the server-generated private key is embedded in `config`. Ignored when `public_key` is set.
 - `one_time` - (Optional, Computed, Forces new resource) **Model B only.** When `true` the generated `config` is retrievable only once (at create). Defaults to `false`. Ignored when `public_key` is set.

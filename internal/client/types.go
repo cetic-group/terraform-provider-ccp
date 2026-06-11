@@ -1249,20 +1249,31 @@ const (
 // There is no single-peer GET endpoint — Read lists the gateway's peers and
 // filters by id, so `config`/`model` are preserved from state rather than
 // re-fetched (the list response omits them).
+// A peer is also one of two types, selected by `peer_type`:
+//
+//   - "client" (default): a roaming WireGuard client (laptop, phone, …) that
+//     dials in and is assigned a single tunnel IP.
+//   - "site": a remote router/gateway terminating a site-to-site tunnel. Its
+//     `site_cidrs` list the remote subnets reachable through the tunnel, and the
+//     returned `config` is the WireGuard config for that remote router.
 type VPNPeer struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	IP        string `json:"ip"`
-	PublicKey string `json:"public_key"`
-	Model     string `json:"model"`
-	Config    string `json:"config"`
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	IP        string   `json:"ip"`
+	PublicKey string   `json:"public_key"`
+	Model     string   `json:"model"`
+	Config    string   `json:"config"`
+	PeerType  string   `json:"peer_type,omitempty"`
+	SiteCidrs []string `json:"site_cidrs,omitempty"`
 }
 
 type VPNPeerCreateRequest struct {
-	Name            string  `json:"name"`
-	PublicKey       *string `json:"public_key,omitempty"`
-	StorePrivateKey *bool   `json:"store_private_key,omitempty"`
-	OneTime         *bool   `json:"one_time,omitempty"`
+	Name            string   `json:"name"`
+	PublicKey       *string  `json:"public_key,omitempty"`
+	StorePrivateKey *bool    `json:"store_private_key,omitempty"`
+	OneTime         *bool    `json:"one_time,omitempty"`
+	PeerType        string   `json:"peer_type,omitempty"`
+	SiteCidrs       []string `json:"site_cidrs,omitempty"`
 }
 
 // VPNPolicy is the access policy of a VPN gateway — a singleton per gateway.

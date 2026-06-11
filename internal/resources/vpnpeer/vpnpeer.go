@@ -33,12 +33,15 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -66,6 +69,8 @@ type vpnPeerResourceModel struct {
 	ID              types.String `tfsdk:"id"`
 	GatewayID       types.String `tfsdk:"gateway_id"`
 	Name            types.String `tfsdk:"name"`
+	PeerType        types.String `tfsdk:"peer_type"`
+	SiteCidrs       types.List   `tfsdk:"site_cidrs"`
 	PublicKey       types.String `tfsdk:"public_key"`
 	StorePrivateKey types.Bool   `tfsdk:"store_private_key"`
 	OneTime         types.Bool   `tfsdk:"one_time"`
@@ -116,6 +121,30 @@ func (r *vpnPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"peer_type": schema.StringAttribute{
+				MarkdownDescription: "Kind of peer: `client` (default) for a roaming WireGuard client that " +
+					"dials in, or `site` for a remote router terminating a site-to-site tunnel. A `site` peer " +
+					"requires `site_cidrs`. Immutable — changing forces replacement.",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("client"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("client", "site"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"site_cidrs": schema.ListAttribute{
+				MarkdownDescription: "Remote subnets (CIDRs) reachable through a site-to-site tunnel. " +
+					"Required when `peer_type` is `site` (the API rejects a `site` peer without it with a 409); " +
+					"leave unset for `client` peers. Immutable — changing forces replacement.",
+				Optional:    true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplace(),
 				},
 			},
 			"public_key": schema.StringAttribute{
@@ -198,12 +227,22 @@ func (r *vpnPeerResource) Configure(_ context.Context, req resource.ConfigureReq
 // applyCreateToModel maps the full create response (id, ip, public_key, model,
 // config) onto the model. Only call this from Create — the list response used
 // by Read omits config/model, so Read must NOT use this helper.
-func applyCreateToModel(m *vpnPeerResourceModel, p *client.VPNPeer) {
+func applyCreateToModel(ctx context.Context, m *vpnPeerResourceModel, p *client.VPNPeer) diag.Diagnostics {
+	var diags diag.Diagnostics
 	m.ID = types.StringValue(p.ID)
 	m.IP = types.StringValue(p.IP)
 	m.PublicKey = types.StringValue(p.PublicKey)
 	m.Model = types.StringValue(p.Model)
 	m.Config = types.StringValue(p.Config)
+	if p.PeerType != "" {
+		m.PeerType = types.StringValue(p.PeerType)
+	}
+	if len(p.SiteCidrs) > 0 {
+		cidrs, d := types.ListValueFrom(ctx, types.StringType, p.SiteCidrs)
+		diags.Append(d...)
+		m.SiteCidrs = cidrs
+	}
+	return diags
 }
 
 func (r *vpnPeerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -215,6 +254,18 @@ func (r *vpnPeerResource) Create(ctx context.Context, req resource.CreateRequest
 
 	createReq := client.VPNPeerCreateRequest{
 		Name: plan.Name.ValueString(),
+	}
+	// Peer kind: "client" (default) vs "site" (site-to-site, needs site_cidrs).
+	if !plan.PeerType.IsNull() && !plan.PeerType.IsUnknown() {
+		createReq.PeerType = plan.PeerType.ValueString()
+	}
+	if !plan.SiteCidrs.IsNull() && !plan.SiteCidrs.IsUnknown() {
+		var cidrs []string
+		resp.Diagnostics.Append(plan.SiteCidrs.ElementsAs(ctx, &cidrs, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createReq.SiteCidrs = cidrs
 	}
 	// Model A vs Model B: presence of public_key selects bring-your-own-key.
 	if !plan.PublicKey.IsNull() && !plan.PublicKey.IsUnknown() && plan.PublicKey.ValueString() != "" {
@@ -248,7 +299,10 @@ func (r *vpnPeerResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	applyCreateToModel(&plan, created)
+	resp.Diagnostics.Append(applyCreateToModel(ctx, &plan, created)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -280,6 +334,17 @@ func (r *vpnPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.IP = types.StringValue(got.IP)
 	if got.PublicKey != "" {
 		state.PublicKey = types.StringValue(got.PublicKey)
+	}
+	if got.PeerType != "" {
+		state.PeerType = types.StringValue(got.PeerType)
+	}
+	if len(got.SiteCidrs) > 0 {
+		cidrs, d := types.ListValueFrom(ctx, types.StringType, got.SiteCidrs)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.SiteCidrs = cidrs
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
