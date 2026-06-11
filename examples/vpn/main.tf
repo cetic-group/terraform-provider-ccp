@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.5"
+      version = "~> 4.6"
     }
   }
 }
@@ -58,6 +58,35 @@ resource "ccp_vpn_peer" "router" {
   gateway_id = ccp_vpn_gateway.ops.id
   name       = "branch-router"
   public_key = "REPLACE_WITH_YOUR_WIREGUARD_PUBLIC_KEY="
+}
+
+# ─── Access policy (singleton per gateway) ───────────────────────────────────
+# Without a policy the gateway grants peers full access. Defining one switches
+# the gateway to deny-by-default gated by these rules. Requires an ADMIN token.
+# Destroying this resource (or empty groups/rules) restores full access.
+
+resource "ccp_vpn_policy" "ops" {
+  gateway_id = ccp_vpn_gateway.ops.id
+
+  groups = {
+    (ccp_vpn_peer.laptop.name) = ["admins"]
+    (ccp_vpn_peer.router.name) = ["sites"]
+  }
+
+  rules = [
+    {
+      from_group = "admins"
+      to_cidr    = "10.0.0.0/16"
+      ports      = [22, 443]
+      proto      = "tcp"
+    },
+    {
+      from_group = "sites"
+      to_cidr    = "10.0.10.0/24"
+      ports      = [443]
+      # proto defaults to "tcp"
+    },
+  ]
 }
 
 # ─── Outputs ─────────────────────────────────────────────────────────────────

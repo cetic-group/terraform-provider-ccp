@@ -1265,6 +1265,30 @@ type VPNPeerCreateRequest struct {
 	OneTime         *bool   `json:"one_time,omitempty"`
 }
 
+// VPNPolicy is the access policy of a VPN gateway — a singleton per gateway.
+//
+// It maps peer client names to logical groups (`groups`) and lists firewall
+// rules (`rules`) gating which groups may reach which CIDRs on which ports.
+// An empty policy (`{"groups":{}, "rules":[]}`) means the gateway falls back to
+// its default full-access behaviour, so Terraform Delete clears the policy by
+// PUTing an empty body rather than calling a (non-existent) DELETE endpoint.
+//
+//	GET /v1/vpn/gateways/{gateway_id}/policy → VPNPolicy
+//	PUT /v1/vpn/gateways/{gateway_id}/policy with the same body → replaces it
+//	(requires ADMIN role on the API token).
+type VPNPolicy struct {
+	Groups map[string][]string `json:"groups"`
+	Rules  []VPNPolicyRule     `json:"rules"`
+}
+
+// VPNPolicyRule gates a logical group's egress to a CIDR/port set.
+type VPNPolicyRule struct {
+	FromGroup string  `json:"from_group"`
+	ToCidr    string  `json:"to_cidr"`
+	Ports     []int64 `json:"ports"`
+	Proto     string  `json:"proto"`
+}
+
 // LxcTemplate represents an LXC container template (admin-managed catalog).
 // GET /v1/templates
 type LxcTemplate struct {

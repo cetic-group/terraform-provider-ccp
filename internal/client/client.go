@@ -320,6 +320,30 @@ func (c *Client) DeleteVPNPeer(ctx context.Context, gatewayID, id string) error 
 	return c.do(ctx, http.MethodDelete, "/v1/vpn/gateways/"+gatewayID+"/peers/"+id, nil, nil)
 }
 
+// ─── VPN policy (per-gateway access policy, singleton) ───────────────────────
+
+// GetVPNPolicy fetches the access policy of a gateway. A gateway with no policy
+// configured returns an empty policy (`{"groups":{}, "rules":[]}`). A 404 here
+// means the gateway itself is gone.
+func (c *Client) GetVPNPolicy(ctx context.Context, gatewayID string) (*VPNPolicy, error) {
+	var out VPNPolicy
+	if err := c.do(ctx, http.MethodGet, "/v1/vpn/gateways/"+gatewayID+"/policy", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PutVPNPolicy replaces the gateway's access policy with the supplied body and
+// returns the stored policy. Requires ADMIN role on the API token. PUTing an
+// empty policy clears it (gateway reverts to default full access).
+func (c *Client) PutVPNPolicy(ctx context.Context, gatewayID string, policy VPNPolicy) (*VPNPolicy, error) {
+	var out VPNPolicy
+	if err := c.do(ctx, http.MethodPut, "/v1/vpn/gateways/"+gatewayID+"/policy", policy, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ─── VPCs ────────────────────────────────────────────────────────────────────
 
 func (c *Client) ListVPCs(ctx context.Context) ([]VPC, error) {
