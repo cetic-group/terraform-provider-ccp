@@ -249,6 +249,77 @@ func (c *Client) DeleteBastion(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/bastions/"+id, nil, nil)
 }
 
+// ─── VPN gateways (WireGuard) ────────────────────────────────────────────────
+
+func (c *Client) CreateVPNGateway(ctx context.Context, req VPNGatewayCreateRequest) (*VPNGateway, error) {
+	var out VPNGateway
+	if err := c.do(ctx, http.MethodPost, "/v1/vpn/gateways", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetVPNGateway(ctx context.Context, id string) (*VPNGateway, error) {
+	var out VPNGateway
+	if err := c.do(ctx, http.MethodGet, "/v1/vpn/gateways/"+id, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteVPNGateway(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/vpn/gateways/"+id, nil, nil)
+}
+
+// ─── VPN peers ───────────────────────────────────────────────────────────────
+
+// CreateVPNPeer registers a peer on the given gateway. The returned VPNPeer
+// carries `config` (and, in Model B, an embedded private key) — this is the
+// only call that returns it, so the caller must persist it in state.
+func (c *Client) CreateVPNPeer(ctx context.Context, gatewayID string, req VPNPeerCreateRequest) (*VPNPeer, error) {
+	var out VPNPeer
+	if err := c.do(ctx, http.MethodPost, "/v1/vpn/gateways/"+gatewayID+"/peers", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListVPNPeers returns all peers of a gateway. The API exposes no single-peer
+// GET, so Read uses this list and filters by id client-side (cf. CLAUDE.md
+// pitfall #6).
+func (c *Client) ListVPNPeers(ctx context.Context, gatewayID string) ([]VPNPeer, error) {
+	var out []VPNPeer
+	if err := c.do(ctx, http.MethodGet, "/v1/vpn/gateways/"+gatewayID+"/peers", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetVPNPeer fetches a single peer by listing the gateway's peers and matching
+// on id. Returns a synthetic 404 APIError when absent so callers can reuse the
+// IsNotFound drift-handling path.
+func (c *Client) GetVPNPeer(ctx context.Context, gatewayID, id string) (*VPNPeer, error) {
+	peers, err := c.ListVPNPeers(ctx, gatewayID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range peers {
+		if peers[i].ID == id {
+			return &peers[i], nil
+		}
+	}
+	return nil, &APIError{
+		StatusCode: http.StatusNotFound,
+		Method:     http.MethodGet,
+		Path:       "/v1/vpn/gateways/" + gatewayID + "/peers/" + id,
+		Detail:     "vpn peer not found",
+	}
+}
+
+func (c *Client) DeleteVPNPeer(ctx context.Context, gatewayID, id string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/vpn/gateways/"+gatewayID+"/peers/"+id, nil, nil)
+}
+
 // ─── VPCs ────────────────────────────────────────────────────────────────────
 
 func (c *Client) ListVPCs(ctx context.Context) ([]VPC, error) {

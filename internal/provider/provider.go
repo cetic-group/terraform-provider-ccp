@@ -98,6 +98,8 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vnetipresv"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vnetpeering"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vpc"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vpngateway"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vpnpeer"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -202,6 +204,8 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		appgwtargetgroupmember.New,
 		appgwroute.New,
 		bastion.New,
+		vpngateway.New,
+		vpnpeer.New,
 		containerscaleset.New,
 		vmscaleset.New,
 		k8scluster.New,

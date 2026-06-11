@@ -1188,6 +1188,83 @@ const (
 	BastionStatusDeleting     = "deleting"
 )
 
+// ─── VPN (WireGuard gateway + peers) ─────────────────────────────────────────
+//
+// A VPN gateway is a managed WireGuard appliance that fronts the private
+// networks of one or more VPCs: remote clients (peers) reach otherwise
+// unreachable private hosts through an encrypted tunnel instead of exposing
+// instances to the public internet. Like the bastion, teardown is asynchronous
+// (the API accepts the DELETE then reclaims the appliance in the background),
+// so callers must PollUntilDeleted after a gateway delete.
+//
+// Status: provisioning | active | error | deleting.
+type VPNGateway struct {
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Region          string    `json:"region"`
+	Plan            string    `json:"plan"`
+	VpcID           string    `json:"vpc_id"`
+	VpcIDs          []string  `json:"vpc_ids"`
+	PublicIPID      *string   `json:"public_ip_id,omitempty"`
+	PublicIPAddress *string   `json:"public_ip_address,omitempty"`
+	Status          string    `json:"status"`
+	EndpointHost    *string   `json:"endpoint_host,omitempty"`
+	EndpointPort    *int      `json:"endpoint_port,omitempty"`
+	PublicKey       *string   `json:"public_key,omitempty"`
+	PeerPoolCIDR    *string   `json:"peer_pool_cidr,omitempty"`
+	DNS             *string   `json:"dns,omitempty"`
+	Tags            []string  `json:"tags"`
+	ErrorMessage    *string   `json:"error_message,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type VPNGatewayCreateRequest struct {
+	Name         string   `json:"name"`
+	Region       string   `json:"region"`
+	Plan         string   `json:"plan"`
+	VpcIDs       []string `json:"vpc_ids"`
+	PublicIPID   *string  `json:"public_ip_id,omitempty"`
+	PeerPoolCIDR *string  `json:"peer_pool_cidr,omitempty"`
+	DNS          *string  `json:"dns,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+}
+
+const (
+	VPNGatewayStatusProvisioning = "provisioning"
+	VPNGatewayStatusActive       = "active"
+	VPNGatewayStatusError        = "error"
+	VPNGatewayStatusDeleting     = "deleting"
+)
+
+// VPNPeer is a registered WireGuard client of a gateway.
+//
+//   - Model A (bring-your-own-key): the caller supplies `public_key`; the
+//     server never sees a private key and `config` carries a config skeleton
+//     with no `[Interface] PrivateKey`.
+//   - Model B (server-generated): the caller omits `public_key`; the server
+//     generates a keypair and (when `store_private_key` is true, the default)
+//     returns a ready-to-use `config` containing the private key. `config` is
+//     therefore returned ONLY at create time and must be treated as a secret.
+//
+// There is no single-peer GET endpoint — Read lists the gateway's peers and
+// filters by id, so `config`/`model` are preserved from state rather than
+// re-fetched (the list response omits them).
+type VPNPeer struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IP        string `json:"ip"`
+	PublicKey string `json:"public_key"`
+	Model     string `json:"model"`
+	Config    string `json:"config"`
+}
+
+type VPNPeerCreateRequest struct {
+	Name            string  `json:"name"`
+	PublicKey       *string `json:"public_key,omitempty"`
+	StorePrivateKey *bool   `json:"store_private_key,omitempty"`
+	OneTime         *bool   `json:"one_time,omitempty"`
+}
+
 // LxcTemplate represents an LXC container template (admin-managed catalog).
 // GET /v1/templates
 type LxcTemplate struct {
