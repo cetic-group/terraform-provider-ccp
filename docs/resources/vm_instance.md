@@ -55,6 +55,7 @@ resource "ccp_vm_instance" "app" {
 
 - `ssh_key_ids` - (Optional) List of SSH key UUIDs to inject via cloud-init. Keys are added to the default cloud user's `authorized_keys`.
 - `user_data` - (Optional, Forces new resource) Cloud-init user data. Can be a cloud-config YAML document (`#cloud-config`) or a shell script (`#!/bin/bash`).
+- `bastion_access` - (Optional, Forces new resource) Allow SSH access to the VM through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference

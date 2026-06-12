@@ -44,6 +44,7 @@ resource "ccp_container_scale_set" "api_workers" {
 
 - `min_replicas` - (Optional) Minimum number of replicas for auto-scaling. Must be greater than or equal to 1. Defaults to `1`.
 - `max_replicas` - (Optional) Maximum number of replicas for auto-scaling. Must be greater than or equal to `replicas`. Defaults to `10`.
+- `bastion_access` - (Optional, Forces new resource) Allow SSH access to every replica through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
