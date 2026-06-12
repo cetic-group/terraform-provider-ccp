@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -53,6 +54,7 @@ type vmssResourceModel struct {
 	MaxInstances     types.Int64  `tfsdk:"max_instances"`
 	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
 	AutoRepair       types.Bool   `tfsdk:"auto_repair"`
+	BastionAccess    types.Bool   `tfsdk:"bastion_access"`
 	Status           types.String `tfsdk:"status"`
 	Tags             types.List   `tfsdk:"tags"`
 	CreatedAt        types.String `tfsdk:"created_at"`
@@ -144,6 +146,13 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
+			},
+			"bastion_access": schema.BoolAttribute{
+				MarkdownDescription: "Allow SSH access to every replica through the tenant Bastion " +
+					"(opt-in, default false). Write-only — the API does not return this field on " +
+					"read, so changes force replacement.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"status": schema.StringAttribute{
 				Computed:      true,
@@ -250,6 +259,7 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 		MaxInstances:     int(plan.MaxInstances.ValueInt64()),
 		DesiredInstances: int(plan.DesiredInstances.ValueInt64()),
 		AutoRepair:       plan.AutoRepair.ValueBool(),
+		BastionAccess:    plan.BastionAccess.ValueBool(),
 	}
 	if !plan.VnetID.IsNull() && !plan.VnetID.IsUnknown() {
 		v := plan.VnetID.ValueString()
@@ -287,6 +297,8 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 	// API ne renvoie pas root_password sur read (sensible) ; conserver la
 	// valeur du plan dans le state pour pas que le diff montre un retrait.
 	state.RootPassword = plan.RootPassword
+	// API ne renvoie pas bastion_access (write-only) ; conserver l'intent du plan.
+	state.BastionAccess = plan.BastionAccess
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -314,6 +326,7 @@ func (r *vmssResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	// API ne renvoie pas root_password (sensible) ; conserver l'ancienne
 	// valeur du state pour éviter un drift.
 	newState.RootPassword = state.RootPassword
+	newState.BastionAccess = state.BastionAccess
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -363,6 +376,7 @@ func (r *vmssResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	newState, diags := stateFromAPI(ctx, updated)
 	newState.SSHKeyIDs = plan.SSHKeyIDs
 	newState.UserData = plan.UserData
+	newState.BastionAccess = plan.BastionAccess
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}

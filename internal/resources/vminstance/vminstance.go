@@ -81,6 +81,7 @@ type vmInstanceResourceModel struct {
 	UserData        types.String `tfsdk:"user_data"`
 	PublicIPID      types.String `tfsdk:"public_ip_id"`
 	RootPassword    types.String `tfsdk:"root_password"`
+	BastionAccess   types.Bool   `tfsdk:"bastion_access"`
 	Tags            types.List   `tfsdk:"tags"`
 	Cores           types.Int64  `tfsdk:"cores"`
 	MemoryMB        types.Int64  `tfsdk:"memory_mb"`
@@ -210,6 +211,15 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"bastion_access": schema.BoolAttribute{
+				MarkdownDescription: "Allow SSH access to the VM through the tenant Bastion " +
+					"(opt-in, default false). Write-only — the API does not return this field on " +
+					"read, so changes force replacement.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
 				},
 			},
 			"public_ip_id": schema.StringAttribute{
@@ -434,6 +444,9 @@ func (r *vmInstanceResource) Create(ctx context.Context, req resource.CreateRequ
 	if !plan.RootPassword.IsNull() && !plan.RootPassword.IsUnknown() {
 		v := plan.RootPassword.ValueString()
 		createReq.RootPassword = &v
+	}
+	if !plan.BastionAccess.IsNull() && !plan.BastionAccess.IsUnknown() {
+		createReq.BastionAccess = plan.BastionAccess.ValueBool()
 	}
 
 	created, err := r.client.CreateVMInstance(ctx, createReq)

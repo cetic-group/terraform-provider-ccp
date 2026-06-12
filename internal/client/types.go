@@ -133,6 +133,8 @@ type ContainerCreateRequest struct {
 	PublicIPID   *string  `json:"public_ip_id,omitempty"`
 	RootPassword *string  `json:"root_password,omitempty"`
 	Tags         []string `json:"tags,omitempty"`
+	// BastionAccess opts the container into SSH access through the tenant Bastion (#307).
+	BastionAccess bool `json:"bastion_access,omitempty"`
 }
 
 // ContainerActionRequest is sent to /actions: action ∈ {start, stop, restart}.
@@ -321,6 +323,8 @@ type VMInstanceCreateRequest struct {
 	PublicIPID   *string  `json:"public_ip_id,omitempty"`
 	RootPassword *string  `json:"root_password,omitempty"`
 	Tags         []string `json:"tags,omitempty"`
+	// BastionAccess opts the VM into SSH access through the tenant Bastion (#307).
+	BastionAccess bool `json:"bastion_access,omitempty"`
 }
 
 // VMInstanceUpdateRequest — only metadata mutable (name + tags).
@@ -503,6 +507,8 @@ type ContainerScaleSetCreateRequest struct {
 	DesiredInstances int      `json:"desired_instances"`
 	AutoRepair       bool     `json:"auto_repair"`
 	Tags             []string `json:"tags,omitempty"`
+	// BastionAccess opts members into SSH access through the tenant Bastion (#307).
+	BastionAccess bool `json:"bastion_access,omitempty"`
 }
 
 type ContainerScaleSetUpdateRequest struct {
@@ -559,6 +565,8 @@ type VMScaleSetCreateRequest struct {
 	DesiredInstances int      `json:"desired_instances"`
 	AutoRepair       bool     `json:"auto_repair"`
 	Tags             []string `json:"tags,omitempty"`
+	// BastionAccess opts members into SSH access through the tenant Bastion (#307).
+	BastionAccess bool `json:"bastion_access,omitempty"`
 }
 
 type VMScaleSetUpdateRequest struct {
