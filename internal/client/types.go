@@ -346,6 +346,60 @@ const (
 	VMStatusDeleting     = "deleting"
 )
 
+// ─── Windows Instance (dockur) ───────────────────────────────────────────────
+//
+// A Windows instance is a managed Windows VM provisioned via the dockur stack.
+// Unlike the QEMU VM instance, the Windows API has NO PATCH endpoint: every
+// user-settable attribute is immutable, so the Terraform resource marks them
+// all ForceNew. Provisioning is asynchronous (installing → provisioning →
+// running). CETIC Cloud provides no Windows license — the caller must hold a
+// valid license per instance and opt in via `license_consent`.
+//
+// Status: installing | provisioning | running | stopped | error | deleting.
+type WindowsInstance struct {
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Hostname         string    `json:"hostname"`
+	Region           string    `json:"region"`
+	Plan             string    `json:"plan"`
+	Template         string    `json:"template_key"`
+	Cores            int       `json:"cores"`
+	MemoryMB         int       `json:"memory_mb"`
+	DiskGB           int       `json:"disk_gb"`
+	Status           string    `json:"status"`
+	PrivateIP        *string   `json:"private_ip,omitempty"`
+	PublicIPAddress  *string   `json:"public_ip_address,omitempty"`
+	VnetID           *string   `json:"vnet_id,omitempty"`
+	DataVolumeIDs    []string  `json:"data_volume_ids"`
+	Tags             []string  `json:"tags"`
+	HasAdminPassword bool      `json:"has_admin_password"`
+	ErrorMessage     *string   `json:"error_message,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+type WindowsInstanceCreateRequest struct {
+	Name                  string   `json:"name"`
+	Region                string   `json:"region"`
+	Plan                  string   `json:"plan"`
+	TemplateKey           string   `json:"template_key"`
+	AdministratorPassword string   `json:"administrator_password"`
+	VnetID                *string  `json:"vnet_id,omitempty"`
+	PublicIPID            *string  `json:"public_ip_id,omitempty"`
+	DataVolumeIDs         []string `json:"data_volume_ids,omitempty"`
+	Tags                  []string `json:"tags,omitempty"`
+	LicenseConsent        bool     `json:"license_consent"`
+}
+
+const (
+	WindowsStatusInstalling   = "installing"
+	WindowsStatusProvisioning = "provisioning"
+	WindowsStatusRunning      = "running"
+	WindowsStatusStopped      = "stopped"
+	WindowsStatusError        = "error"
+	WindowsStatusDeleting     = "deleting"
+)
+
 // Organization represents an accessible org for the current auth context.
 //
 // One API key is bound to one org (`api_keys.org_id`); to target a different

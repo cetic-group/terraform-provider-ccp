@@ -4,6 +4,16 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v4.10.0
+
+### Added — ressource `ccp_windows_instance`
+
+Ajout de la ressource `ccp_windows_instance` (instances Windows via dockur,
+consentement de licence obligatoire). Comme l'API Windows n'expose aucun
+endpoint PATCH, tous les attributs utilisateur sont `ForceNew`. L'attribut
+`license_consent` doit valoir `true` (CETIC Cloud ne fournit aucune licence
+Windows) — sinon le `ModifyPlan` rejette le plan dès la phase de planification.
+
 ## [4.2.1] — unreleased
 
 ### Added — header `X-CCP-Client: terraform` sur toutes les requêtes API
