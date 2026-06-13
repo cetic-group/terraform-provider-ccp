@@ -33,9 +33,9 @@ type ApplicationGateway struct {
 	UpdatedAt             string   `json:"updated_at"`
 
 	// Optionally embedded by the API on GET (nested lists for datasource use).
-	Listeners     []AppGWListener     `json:"listeners,omitempty"`
-	TargetGroups  []AppGWTargetGroup  `json:"target_groups,omitempty"`
-	Routes        []AppGWRoute        `json:"routes,omitempty"`
+	Listeners    []AppGWListener    `json:"listeners,omitempty"`
+	TargetGroups []AppGWTargetGroup `json:"target_groups,omitempty"`
+	Routes       []AppGWRoute       `json:"routes,omitempty"`
 }
 
 type ApplicationGatewayCreateRequest struct {
@@ -119,22 +119,22 @@ type AppGWListenerCreateRequest struct {
 // ─── Target Group ───────────────────────────────────────────────────────────
 
 type AppGWTargetGroup struct {
-	ID                    string `json:"id"`
-	AppGWID               string `json:"appgw_id"`
-	Name                  string `json:"name"`
-	Algorithm             string `json:"algorithm"`
-	HCProtocol            string `json:"hc_protocol"`
-	HCMethod              string `json:"hc_method"`
-	HCPath                string `json:"hc_path"`
-	HCExpectStatus        int64  `json:"hc_expect_status"`
-	HCIntervalSec         int64  `json:"hc_interval_sec"`
-	HCTimeoutSec          int64  `json:"hc_timeout_sec"`
-	HCHealthyThreshold    int64  `json:"hc_healthy_threshold"`
-	HCUnhealthyThreshold  int64  `json:"hc_unhealthy_threshold"`
-	StickyEnabled         bool   `json:"sticky_enabled"`
-	StickyCookieName      *string `json:"sticky_cookie_name,omitempty"`
-	CreatedAt             string `json:"created_at"`
-	UpdatedAt             string `json:"updated_at"`
+	ID                   string  `json:"id"`
+	AppGWID              string  `json:"appgw_id"`
+	Name                 string  `json:"name"`
+	Algorithm            string  `json:"algorithm"`
+	HCProtocol           string  `json:"hc_protocol"`
+	HCMethod             string  `json:"hc_method"`
+	HCPath               string  `json:"hc_path"`
+	HCExpectStatus       int64   `json:"hc_expect_status"`
+	HCIntervalSec        int64   `json:"hc_interval_sec"`
+	HCTimeoutSec         int64   `json:"hc_timeout_sec"`
+	HCHealthyThreshold   int64   `json:"hc_healthy_threshold"`
+	HCUnhealthyThreshold int64   `json:"hc_unhealthy_threshold"`
+	StickyEnabled        bool    `json:"sticky_enabled"`
+	StickyCookieName     *string `json:"sticky_cookie_name,omitempty"`
+	CreatedAt            string  `json:"created_at"`
+	UpdatedAt            string  `json:"updated_at"`
 
 	Members []AppGWTargetGroupMember `json:"members,omitempty"`
 }

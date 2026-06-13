@@ -6,12 +6,12 @@
 // `internal/datasources/registry` data source. Future tests for other
 // resources should reuse the same fixture pattern :
 //
-//   srv := testutil.NewTestServer(t, testutil.Routes{
-//       {Method: "POST", Path: "/v1/registries", Status: 201, Body: createBody},
-//       {Method: "GET",  Path: "/v1/registries/abc", Status: 200, Body: getBody},
-//   })
-//   defer srv.Close()
-//   c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+//	srv := testutil.NewTestServer(t, testutil.Routes{
+//	    {Method: "POST", Path: "/v1/registries", Status: 201, Body: createBody},
+//	    {Method: "GET",  Path: "/v1/registries/abc", Status: 200, Body: getBody},
+//	})
+//	defer srv.Close()
+//	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
 package testutil
 
 import (
@@ -53,10 +53,10 @@ type RecordedRequest struct {
 // Server wraps httptest.Server with route consumption + recording.
 type Server struct {
 	*httptest.Server
-	mu      sync.Mutex
-	queue   map[string][]Route // key: METHOD + " " + PATH
-	calls   []RecordedRequest
-	t       *testing.T
+	mu    sync.Mutex
+	queue map[string][]Route // key: METHOD + " " + PATH
+	calls []RecordedRequest
+	t     *testing.T
 }
 
 func key(method, path string) string {

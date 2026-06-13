@@ -19,7 +19,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.9"
+      version = "~> 4.10"
     }
   }
 }
@@ -60,7 +60,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.9"
+      version = "~> 4.10"
     }
   }
 }
@@ -91,7 +91,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 4.9"
+      version = "~> 4.10"
     }
   }
 }

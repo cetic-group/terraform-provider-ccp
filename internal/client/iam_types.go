@@ -43,9 +43,9 @@ type Role struct {
 	Description    *string         `json:"description,omitempty"`
 	PolicyDocument json.RawMessage `json:"policy_document"`
 	PolicyHash     string          `json:"policy_hash"`
-	IsBuiltIn      bool             `json:"is_built_in"`
-	CreatedAt      time.Time        `json:"created_at"`
-	UpdatedAt      time.Time        `json:"updated_at"`
+	IsBuiltIn      bool            `json:"is_built_in"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }
 
 // RoleCreateRequest is the body of POST /v1/iam/roles. policy_document is
