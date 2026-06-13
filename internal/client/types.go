@@ -1172,21 +1172,30 @@ type VnetFirewallRuleCreateRequest struct {
 //
 // Status: provisioning | active | error | deleting.
 type Bastion struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Region       string    `json:"region"`
-	VpcID        string    `json:"vpc_id"`
-	Status       string    `json:"status"`
-	EndpointHost *string   `json:"endpoint_host,omitempty"`
-	EndpointPort *int      `json:"endpoint_port,omitempty"`
-	ErrorMessage *string   `json:"error_message,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Region          string    `json:"region"`
+	Plan            string    `json:"plan"`
+	VpcID           string    `json:"vpc_id"`
+	VpcIDs          []string  `json:"vpc_ids"`
+	PublicIPID      *string   `json:"public_ip_id,omitempty"`
+	PublicIPAddress *string   `json:"public_ip_address,omitempty"`
+	Status          string    `json:"status"`
+	EndpointHost    *string   `json:"endpoint_host,omitempty"`
+	EndpointPort    *int      `json:"endpoint_port,omitempty"`
+	ErrorMessage    *string   `json:"error_message,omitempty"`
+	Tags            []string  `json:"tags"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type BastionCreateRequest struct {
-	Name   string `json:"name"`
-	Region string `json:"region"`
-	VpcID  string `json:"vpc_id"`
+	Name       string   `json:"name"`
+	Region     string   `json:"region"`
+	Plan       string   `json:"plan,omitempty"`
+	VpcID      string   `json:"vpc_id"`
+	VpcIDs     []string `json:"vpc_ids,omitempty"`
+	PublicIPID *string  `json:"public_ip_id,omitempty"`
+	Tags       []string `json:"tags,omitempty"`
 }
 
 const (

@@ -83,10 +83,11 @@ Idéalement faire une PR sur `cetic-cloud-terraform-modules` juste après le rel
 
 ### Live Registry
 
-**Latest** : `v4.2.0` (2026-06-02) — datasource `ccp_public_ip` : lookup par **`label`** (3ᵉ clé, exactement une parmi `id` / `ip_address` / `label` ; erreur explicite si plusieurs IPs partagent le même label). Exemples pinnés `~> 4.2`.
+**Latest** : `v4.9.0` (2026-06-13) — feat : **`ccp_bastion` parité avec `ccp_vpn_gateway`** — ajoute `plan` (small/medium/large, défaut `small`, ForceNew), `vpc_ids` (List, multi-VPC 1–5, ForceNew, le `vpc_id` primaire reste Required et toujours inclus), `public_ip_id` (Optional+Computed, ForceNew) et `tags` (List, ForceNew) + attribut Computed `public_ip_address`. Backend (#307, plateforme v2.16.x) acceptait déjà ces champs (`BastionCreate` merge `vpc_id`+`vpc_ids`, `BastionResponse` renvoie `plan`/`vpc_ids`/`public_ip_id`/`public_ip_address`/`tags`). **Additif, non-breaking** : `vpc_id` inchangé, tout le reste Optional. Exemples pinnés `~> 4.9`. Calqué EXACTEMENT sur `ccp_vpn_gateway` (schéma, applyToModel pitfall #5, helpers `listToStrings`/`optStr`).
 
 **Historique récent** :
-- `v4.2.0` — feat : datasource `ccp_public_ip` lookup par `label`. Commits directs main (interleaving sessions).
+- `v4.9.0` — feat : `ccp_bastion` `plan` + `vpc_ids` + `public_ip_id` + `tags` + `public_ip_address` (parité vpn_gateway). Voir « Latest ».
+- `v4.3.0 → v4.8.0` (résumé MEMORY, sessions interleavées, commits directs main) : `v4.3.0` `ccp_vpc.cidr` (Optional+Computed+ForceNew, bloc RFC1918) ; séquence k8s/CCKS (`initial_pool` labels/taints/min-max/autoscaler) déjà couverte par l'historique v3.x rebasée ; `v4.5.0`–`v4.7.0` cascade **VPN #306** (`ccp_vpn_gateway`/`ccp_vpn_peer`/`ccp_vpn_policy`) + **Bastion #307** (`ccp_bastion` v1 : `name`/`region`/`vpc_id`) ; `v4.8.0` (#343) stats accès/réseau (`bastion_access` write-only sur instances/scale-sets/templates). Détails dans les notes monorepo (MEMORY plateforme).
 - `v4.1.4` — fix : Read AppGW (target groups / routes / members) via **list + filtre client-side** — l'API n'expose pas de GET individuel sur ces sous-ressources → 405 au premier refresh. Cf. piège #6. PR #49.
 - `v4.1.3` — fix : preserve `target_group_id` quand la réponse API member l'omet (piège #5). PR #48.
 - `v4.1.2` — fix : preserve `vpc_id` quand la réponse API AppGW l'omet (piège #5). PR #47.

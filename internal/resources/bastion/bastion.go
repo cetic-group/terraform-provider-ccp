@@ -28,11 +28,14 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -60,13 +63,18 @@ type bastionResource struct {
 // bastionResourceModel mirrors the schema below 1-to-1. Tag names must match
 // the schema attribute keys exactly.
 type bastionResourceModel struct {
-	ID           types.String `tfsdk:"id"`
-	Name         types.String `tfsdk:"name"`
-	Region       types.String `tfsdk:"region"`
-	VpcID        types.String `tfsdk:"vpc_id"`
-	Status       types.String `tfsdk:"status"`
-	EndpointHost types.String `tfsdk:"endpoint_host"`
-	EndpointPort types.Int64  `tfsdk:"endpoint_port"`
+	ID              types.String `tfsdk:"id"`
+	Name            types.String `tfsdk:"name"`
+	Region          types.String `tfsdk:"region"`
+	Plan            types.String `tfsdk:"plan"`
+	VpcID           types.String `tfsdk:"vpc_id"`
+	VpcIDs          types.List   `tfsdk:"vpc_ids"`
+	PublicIPID      types.String `tfsdk:"public_ip_id"`
+	Tags            types.List   `tfsdk:"tags"`
+	Status          types.String `tfsdk:"status"`
+	EndpointHost    types.String `tfsdk:"endpoint_host"`
+	EndpointPort    types.Int64  `tfsdk:"endpoint_port"`
+	PublicIPAddress types.String `tfsdk:"public_ip_address"`
 }
 
 // nameValidatorPattern matches the API constraint: alphanumerics, underscore,
@@ -80,10 +88,10 @@ func (r *bastionResource) Metadata(_ context.Context, _ resource.MetadataRequest
 func (r *bastionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud bastion — a managed secure SSH access appliance that " +
-			"fronts the private instances of a VPC. Operators reach their otherwise-unreachable private " +
-			"hosts through a single, audited entry point instead of exposing every instance to the public " +
-			"internet. The CETIC Cloud API has no update endpoint, so any change to `name`, `region` or " +
-			"`vpc_id` forces replacement.",
+			"fronts the private instances of one or more VPCs. Operators reach their otherwise-unreachable " +
+			"private hosts through a single, audited entry point instead of exposing every instance to the " +
+			"public internet. The CETIC Cloud API has no update endpoint, so any settable attribute " +
+			"(`name`, `region`, `plan`, `vpc_id`, `vpc_ids`, `public_ip_id`, `tags`) forces replacement.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the bastion.",
@@ -115,12 +123,59 @@ func (r *bastionResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"vpc_id": schema.StringAttribute{
-				MarkdownDescription: "UUID of the VPC whose private instances the bastion grants SSH access to. " +
+			"plan": schema.StringAttribute{
+				MarkdownDescription: "Sizing plan: `small`, `medium`, or `large` (defaults to `small`). " +
 					"Immutable — changing forces replacement.",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("small"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("small", "medium", "large"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"vpc_id": schema.StringAttribute{
+				MarkdownDescription: "UUID of the primary VPC whose private instances the bastion grants SSH " +
+					"access to. Immutable — changing forces replacement. For multi-VPC bastions, add the extra " +
+					"VPCs through `vpc_ids` (this primary VPC is always included).",
 				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"vpc_ids": schema.ListAttribute{
+				MarkdownDescription: "UUIDs of all the VPCs the bastion fronts (1–5). The primary `vpc_id` is " +
+					"always part of the set — list it explicitly to control ordering, or add only the extra " +
+					"VPCs. If omitted, the bastion covers just `vpc_id`. Immutable — changing forces replacement.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplace(),
+					listplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"public_ip_id": schema.StringAttribute{
+				MarkdownDescription: "UUID of a reserved public IP to attach to the bastion endpoint. " +
+					"If omitted, the platform allocates one (IPaaS). Immutable — changing forces replacement.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"tags": schema.ListAttribute{
+				MarkdownDescription: "Free-form labels attached to the bastion. The API has no endpoint to " +
+					"mutate tags after creation, so changes here force replacement.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplace(),
+					listplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"endpoint_host": schema.StringAttribute{
@@ -136,6 +191,14 @@ func (r *bastionResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"public_ip_address": schema.StringAttribute{
+				MarkdownDescription: "Public IP address attached to the bastion endpoint. " +
+					"Populated once the appliance finishes provisioning.",
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"status": schema.StringAttribute{
@@ -166,13 +229,49 @@ func (r *bastionResource) Configure(_ context.Context, req resource.ConfigureReq
 // applyToModel maps an API Bastion onto the Terraform model. `status` is
 // volatile (known-after-apply) so it carries no UseStateForUnknown — see
 // CLAUDE.md (v2.0.4 fix). The endpoint fields are nullable until the
-// appliance finishes provisioning.
-func applyToModel(m *bastionResourceModel, b *client.Bastion) {
+// appliance finishes provisioning. Optional+Computed fields that the API may
+// omit from its response are preserved on the model rather than blindly
+// overwritten with a zero value (CLAUDE.md pitfall #5).
+func applyToModel(ctx context.Context, m *bastionResourceModel, b *client.Bastion) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	m.ID = types.StringValue(b.ID)
 	m.Name = types.StringValue(b.Name)
 	m.Region = types.StringValue(b.Region)
+	m.Plan = types.StringValue(b.Plan)
 	m.VpcID = types.StringValue(b.VpcID)
 	m.Status = types.StringValue(b.Status)
+
+	// vpc_ids: prefer the list; fall back to the single vpc_id for older
+	// responses. Preserve the existing value if the API returns neither.
+	ids := b.VpcIDs
+	if len(ids) == 0 && b.VpcID != "" {
+		ids = []string{b.VpcID}
+	}
+	if len(ids) > 0 || m.VpcIDs.IsNull() || m.VpcIDs.IsUnknown() {
+		vpcList, d := types.ListValueFrom(ctx, types.StringType, ids)
+		diags.Append(d...)
+		if diags.HasError() {
+			return diags
+		}
+		m.VpcIDs = vpcList
+	}
+
+	if b.PublicIPID != nil {
+		m.PublicIPID = types.StringValue(*b.PublicIPID)
+	} else if m.PublicIPID.IsUnknown() {
+		m.PublicIPID = types.StringNull()
+	}
+
+	tagValues := make([]string, 0, len(b.Tags))
+	tagValues = append(tagValues, b.Tags...)
+	tagsList, d := types.ListValueFrom(ctx, types.StringType, tagValues)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	m.Tags = tagsList
+
 	if b.EndpointHost != nil {
 		m.EndpointHost = types.StringValue(*b.EndpointHost)
 	} else {
@@ -183,6 +282,36 @@ func applyToModel(m *bastionResourceModel, b *client.Bastion) {
 	} else {
 		m.EndpointPort = types.Int64Null()
 	}
+	if b.PublicIPAddress != nil {
+		m.PublicIPAddress = types.StringValue(*b.PublicIPAddress)
+	} else {
+		m.PublicIPAddress = types.StringNull()
+	}
+	return diags
+}
+
+// listToStrings converts a framework List into a Go slice. Null and unknown
+// both collapse to nil so callers can hand the result straight to the client.
+func listToStrings(ctx context.Context, list types.List) ([]string, diag.Diagnostics) {
+	if list.IsNull() || list.IsUnknown() {
+		return nil, nil
+	}
+	out := make([]string, 0, len(list.Elements()))
+	diags := list.ElementsAs(ctx, &out, false)
+	if diags.HasError() {
+		return nil, diags
+	}
+	return out, diags
+}
+
+// optStr returns a *string for an Optional value, nil when null/unknown so the
+// API applies its own default.
+func optStr(v types.String) *string {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	s := v.ValueString()
+	return &s
 }
 
 func (r *bastionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -192,10 +321,25 @@ func (r *bastionResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	vpcIDs, diags := listToStrings(ctx, plan.VpcIDs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	tags, diags := listToStrings(ctx, plan.Tags)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	created, err := r.client.CreateBastion(ctx, client.BastionCreateRequest{
-		Name:   plan.Name.ValueString(),
-		Region: plan.Region.ValueString(),
-		VpcID:  plan.VpcID.ValueString(),
+		Name:       plan.Name.ValueString(),
+		Region:     plan.Region.ValueString(),
+		Plan:       plan.Plan.ValueString(),
+		VpcID:      plan.VpcID.ValueString(),
+		VpcIDs:     vpcIDs,
+		PublicIPID: optStr(plan.PublicIPID),
+		Tags:       tags,
 	})
 	if err != nil {
 		if client.IsConflict(err) {
@@ -212,7 +356,10 @@ func (r *bastionResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	applyToModel(&plan, created)
+	resp.Diagnostics.Append(applyToModel(ctx, &plan, created)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -237,7 +384,10 @@ func (r *bastionResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	applyToModel(&state, got)
+	resp.Diagnostics.Append(applyToModel(ctx, &state, got)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
