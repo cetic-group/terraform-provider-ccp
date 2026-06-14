@@ -7,9 +7,13 @@
 
 ---
 
-## Convention release — **BUMP AVANT TAG, JAMAIS L'INVERSE**
+## Convention release — **TOUJOURS DEPUIS `main`** + **BUMP AVANT TAG**
 
-⚠️ **Règle critique** : avant `git tag` qui déclenche goreleaser et publie sur le Registry, **toujours** bumper les contraintes `version = "~> X.Y"` dans **TOUS les exemples HCL** du repo. Le Registry rend ces exemples verbatim — un tag avec exemples stale verrouille les copy-paste users sur l'ancienne version sans qu'ils s'en rendent compte. Voir mémoire `feedback-tf-provider-bump-version-examples-before-tag` (incident 2026-05-28 : 5 tags `v1.1.3 → v2.0.0` poussés sans bump, hotfix `v2.0.1` pour rattraper).
+⚠️ **Règle critique #0 — RELEASE DEPUIS `main` UNIQUEMENT, JAMAIS depuis une branche feature.**
+Le `git tag vX.Y.Z` qui déclenche la release **doit** être posé sur `main`, **après** avoir mergé la PR (fix/feat). Tagger depuis une branche feature publie une version que `main` ne contient pas (drift : Registry/prod en avance sur main) ET embarque dans le tag du code non-mergé. Avant tout tag : `git checkout main && git pull origin main` puis vérifier que le commit visé est sur main.
+Incident 2026-06-14 : `v4.10.0` + `v4.10.1` taggés depuis `feat/windows-instance` → main n'avait ni les fixes ni les releases ; rattrapé en mergeant la branche dans main a posteriori. **Ne plus jamais releaser hors de main.**
+
+⚠️ **Règle critique #1** : avant `git tag` qui déclenche goreleaser et publie sur le Registry, **toujours** bumper les contraintes `version = "~> X.Y"` dans **TOUS les exemples HCL** du repo. Le Registry rend ces exemples verbatim — un tag avec exemples stale verrouille les copy-paste users sur l'ancienne version sans qu'ils s'en rendent compte. Voir mémoire `feedback-tf-provider-bump-version-examples-before-tag` (incident 2026-05-28 : 5 tags `v1.1.3 → v2.0.0` poussés sans bump, hotfix `v2.0.1` pour rattraper).
 
 À chaque release du provider (`vX.Y.Z`), **mettre à jour systématiquement AVANT le tag** :
 
