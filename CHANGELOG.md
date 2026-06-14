@@ -14,6 +14,18 @@ endpoint PATCH, tous les attributs utilisateur sont `ForceNew`. L'attribut
 `license_consent` doit valoir `true` (CETIC Cloud ne fournit aucune licence
 Windows) — sinon le `ModifyPlan` rejette le plan dès la phase de planification.
 
+### Fixed — `ccp_vpc` : `terraform destroy` échouait sur un 409 transitoire « contient des VNets »
+
+Le `Delete` de `ccp_vpc` réessaie désormais l'appel `DELETE /v1/vpcs/{id}`
+tant qu'il reçoit un `409 Conflict` « Le VPC contient des VNets ». Lors d'un
+`terraform destroy`, chaque VNet enfant quitte la liste du VPC (404) dès qu'il
+passe en `deleting`, mais le teardown backend (détach NIC NAT GW + IPAM + zone
+SDN) qui lève la précondition « has vnets » côté VPC se termine un peu après —
+le `DELETE` du VPC tombait alors en erreur dure et imposait de relancer le
+destroy à la main. Le DELETE est maintenant retenté jusqu'à 120 s ; un 409 qui
+survit à ce budget (enfant réellement bloqué) est remonté verbatim, donc
+toujours actionnable.
+
 ## [4.2.1] — unreleased
 
 ### Added — header `X-CCP-Client: terraform` sur toutes les requêtes API

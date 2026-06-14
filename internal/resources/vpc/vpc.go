@@ -17,6 +17,15 @@
 // for 404 up to 60 s and surface a warning rather than an error if the
 // timeout elapses, since the resource will still be removed from Terraform
 // state and the API is converging on its own.
+//
+// The DELETE itself can transiently return 409 "Le VPC contient des VNets"
+// during a `terraform destroy`: each child VNet's Delete already polls until it
+// leaves the per-VPC VNet list (404), but the backend's NAT GW NIC detach +
+// IPAM + SDN zone cleanup that clears the VPC-level "has vnets" precondition
+// finishes a beat later. We retry the DELETE on 409 until that precondition
+// clears (up to deleteConflictRetryTimeout) instead of failing the apply and
+// forcing the user to re-run destroy. A 409 that outlives the budget (a child
+// genuinely stuck) is surfaced verbatim so it stays actionable.
 package vpc
 
 import (
@@ -83,6 +92,11 @@ const (
 	createPollTimeout  = 90 * time.Second
 	deletePollInterval = 5 * time.Second
 	deletePollTimeout  = 60 * time.Second
+	// deleteConflictRetryTimeout bounds how long we keep retrying the DELETE
+	// while it returns 409 (child VNet teardown still settling server-side).
+	// Larger than deletePollTimeout to give the NAT GW NIC detach + SDN zone
+	// cleanup headroom in busy regions before we give up and surface the 409.
+	deleteConflictRetryTimeout = 120 * time.Second
 )
 
 func (r *vpcResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -359,15 +373,33 @@ func (r *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	}
 
 	id := state.ID.ValueString()
-	if err := r.client.DeleteVPC(ctx, id); err != nil {
-		// Treat "already gone" as success — no point erroring on destroy when
-		// the desired end state is already reached.
-		if client.IsNotFound(err) {
-			return
+
+	// Issue the DELETE, retrying on the transient 409 "contains VNets" that can
+	// race with the children's still-settling teardown (see package doc). The
+	// first attempt runs immediately; classifyVPCDeleteAttempt decides whether
+	// each result is terminal, retryable, or fatal. lastConflict keeps the most
+	// recent 409 detail so a budget-exhausting conflict surfaces actionably
+	// rather than as a generic "polling timeout".
+	var lastConflict error
+	pollErr := client.Poll(ctx, deletePollInterval, deleteConflictRetryTimeout, func(ctx context.Context) (bool, error) {
+		err := r.client.DeleteVPC(ctx, id)
+		done, retry, fatal := classifyVPCDeleteAttempt(err)
+		if fatal != nil {
+			return false, fatal
+		}
+		if retry {
+			lastConflict = err
+		}
+		return done, nil
+	})
+	if pollErr != nil {
+		detail := pollErr
+		if lastConflict != nil {
+			detail = lastConflict
 		}
 		resp.Diagnostics.AddError(
 			"Failed to delete VPC",
-			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, detail.Error()),
 		)
 		return
 	}
@@ -375,7 +407,7 @@ func (r *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	// Poll until GetVPC returns 404. If the timeout elapses, warn but let
 	// Terraform remove the resource from state — CETIC Cloud is still
 	// converging asynchronously and blocking the apply would be worse.
-	pollErr := client.Poll(ctx, deletePollInterval, deletePollTimeout, func(ctx context.Context) (bool, error) {
+	pollErr = client.Poll(ctx, deletePollInterval, deletePollTimeout, func(ctx context.Context) (bool, error) {
 		_, err := r.client.GetVPC(ctx, id)
 		if err == nil {
 			return false, nil
@@ -392,6 +424,29 @@ func (r *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 				"Terraform will remove the resource from state; the CETIC Cloud backend should "+
 				"finish the teardown asynchronously.", id, deletePollTimeout, pollErr.Error()),
 		)
+	}
+}
+
+// classifyVPCDeleteAttempt interprets the outcome of a single DELETE
+// /v1/vpcs/{id} call during teardown:
+//   - done=true  → the VPC is gone (2xx accepted, or 404 already-deleted);
+//     stop and treat as success.
+//   - retry=true → transient 409 (child VNet teardown still settling
+//     server-side); keep retrying until the precondition clears.
+//   - fatal!=nil → any other error; surface it to the user immediately.
+//
+// Extracted as a pure function so the retry decision is unit-tested without a
+// live API (mirrors the publicip resource's classify*Poll helpers).
+func classifyVPCDeleteAttempt(err error) (done bool, retry bool, fatal error) {
+	switch {
+	case err == nil:
+		return true, false, nil
+	case client.IsNotFound(err):
+		return true, false, nil
+	case client.IsConflict(err):
+		return false, true, nil
+	default:
+		return false, false, err
 	}
 }
 
