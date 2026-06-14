@@ -4,6 +4,23 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v4.10.1
+
+### Fixed — `ccp_vpn_gateway` : le Create n'attendait pas l'état `active`
+
+Le `Create` de `ccp_vpn_gateway` poll désormais jusqu'à ce que la passerelle
+atteigne `active` avant de rendre la main (puis re-fetch l'enregistrement). Il
+rendait jusqu'ici la main en `provisioning`, ce qui provoquait deux problèmes :
+
+1. les `ccp_vpn_peer` dépendants partaient trop tôt et étaient rejetés en
+   `409 — La gateway VPN n'est pas encore prête` ;
+2. les attributs calculés `endpoint_host` / `endpoint_port` / `public_key` /
+   `public_ip_address` (peuplés seulement en fin de provisioning) restaient
+   nuls dans le state après le premier apply.
+
+Décision de poll isolée dans une fonction pure `classifyGatewayProvision`,
+couverte par un test unitaire. Timeout de provisioning : 10 min.
+
 ## v4.10.0
 
 ### Added — ressource `ccp_windows_instance`

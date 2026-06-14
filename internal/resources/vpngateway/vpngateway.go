@@ -6,10 +6,12 @@
 // of exposing instances to the public internet.
 //
 // CRUD semantics (mirrors ccp_bastion):
-//   - Create : POST /v1/vpn/gateways — returns the appliance metadata. The
-//     WireGuard endpoint (`endpoint_host`/`endpoint_port`/`public_key`) and the
-//     attached public IP are populated once provisioning finishes, so they are
-//     Computed.
+//   - Create : POST /v1/vpn/gateways — returns the appliance metadata in
+//     `provisioning`, then poll GetVPNGateway until `active`. Waiting matters:
+//     the WireGuard endpoint (`endpoint_host`/`endpoint_port`/`public_key`) and
+//     the attached public IP are populated only once provisioning finishes (so
+//     they are Computed), and dependent ccp_vpn_peer creates 409 ("gateway not
+//     ready") if they fire before the gateway is active.
 //   - Read   : GET /v1/vpn/gateways/{id}. 404 ⇒ removed from state (drift).
 //   - Delete : DELETE /v1/vpn/gateways/{id}, then poll until the appliance is
 //     really gone — teardown is asynchronous, and without the wait a replace
@@ -79,6 +81,28 @@ type vpnGatewayResourceModel struct {
 // nameValidatorPattern matches the API constraint: alphanumerics, underscore,
 // hyphen, and space, max 100 chars (length enforced separately).
 var nameValidatorPattern = regexp.MustCompile(`^[a-zA-Z0-9_\- ]+$`)
+
+// Polling parameters — Create waits up to createPollTimeout for the appliance
+// to leave `provisioning` and reach `active` (WireGuard appliance bring-up).
+const (
+	createPollInterval = 5 * time.Second
+	createPollTimeout  = 10 * time.Minute
+)
+
+// classifyGatewayProvision maps a gateway status observed while polling after
+// create into (done, err): `active` → done; `error` → hard failure; anything
+// else (`provisioning`) → keep polling. Pure so the decision is unit-tested
+// without a live API (mirrors the publicip resource's classify*Poll helpers).
+func classifyGatewayProvision(id, status string) (bool, error) {
+	switch status {
+	case client.VPNGatewayStatusActive:
+		return true, nil
+	case client.VPNGatewayStatusError:
+		return false, fmt.Errorf("VPN gateway %s entered error state during provisioning", id)
+	default:
+		return false, nil
+	}
+}
 
 func (r *vpnGatewayResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "ccp_vpn_gateway"
@@ -383,7 +407,41 @@ func (r *vpnGatewayResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	resp.Diagnostics.Append(applyToModel(ctx, &plan, created)...)
+	// Provisioning is asynchronous: the POST returns the gateway in
+	// `provisioning`. Wait until it reaches `active` before returning — otherwise
+	// (a) dependent ccp_vpn_peer creates fire too early and get a 409 "La gateway
+	// VPN n'est pas encore prête", and (b) the computed endpoint_host /
+	// endpoint_port / public_key / public_ip_address are still null (they are
+	// populated only once provisioning finishes).
+	pollErr := client.Poll(ctx, createPollInterval, createPollTimeout, func(ctx context.Context) (bool, error) {
+		cur, err := r.client.GetVPNGateway(ctx, created.ID)
+		if err != nil {
+			return false, err
+		}
+		return classifyGatewayProvision(cur.ID, cur.Status)
+	})
+	if pollErr != nil {
+		resp.Diagnostics.AddError(
+			"VPN gateway failed to reach active state",
+			fmt.Sprintf("CETIC Cloud VPN gateway %s did not become active within %s: %s",
+				created.ID, createPollTimeout, pollErr.Error()),
+		)
+		return
+	}
+
+	// Re-fetch the authoritative record — the POST response predates the
+	// endpoint / public-key fields populated during provisioning.
+	final, err := r.client.GetVPNGateway(ctx, created.ID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to read VPN gateway after provisioning",
+			fmt.Sprintf("VPN gateway %s reached active state but the follow-up GET failed: %s",
+				created.ID, err.Error()),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(applyToModel(ctx, &plan, final)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
