@@ -31,6 +31,7 @@ type ctDSModel struct {
 	DiskGB             types.Int64  `tfsdk:"disk_gb"`
 	SourceInstanceID   types.String `tfsdk:"source_instance_id"`
 	SourceInstanceType types.String `tfsdk:"source_instance_type"`
+	OsFamily           types.String `tfsdk:"os_family"`
 	CreatedAt          types.String `tfsdk:"created_at"`
 	UpdatedAt          types.String `tfsdk:"updated_at"`
 }
@@ -53,8 +54,14 @@ func (d *ctDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datas
 			"disk_gb":              schema.Int64Attribute{Computed: true},
 			"source_instance_id":   schema.StringAttribute{Computed: true},
 			"source_instance_type": schema.StringAttribute{Computed: true},
-			"created_at":           schema.StringAttribute{Computed: true},
-			"updated_at":           schema.StringAttribute{Computed: true},
+			"os_family": schema.StringAttribute{
+				MarkdownDescription: "Operating system family of the template (`linux` or " +
+					"`windows`). A template captured from a Windows VM stays `windows`; " +
+					"recreate a VM/VMSS from it with `windows_license_consent = true`.",
+				Computed: true,
+			},
+			"created_at": schema.StringAttribute{Computed: true},
+			"updated_at": schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -129,6 +136,11 @@ func (d *ctDS) Read(ctx context.Context, req datasource.ReadRequest, resp *datas
 		CreatedAt:    types.StringValue(found.CreatedAt),
 		UpdatedAt:    types.StringValue(found.UpdatedAt),
 	}
+	osFamily := found.OSFamily
+	if osFamily == "" {
+		osFamily = "linux"
+	}
+	state.OsFamily = types.StringValue(osFamily)
 	setStrPtr(&state.Description, found.Description)
 	setStrPtr(&state.ErrorMessage, found.ErrorMessage)
 	setStrPtr(&state.SourceInstanceID, found.SourceInstanceID)

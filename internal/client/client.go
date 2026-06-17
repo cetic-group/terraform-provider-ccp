@@ -762,47 +762,6 @@ func (c *Client) VMInstanceAction(ctx context.Context, id, action string) error 
 		VMActionRequest{Action: action}, nil)
 }
 
-// ─── Windows Instances (dockur) ──────────────────────────────────────────────
-
-func (c *Client) ListWindowsInstances(ctx context.Context, region string) ([]WindowsInstance, error) {
-	path := "/v1/windows-instances"
-	if region != "" {
-		path += "?region=" + region
-	}
-	var out []WindowsInstance
-	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *Client) GetWindowsInstance(ctx context.Context, id string) (*WindowsInstance, error) {
-	var out WindowsInstance
-	if err := c.do(ctx, http.MethodGet, "/v1/windows-instances/"+id, nil, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) CreateWindowsInstance(ctx context.Context, req WindowsInstanceCreateRequest) (*WindowsInstance, error) {
-	var out WindowsInstance
-	if err := c.do(ctx, http.MethodPost, "/v1/windows-instances", req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) DeleteWindowsInstance(ctx context.Context, id string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/windows-instances/"+id, nil, nil)
-}
-
-// WindowsInstanceAction issues a lifecycle action on a Windows instance.
-// Unlike the VM instance API, the Windows API exposes distinct sub-paths
-// (start|stop|reboot) rather than a single /actions endpoint with a body.
-func (c *Client) WindowsInstanceAction(ctx context.Context, id, action string) error {
-	return c.do(ctx, http.MethodPost, "/v1/windows-instances/"+id+"/"+action, nil, nil)
-}
-
 // ─── Organizations ───────────────────────────────────────────────────────────
 
 // ListOrganizations returns all organizations accessible to the current

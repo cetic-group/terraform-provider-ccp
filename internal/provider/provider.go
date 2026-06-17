@@ -101,7 +101,6 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vpngateway"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vpnpeer"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/vpnpolicy"
-	"github.com/cetic-group/terraform-provider-ccp/internal/resources/windowsinstance"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -199,7 +198,6 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		publicip.New,
 		objectbucket.New,
 		vminstance.New,
-		windowsinstance.New,
 		loadbalancer.New,
 		applicationgateway.New,
 		appgwlistener.New,

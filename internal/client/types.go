@@ -291,25 +291,28 @@ const (
 // VMInstance represents a QEMU VM instance.
 // Status: provisioning | running | stopped | error | deleting.
 type VMInstance struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	Region          string    `json:"region"`
-	Plan            string    `json:"plan"`
-	Cores           int       `json:"cores"`
-	MemoryMB        int       `json:"memory_mb"`
-	DiskGB          int       `json:"disk_gb"`
-	Template        string    `json:"template"`
-	Status          string    `json:"status"`
-	IPAddress       *string   `json:"ip_address,omitempty"`
-	PublicIPAddress *string   `json:"public_ip_address,omitempty"`
-	VnetID          *string   `json:"vnet_id,omitempty"`
-	ScaleSetID      *string   `json:"scale_set_id,omitempty"`
-	UserData        *string   `json:"user_data,omitempty"`
-	ErrorMessage    *string   `json:"error_message,omitempty"`
-	HasRootPassword bool      `json:"has_root_password"`
-	Tags            []string  `json:"tags"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Region          string   `json:"region"`
+	Plan            string   `json:"plan"`
+	Cores           int      `json:"cores"`
+	MemoryMB        int      `json:"memory_mb"`
+	DiskGB          int      `json:"disk_gb"`
+	Template        string   `json:"template"`
+	Status          string   `json:"status"`
+	IPAddress       *string  `json:"ip_address,omitempty"`
+	PublicIPAddress *string  `json:"public_ip_address,omitempty"`
+	VnetID          *string  `json:"vnet_id,omitempty"`
+	ScaleSetID      *string  `json:"scale_set_id,omitempty"`
+	UserData        *string  `json:"user_data,omitempty"`
+	ErrorMessage    *string  `json:"error_message,omitempty"`
+	HasRootPassword bool     `json:"has_root_password"`
+	Tags            []string `json:"tags"`
+	// OSFamily is the operating system family derived from the instance
+	// template: "linux" or "windows". Returned on read (defaults "linux").
+	OSFamily  string    `json:"os_family"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type VMInstanceCreateRequest struct {
@@ -325,6 +328,10 @@ type VMInstanceCreateRequest struct {
 	Tags         []string `json:"tags,omitempty"`
 	// BastionAccess opts the VM into SSH access through the tenant Bastion (#307).
 	BastionAccess bool `json:"bastion_access,omitempty"`
+	// WindowsLicenseConsent acknowledges that CETIC Cloud provides no Windows
+	// license. Required (true) when the template is a Windows image — the API
+	// returns 422 otherwise. Ignored for Linux templates.
+	WindowsLicenseConsent bool `json:"windows_license_consent,omitempty"`
 }
 
 // VMInstanceUpdateRequest — only metadata mutable (name + tags).
@@ -344,60 +351,6 @@ const (
 	VMStatusStopped      = "stopped"
 	VMStatusError        = "error"
 	VMStatusDeleting     = "deleting"
-)
-
-// ─── Windows Instance (dockur) ───────────────────────────────────────────────
-//
-// A Windows instance is a managed Windows VM provisioned via the dockur stack.
-// Unlike the QEMU VM instance, the Windows API has NO PATCH endpoint: every
-// user-settable attribute is immutable, so the Terraform resource marks them
-// all ForceNew. Provisioning is asynchronous (installing → provisioning →
-// running). CETIC Cloud provides no Windows license — the caller must hold a
-// valid license per instance and opt in via `license_consent`.
-//
-// Status: installing | provisioning | running | stopped | error | deleting.
-type WindowsInstance struct {
-	ID               string    `json:"id"`
-	Name             string    `json:"name"`
-	Hostname         string    `json:"hostname"`
-	Region           string    `json:"region"`
-	Plan             string    `json:"plan"`
-	Template         string    `json:"template_key"`
-	Cores            int       `json:"cores"`
-	MemoryMB         int       `json:"memory_mb"`
-	DiskGB           int       `json:"disk_gb"`
-	Status           string    `json:"status"`
-	PrivateIP        *string   `json:"private_ip,omitempty"`
-	PublicIPAddress  *string   `json:"public_ip_address,omitempty"`
-	VnetID           *string   `json:"vnet_id,omitempty"`
-	DataVolumeIDs    []string  `json:"data_volume_ids"`
-	Tags             []string  `json:"tags"`
-	HasAdminPassword bool      `json:"has_admin_password"`
-	ErrorMessage     *string   `json:"error_message,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-}
-
-type WindowsInstanceCreateRequest struct {
-	Name                  string   `json:"name"`
-	Region                string   `json:"region"`
-	Plan                  string   `json:"plan"`
-	TemplateKey           string   `json:"template_key"`
-	AdministratorPassword string   `json:"administrator_password"`
-	VnetID                *string  `json:"vnet_id,omitempty"`
-	PublicIPID            *string  `json:"public_ip_id,omitempty"`
-	DataVolumeIDs         []string `json:"data_volume_ids,omitempty"`
-	Tags                  []string `json:"tags,omitempty"`
-	LicenseConsent        bool     `json:"license_consent"`
-}
-
-const (
-	WindowsStatusInstalling   = "installing"
-	WindowsStatusProvisioning = "provisioning"
-	WindowsStatusRunning      = "running"
-	WindowsStatusStopped      = "stopped"
-	WindowsStatusError        = "error"
-	WindowsStatusDeleting     = "deleting"
 )
 
 // Organization represents an accessible org for the current auth context.
@@ -588,21 +541,23 @@ const (
 // ─── VM Scale Set ────────────────────────────────────────────────────────────
 
 type VMScaleSet struct {
-	ID               string    `json:"id"`
-	Name             string    `json:"name"`
-	Region           string    `json:"region"`
-	Plan             string    `json:"plan"`
-	Template         string    `json:"template"`
-	VnetID           *string   `json:"vnet_id,omitempty"`
-	MinInstances     int       `json:"min_instances"`
-	MaxInstances     int       `json:"max_instances"`
-	DesiredInstances int       `json:"desired_instances"`
-	AutoRepair       bool      `json:"auto_repair"`
-	Status           string    `json:"status"`
-	ErrorMessage     *string   `json:"error_message,omitempty"`
-	Tags             []string  `json:"tags"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Region           string   `json:"region"`
+	Plan             string   `json:"plan"`
+	Template         string   `json:"template"`
+	VnetID           *string  `json:"vnet_id,omitempty"`
+	MinInstances     int      `json:"min_instances"`
+	MaxInstances     int      `json:"max_instances"`
+	DesiredInstances int      `json:"desired_instances"`
+	AutoRepair       bool     `json:"auto_repair"`
+	Status           string   `json:"status"`
+	ErrorMessage     *string  `json:"error_message,omitempty"`
+	Tags             []string `json:"tags"`
+	// OSFamily is the OS family of the scale set template: "linux" or "windows".
+	OSFamily  string    `json:"os_family"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type VMScaleSetCreateRequest struct {
@@ -621,6 +576,10 @@ type VMScaleSetCreateRequest struct {
 	Tags             []string `json:"tags,omitempty"`
 	// BastionAccess opts members into SSH access through the tenant Bastion (#307).
 	BastionAccess bool `json:"bastion_access,omitempty"`
+	// WindowsLicenseConsent acknowledges that CETIC Cloud provides no Windows
+	// license. Required (true) when the template is a Windows image — the API
+	// returns 422 otherwise. Ignored for Linux templates.
+	WindowsLicenseConsent bool `json:"windows_license_consent,omitempty"`
 }
 
 type VMScaleSetUpdateRequest struct {
@@ -1434,8 +1393,11 @@ type CustomTemplate struct {
 	DiskGB             *int    `json:"disk_gb,omitempty"`
 	SourceInstanceID   *string `json:"source_instance_id,omitempty"`
 	SourceInstanceType *string `json:"source_instance_type,omitempty"`
-	CreatedAt          string  `json:"created_at"`
-	UpdatedAt          string  `json:"updated_at"`
+	// OSFamily is the OS family captured from the source instance: "linux" or
+	// "windows". A custom template snapshotted from a Windows VM stays Windows.
+	OSFamily  string `json:"os_family"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type CustomTemplateCreateRequest struct {

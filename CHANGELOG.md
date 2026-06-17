@@ -4,6 +4,49 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.0.0
+
+### Removed (BREAKING) — `ccp_windows_instance`
+
+The `ccp_windows_instance` resource is **removed**. It targeted the legacy
+`/v1/windows-instances` API (the dockur-based Windows stack), which no longer
+exists on the platform — Windows VMs are now native QEMU VMs managed through
+`ccp_vm_instance` (and `ccp_vm_scale_set`).
+
+**Migration:** replace any `ccp_windows_instance` block with a `ccp_vm_instance`
+using a Windows template (`win-*`) and the new `windows_license_consent`
+attribute:
+
+```hcl
+resource "ccp_vm_instance" "win" {
+  name                    = "win-app"
+  region                  = "RNN"
+  plan                    = "medium" # Windows requires medium or larger
+  template                = "win-2022"
+  vnet_id                 = ccp_vnet.web.id
+  root_password           = var.win_admin_password # Administrator password
+  windows_license_consent = true
+}
+```
+
+### Added — Windows support on `ccp_vm_instance` / `ccp_vm_scale_set`
+
+- `windows_license_consent` (Optional, Bool, Forces new resource): acknowledge
+  that CETIC Cloud provides no Windows license. **Required `true`** when the
+  template is a Windows system image (`win-*`) or a custom template captured
+  from a Windows VM — the API returns HTTP 422 otherwise. Windows instances
+  also require a `medium`+ plan and a strong administrator password (≥ 12 chars,
+  ≥ 3 of: lowercase, uppercase, digit, symbol).
+- `os_family` (Computed, String): `linux` or `windows`, derived from the
+  template. Exposed on `ccp_vm_instance`, `ccp_vm_scale_set` and the
+  `ccp_custom_template` data source.
+
+### Changed
+
+- `ccp_vm_scale_set` docs corrected to the real schema field names
+  (`desired_instances` / `min_instances` / `max_instances`) and the
+  hot VNet-change behaviour (no member recreation on VNet add/remove).
+
 ## v4.10.1
 
 ### Fixed — `ccp_vpn_gateway` : le Create n'attendait pas l'état `active`
