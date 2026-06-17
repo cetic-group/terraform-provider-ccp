@@ -13,6 +13,7 @@ Look up a custom template (snapshot promoted to a reusable image) by `id` or `na
 
 - `id`, `name`, `description` (nullable)
 - `template_type` — `vm` or `container`
+- `os_family` — `linux` or `windows`. A template captured from a Windows VM stays `windows`; recreate a VM/VMSS from it with `windows_license_consent = true`.
 - `region`, `status`, `error_message` (nullable)
 - `disk_gb` (nullable)
 - `source_instance_id`, `source_instance_type` (nullable)

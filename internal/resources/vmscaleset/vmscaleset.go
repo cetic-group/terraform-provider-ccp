@@ -41,23 +41,25 @@ type vmssResource struct {
 }
 
 type vmssResourceModel struct {
-	ID               types.String `tfsdk:"id"`
-	Name             types.String `tfsdk:"name"`
-	Region           types.String `tfsdk:"region"`
-	Plan             types.String `tfsdk:"plan"`
-	Template         types.String `tfsdk:"template"`
-	VnetID           types.String `tfsdk:"vnet_id"`
-	SSHKeyIDs        types.List   `tfsdk:"ssh_key_ids"`
-	UserData         types.String `tfsdk:"user_data"`
-	RootPassword     types.String `tfsdk:"root_password"`
-	MinInstances     types.Int64  `tfsdk:"min_instances"`
-	MaxInstances     types.Int64  `tfsdk:"max_instances"`
-	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
-	AutoRepair       types.Bool   `tfsdk:"auto_repair"`
-	BastionAccess    types.Bool   `tfsdk:"bastion_access"`
-	Status           types.String `tfsdk:"status"`
-	Tags             types.List   `tfsdk:"tags"`
-	CreatedAt        types.String `tfsdk:"created_at"`
+	ID                    types.String `tfsdk:"id"`
+	Name                  types.String `tfsdk:"name"`
+	Region                types.String `tfsdk:"region"`
+	Plan                  types.String `tfsdk:"plan"`
+	Template              types.String `tfsdk:"template"`
+	VnetID                types.String `tfsdk:"vnet_id"`
+	SSHKeyIDs             types.List   `tfsdk:"ssh_key_ids"`
+	UserData              types.String `tfsdk:"user_data"`
+	RootPassword          types.String `tfsdk:"root_password"`
+	MinInstances          types.Int64  `tfsdk:"min_instances"`
+	MaxInstances          types.Int64  `tfsdk:"max_instances"`
+	DesiredInstances      types.Int64  `tfsdk:"desired_instances"`
+	AutoRepair            types.Bool   `tfsdk:"auto_repair"`
+	BastionAccess         types.Bool   `tfsdk:"bastion_access"`
+	WindowsLicenseConsent types.Bool   `tfsdk:"windows_license_consent"`
+	Status                types.String `tfsdk:"status"`
+	Tags                  types.List   `tfsdk:"tags"`
+	OsFamily              types.String `tfsdk:"os_family"`
+	CreatedAt             types.String `tfsdk:"created_at"`
 }
 
 func (r *vmssResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -154,6 +156,18 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
+			"windows_license_consent": schema.BoolAttribute{
+				MarkdownDescription: "Acknowledge that CETIC Cloud provides no Windows license: " +
+					"you are responsible for acquiring and holding a valid Windows license for " +
+					"each member instance. **Required (`true`) when `template` is a Windows system " +
+					"image (`win-*`) or a custom template captured from a Windows VM** — the API " +
+					"rejects the create with HTTP 422 otherwise. Windows scale sets also require a " +
+					"strong administrator password (≥ 12 characters, ≥ 3 of: lowercase, uppercase, " +
+					"digit, symbol) and a plan of `medium` or larger. Ignored for Linux templates. " +
+					"Write-only — not returned on read, so changes force replacement.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+			},
 			"status": schema.StringAttribute{
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -162,6 +176,13 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
+			},
+			"os_family": schema.StringAttribute{
+				MarkdownDescription: "Operating system family derived from the scale set " +
+					"template: `linux` or `windows`. Windows members are accessed over RDP " +
+					"(no SSH); their administrator account is `Administrator`.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
@@ -228,6 +249,11 @@ func stateFromAPI(ctx context.Context, c *client.VMScaleSet) (vmssResourceModel,
 		Status:           types.StringValue(c.Status),
 		CreatedAt:        types.StringValue(c.CreatedAt.Format("2006-01-02T15:04:05Z07:00")),
 	}
+	osFamily := c.OSFamily
+	if osFamily == "" {
+		osFamily = "linux"
+	}
+	m.OsFamily = types.StringValue(osFamily)
 	if c.VnetID != nil {
 		m.VnetID = types.StringValue(*c.VnetID)
 	} else {
@@ -260,6 +286,9 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 		DesiredInstances: int(plan.DesiredInstances.ValueInt64()),
 		AutoRepair:       plan.AutoRepair.ValueBool(),
 		BastionAccess:    plan.BastionAccess.ValueBool(),
+	}
+	if !plan.WindowsLicenseConsent.IsNull() && !plan.WindowsLicenseConsent.IsUnknown() {
+		createReq.WindowsLicenseConsent = plan.WindowsLicenseConsent.ValueBool()
 	}
 	if !plan.VnetID.IsNull() && !plan.VnetID.IsUnknown() {
 		v := plan.VnetID.ValueString()
@@ -299,6 +328,8 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 	state.RootPassword = plan.RootPassword
 	// API ne renvoie pas bastion_access (write-only) ; conserver l'intent du plan.
 	state.BastionAccess = plan.BastionAccess
+	// idem windows_license_consent (write-only, non relu).
+	state.WindowsLicenseConsent = plan.WindowsLicenseConsent
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -327,6 +358,7 @@ func (r *vmssResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	// valeur du state pour éviter un drift.
 	newState.RootPassword = state.RootPassword
 	newState.BastionAccess = state.BastionAccess
+	newState.WindowsLicenseConsent = state.WindowsLicenseConsent
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -377,6 +409,7 @@ func (r *vmssResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	newState.SSHKeyIDs = plan.SSHKeyIDs
 	newState.UserData = plan.UserData
 	newState.BastionAccess = plan.BastionAccess
+	newState.WindowsLicenseConsent = plan.WindowsLicenseConsent
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}

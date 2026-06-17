@@ -71,29 +71,31 @@ type vmInstanceResource struct {
 // vmInstanceResourceModel mirrors the schema below 1-to-1. Tag names must
 // match the schema attribute keys exactly.
 type vmInstanceResourceModel struct {
-	ID              types.String `tfsdk:"id"`
-	Name            types.String `tfsdk:"name"`
-	Region          types.String `tfsdk:"region"`
-	Plan            types.String `tfsdk:"plan"`
-	Template        types.String `tfsdk:"template"`
-	VnetID          types.String `tfsdk:"vnet_id"`
-	SSHKeyIDs       types.List   `tfsdk:"ssh_key_ids"`
-	UserData        types.String `tfsdk:"user_data"`
-	PublicIPID      types.String `tfsdk:"public_ip_id"`
-	RootPassword    types.String `tfsdk:"root_password"`
-	BastionAccess   types.Bool   `tfsdk:"bastion_access"`
-	Tags            types.List   `tfsdk:"tags"`
-	Cores           types.Int64  `tfsdk:"cores"`
-	MemoryMB        types.Int64  `tfsdk:"memory_mb"`
-	DiskGB          types.Int64  `tfsdk:"disk_gb"`
-	Status          types.String `tfsdk:"status"`
-	IPAddress       types.String `tfsdk:"ip_address"`
-	PublicIPAddress types.String `tfsdk:"public_ip_address"`
-	ScaleSetID      types.String `tfsdk:"scale_set_id"`
-	ErrorMessage    types.String `tfsdk:"error_message"`
-	HasRootPassword types.Bool   `tfsdk:"has_root_password"`
-	CreatedAt       types.String `tfsdk:"created_at"`
-	UpdatedAt       types.String `tfsdk:"updated_at"`
+	ID                    types.String `tfsdk:"id"`
+	Name                  types.String `tfsdk:"name"`
+	Region                types.String `tfsdk:"region"`
+	Plan                  types.String `tfsdk:"plan"`
+	Template              types.String `tfsdk:"template"`
+	VnetID                types.String `tfsdk:"vnet_id"`
+	SSHKeyIDs             types.List   `tfsdk:"ssh_key_ids"`
+	UserData              types.String `tfsdk:"user_data"`
+	PublicIPID            types.String `tfsdk:"public_ip_id"`
+	RootPassword          types.String `tfsdk:"root_password"`
+	BastionAccess         types.Bool   `tfsdk:"bastion_access"`
+	WindowsLicenseConsent types.Bool   `tfsdk:"windows_license_consent"`
+	Tags                  types.List   `tfsdk:"tags"`
+	OsFamily              types.String `tfsdk:"os_family"`
+	Cores                 types.Int64  `tfsdk:"cores"`
+	MemoryMB              types.Int64  `tfsdk:"memory_mb"`
+	DiskGB                types.Int64  `tfsdk:"disk_gb"`
+	Status                types.String `tfsdk:"status"`
+	IPAddress             types.String `tfsdk:"ip_address"`
+	PublicIPAddress       types.String `tfsdk:"public_ip_address"`
+	ScaleSetID            types.String `tfsdk:"scale_set_id"`
+	ErrorMessage          types.String `tfsdk:"error_message"`
+	HasRootPassword       types.Bool   `tfsdk:"has_root_password"`
+	CreatedAt             types.String `tfsdk:"created_at"`
+	UpdatedAt             types.String `tfsdk:"updated_at"`
 }
 
 // nameValidatorPattern matches the API constraint: alphanumerics, underscores
@@ -222,6 +224,20 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					boolplanmodifier.RequiresReplace(),
 				},
 			},
+			"windows_license_consent": schema.BoolAttribute{
+				MarkdownDescription: "Acknowledge that CETIC Cloud provides no Windows license: " +
+					"you are responsible for acquiring and holding a valid Windows license for " +
+					"each instance. **Required (`true`) when `template` is a Windows system image " +
+					"(`win-*`) or a custom template captured from a Windows VM** — the API rejects " +
+					"the create with HTTP 422 otherwise. Windows instances also require a strong " +
+					"administrator password (≥ 12 characters, ≥ 3 of: lowercase, uppercase, digit, " +
+					"symbol) and a plan of `medium` or larger. Ignored for Linux templates. " +
+					"Write-only — not returned on read, so changes force replacement.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
+			},
 			"public_ip_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of a public IP to attach to the VM. Mutable: " +
 					"changing this attribute attaches/detaches via the CETIC Cloud API " +
@@ -258,6 +274,15 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				ElementType: types.StringType,
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"os_family": schema.StringAttribute{
+				MarkdownDescription: "Operating system family derived from the instance " +
+					"template: `linux` or `windows`. Windows instances are accessed over RDP " +
+					"(no SSH); their administrator account is `Administrator`.",
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"cores": schema.Int64Attribute{
@@ -447,6 +472,9 @@ func (r *vmInstanceResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 	if !plan.BastionAccess.IsNull() && !plan.BastionAccess.IsUnknown() {
 		createReq.BastionAccess = plan.BastionAccess.ValueBool()
+	}
+	if !plan.WindowsLicenseConsent.IsNull() && !plan.WindowsLicenseConsent.IsUnknown() {
+		createReq.WindowsLicenseConsent = plan.WindowsLicenseConsent.ValueBool()
 	}
 
 	created, err := r.client.CreateVMInstance(ctx, createReq)
@@ -855,6 +883,11 @@ func applyVMInstanceToModel(ctx context.Context, src *client.VMInstance, dst *vm
 	dst.DiskGB = types.Int64Value(int64(src.DiskGB))
 	dst.Status = types.StringValue(src.Status)
 	dst.HasRootPassword = types.BoolValue(src.HasRootPassword)
+	osFamily := src.OSFamily
+	if osFamily == "" {
+		osFamily = "linux"
+	}
+	dst.OsFamily = types.StringValue(osFamily)
 	dst.CreatedAt = types.StringValue(src.CreatedAt.Format(time.RFC3339))
 	dst.UpdatedAt = types.StringValue(src.UpdatedAt.Format(time.RFC3339))
 
