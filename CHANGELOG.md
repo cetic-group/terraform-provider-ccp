@@ -4,6 +4,69 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.2.0
+
+### Added — per-pool Kubernetes version (`k8s_version` on node pools)
+
+Worker node pools can now pin their own Kubernetes version, independent of the
+cluster control-plane version (`ccp_k8s_cluster.k8s_version`). Two surfaces:
+
+- `ccp_k8s_node_pool` gains a `k8s_version` attribute — **Optional + Computed**
+  (omit it to inherit the control-plane version; the effective version is read
+  back into state, staying null when the pool inherits). It is **mutable** —
+  changing it triggers a rolling upgrade of the pool's nodes (**NOT** ForceNew).
+- `ccp_k8s_cluster.initial_pool` gains an optional `k8s_version` so the initial
+  pool can pin a worker version at create (and adjust it in place).
+
+The worker version must be `<=` the cluster control-plane version (the API
+returns `422` otherwise). Additive, non-breaking — existing pools keep
+inheriting the control-plane version.
+
+```hcl
+resource "ccp_k8s_node_pool" "legacy_workers" {
+  cluster_id  = ccp_k8s_cluster.prod.id
+  name        = "legacy-workers"
+  plan        = "medium"
+  replicas    = 2
+  k8s_version = "v1.33.4" # must be <= the control-plane k8s_version
+}
+```
+
+Client structs (`K8sNodePool`, `K8sNodePoolCreateRequest`,
+`K8sNodePoolUpdateRequest`, `K8sInitialPool`) gain `K8sVersion *string`
+(`k8s_version,omitempty`). Examples stay pinned `~> 5.0` (5.2.0 ∈ ~> 5.0).
+
+## v5.1.0
+
+### Added — `ccp_k8s_cluster.os_image` (node OS family)
+
+The `ccp_k8s_cluster` resource gains an `os_image` attribute selecting the
+operating-system family for the cluster nodes. Allowed values: `flatcar`
+(default), `ubuntu`, `rocky9`. The attribute is **Optional + Computed +
+ForceNew** — omit it to let the platform default to `flatcar` (the value is
+read back into state), and changing it recreates the cluster (the node OS
+cannot be swapped in place).
+
+```hcl
+resource "ccp_k8s_cluster" "ubuntu" {
+  name            = "ubuntu-cluster"
+  region          = "RNN"
+  vpc_id          = ccp_vpc.main.id
+  vnet_id         = ccp_vnet.workers.id
+  k8s_version     = "v1.34.8"
+  os_template_key = "kube-v1-34-8"
+  os_image        = "ubuntu"
+}
+```
+
+The `ccp_k8s_templates` data source now also exports an `os` field (the OS
+family slug: `flatcar`, `ubuntu`, `rocky9`) on each template item.
+
+Backend contract (`POST /v1/k8s/clusters` `os_image`, cluster GET/list
+`os_image`, `GET /v1/k8s/templates` item `os`) is already live. Additive and
+non-breaking — existing configurations keep running on `flatcar`. GitHub
+issue #460.
+
 ## v5.0.0
 
 ### Removed (BREAKING) — `ccp_windows_instance`

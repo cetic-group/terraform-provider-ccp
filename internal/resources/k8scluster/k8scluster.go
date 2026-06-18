@@ -41,13 +41,14 @@ type k8sResource struct {
 }
 
 type initialPoolModel struct {
-	Name     types.String `tfsdk:"name"`
-	Plan     types.String `tfsdk:"plan"`
-	Replicas types.Int64  `tfsdk:"replicas"`
-	Labels   types.Map    `tfsdk:"labels"`
-	Taints   types.Set    `tfsdk:"taints"`
-	MinSize  types.Int64  `tfsdk:"min_size"`
-	MaxSize  types.Int64  `tfsdk:"max_size"`
+	Name       types.String `tfsdk:"name"`
+	Plan       types.String `tfsdk:"plan"`
+	Replicas   types.Int64  `tfsdk:"replicas"`
+	K8sVersion types.String `tfsdk:"k8s_version"`
+	Labels     types.Map    `tfsdk:"labels"`
+	Taints     types.Set    `tfsdk:"taints"`
+	MinSize    types.Int64  `tfsdk:"min_size"`
+	MaxSize    types.Int64  `tfsdk:"max_size"`
 }
 
 // initialPoolTaintModel mirrors the taint nested object for the initial_pool block.
@@ -95,6 +96,7 @@ type k8sResourceModel struct {
 	Region        types.String      `tfsdk:"region"`
 	K8sVersion    types.String      `tfsdk:"k8s_version"`
 	OsTemplateKey types.String      `tfsdk:"os_template_key"`
+	OsImage       types.String      `tfsdk:"os_image"`
 	VpcID         types.String      `tfsdk:"vpc_id"`
 	VnetID        types.String      `tfsdk:"vnet_id"`
 	PodCIDR       types.String      `tfsdk:"pod_cidr"`
@@ -166,6 +168,16 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				MarkdownDescription: "QEMU template key for worker nodes (ex: `clks-capi-debian-13`). Forces replacement.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"os_image": schema.StringAttribute{
+				MarkdownDescription: "Node operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky9`. " +
+					"Defaults to `flatcar` when omitted. Forces replacement (changing the node OS recreates the cluster).",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("flatcar", "ubuntu", "rocky9"),
+				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"vpc_id": schema.StringAttribute{
 				Required:      true,
@@ -335,6 +347,15 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"replicas": schema.Int64Attribute{
 						Required: true,
 					},
+					"k8s_version": schema.StringAttribute{
+						// Optional (non-Computed) to match the rest of the initial_pool
+						// block: stateFromAPI preserves the plan (currentInitial), there
+						// is no readback, so the state must equal the config → no
+						// perma-diff. Omit to inherit the cluster control-plane version.
+						MarkdownDescription: "Kubernetes version of the worker nodes in the initial pool " +
+							"(`vX.Y.Z`). Must be `<=` the cluster control-plane version (`k8s_version`); omit to inherit it.",
+						Optional: true,
+					},
 					"labels": schema.MapAttribute{
 						MarkdownDescription: "Kubernetes labels propagated to the initial pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.",
 						ElementType:         types.StringType,
@@ -403,6 +424,7 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, currentInitial *ini
 		Region:        types.StringValue(c.Region),
 		K8sVersion:    types.StringValue(c.K8sVersion),
 		OsTemplateKey: types.StringValue(c.OsTemplateKey),
+		OsImage:       types.StringValue(c.OsImage),
 		VpcID:         types.StringValue(c.VpcID),
 		VnetID:        types.StringValue(c.VnetID),
 		PodCIDR:       types.StringValue(c.PodCIDR),
@@ -508,6 +530,10 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 			return
 		}
 		pool.Taints = taints
+		if !plan.InitialPool.K8sVersion.IsNull() && !plan.InitialPool.K8sVersion.IsUnknown() {
+			v := plan.InitialPool.K8sVersion.ValueString()
+			pool.K8sVersion = &v
+		}
 		if !plan.InitialPool.MinSize.IsNull() && !plan.InitialPool.MinSize.IsUnknown() {
 			v := int(plan.InitialPool.MinSize.ValueInt64())
 			pool.MinSize = &v
@@ -526,11 +552,20 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		tier = plan.Tier.ValueString()
 	}
 
+	// `os_image` is Optional+Computed (server defaults to "flatcar"). Forward it
+	// only when the plan resolved to a concrete value; otherwise omit and let
+	// the API apply its default (read back into the Computed state).
+	osImage := ""
+	if !plan.OsImage.IsNull() && !plan.OsImage.IsUnknown() {
+		osImage = plan.OsImage.ValueString()
+	}
+
 	createReq := client.K8sClusterCreateRequest{
 		Name:          plan.Name.ValueString(),
 		Region:        plan.Region.ValueString(),
 		K8sVersion:    plan.K8sVersion.ValueString(),
 		OsTemplateKey: plan.OsTemplateKey.ValueString(),
+		OsImage:       osImage,
 		VpcID:         plan.VpcID.ValueString(),
 		VnetID:        plan.VnetID.ValueString(),
 		PodCIDR:       plan.PodCIDR.ValueString(),
@@ -700,7 +735,7 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	if plan.InitialPool != nil && state.InitialPool != nil {
 		ip, sp := plan.InitialPool, state.InitialPool
 		if !ip.Replicas.Equal(sp.Replicas) || !ip.MinSize.Equal(sp.MinSize) || !ip.MaxSize.Equal(sp.MaxSize) ||
-			!ip.Labels.Equal(sp.Labels) || !ip.Taints.Equal(sp.Taints) {
+			!ip.Labels.Equal(sp.Labels) || !ip.Taints.Equal(sp.Taints) || !ip.K8sVersion.Equal(sp.K8sVersion) {
 			pools, err := r.client.ListK8sNodePools(ctx, state.ID.ValueString())
 			if err != nil {
 				resp.Diagnostics.AddError("Failed to list node pools for initial pool reconcile", err.Error())
@@ -721,6 +756,13 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			npReq := client.K8sNodePoolUpdateRequest{}
 			rep := int(ip.Replicas.ValueInt64())
 			npReq.Replicas = &rep
+			// k8s_version : worker version of the initial pool. Send only when set
+			// (changing it triggers a rolling upgrade); omit to keep inheriting the
+			// control-plane version.
+			if !ip.K8sVersion.IsNull() && !ip.K8sVersion.IsUnknown() {
+				v := ip.K8sVersion.ValueString()
+				npReq.K8sVersion = &v
+			}
 			// Retirer min/max (null) → on envoie explicitement 0 : annotations
 			// autoscaler min=0/max=0 = autoscaler désactivé, le pool reste à
 			// `replicas`. Set min/max → autoscaler activé. C'est le toggle par

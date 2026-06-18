@@ -38,6 +38,7 @@ resource "ccp_k8s_node_pool" "workers" {
 - `templates` - List of available K8s node OS templates.
   - `os_key` - OS template key (used in `ccp_k8s_node_pool.os_key`). Example: `ccks-capi-flatcar-k1346`.
   - `os_label` - Human-readable OS label (e.g. `Flatcar`).
+  - `os` - Node OS family slug for the template. One of `flatcar`, `ubuntu`, `rocky9`.
   - `display_name` - Display name shown in the console.
   - `k8s_version` - Kubernetes version baked into the template.
   - `region` - Region in which the template lives.

@@ -31,17 +31,18 @@ func New() resource.Resource { return &poolResource{} }
 type poolResource struct{ client *client.Client }
 
 type poolResourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	ClusterID types.String `tfsdk:"cluster_id"`
-	Name      types.String `tfsdk:"name"`
-	Plan      types.String `tfsdk:"plan"`
-	Replicas  types.Int64  `tfsdk:"replicas"`
-	MinSize   types.Int64  `tfsdk:"min_size"`
-	MaxSize   types.Int64  `tfsdk:"max_size"`
-	Labels    types.Map    `tfsdk:"labels"`
-	Taints    types.Set    `tfsdk:"taints"`
-	Status    types.String `tfsdk:"status"`
-	CreatedAt types.String `tfsdk:"created_at"`
+	ID         types.String `tfsdk:"id"`
+	ClusterID  types.String `tfsdk:"cluster_id"`
+	Name       types.String `tfsdk:"name"`
+	Plan       types.String `tfsdk:"plan"`
+	Replicas   types.Int64  `tfsdk:"replicas"`
+	K8sVersion types.String `tfsdk:"k8s_version"`
+	MinSize    types.Int64  `tfsdk:"min_size"`
+	MaxSize    types.Int64  `tfsdk:"max_size"`
+	Labels     types.Map    `tfsdk:"labels"`
+	Taints     types.Set    `tfsdk:"taints"`
+	Status     types.String `tfsdk:"status"`
+	CreatedAt  types.String `tfsdk:"created_at"`
 }
 
 // taintAttrTypes defines the attr.Type map for a single taint object within the Set.
@@ -78,6 +79,19 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"replicas": schema.Int64Attribute{Required: true},
+			"k8s_version": schema.StringAttribute{
+				// Kubernetes version of the worker nodes in this pool. Optional —
+				// omit to inherit the cluster control-plane version. Computed so an
+				// unset value reads back the effective version the API returns (or
+				// stays null when the API reports "inherits"). Mutable: changing it
+				// triggers a rolling upgrade (NOT ForceNew). Must be <= the cluster
+				// control-plane version (server rejects otherwise).
+				Optional: true,
+				Computed: true,
+				MarkdownDescription: "Kubernetes version of the worker nodes in this pool " +
+					"(`vX.Y.Z`). Must be `<=` the cluster control-plane version; omit to inherit it. " +
+					"Mutable — changing it triggers a rolling upgrade.",
+			},
 			"min_size": schema.Int64Attribute{Optional: true},
 			"max_size": schema.Int64Attribute{Optional: true},
 			"labels": schema.MapAttribute{
@@ -206,6 +220,14 @@ func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) 
 	m.Name = types.StringValue(p.Name)
 	m.Plan = types.StringValue(p.Plan)
 	m.Replicas = types.Int64Value(int64(p.Replicas))
+	// k8s_version is Optional+Computed: the API returns the worker version, or
+	// null when the pool inherits the control-plane version. Mirror that (null =
+	// inherits). Matches the existing nullable-string pattern in the client.
+	if p.K8sVersion != nil {
+		m.K8sVersion = types.StringValue(*p.K8sVersion)
+	} else {
+		m.K8sVersion = types.StringNull()
+	}
 	// L'autoscaler est DÉSACTIVÉ ⟺ max_size absent ou 0 (annotations min=0/max=0).
 	// Le backend stocke 0/0 quand on désactive (un PATCH ne peut pas effacer un
 	// champ → on envoie 0). Comme `min_size`/`max_size` sont Optional (non-Computed),
@@ -246,6 +268,10 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 		Name:     plan.Name.ValueString(),
 		Plan:     plan.Plan.ValueString(),
 		Replicas: int(plan.Replicas.ValueInt64()),
+	}
+	if !plan.K8sVersion.IsNull() && !plan.K8sVersion.IsUnknown() {
+		v := plan.K8sVersion.ValueString()
+		createReq.K8sVersion = &v
 	}
 	if !plan.MinSize.IsNull() && !plan.MinSize.IsUnknown() {
 		v := int(plan.MinSize.ValueInt64())
@@ -307,6 +333,10 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if !plan.Replicas.Equal(state.Replicas) {
 		v := int(plan.Replicas.ValueInt64())
 		upd.Replicas = &v
+	}
+	if !plan.K8sVersion.Equal(state.K8sVersion) && !plan.K8sVersion.IsNull() && !plan.K8sVersion.IsUnknown() {
+		v := plan.K8sVersion.ValueString()
+		upd.K8sVersion = &v
 	}
 	if !plan.MinSize.Equal(state.MinSize) {
 		if plan.MinSize.IsNull() {

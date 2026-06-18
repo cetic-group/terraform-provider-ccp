@@ -604,6 +604,7 @@ type K8sCluster struct {
 	Region          string  `json:"region"`
 	K8sVersion      string  `json:"k8s_version"`
 	OsTemplateKey   string  `json:"os_template_key"`
+	OsImage         string  `json:"os_image"`
 	VpcID           string  `json:"vpc_id"`
 	VnetID          string  `json:"vnet_id"`
 	PodCIDR         string  `json:"pod_cidr"`
@@ -644,6 +645,9 @@ type K8sInitialPool struct {
 	// node pools additionnels.
 	MinSize *int `json:"min_size,omitempty"`
 	MaxSize *int `json:"max_size,omitempty"`
+	// K8sVersion pins the Kubernetes version of the worker nodes in this pool.
+	// NULL inherits the cluster control-plane version. Must be <= control-plane.
+	K8sVersion *string `json:"k8s_version,omitempty"`
 }
 
 type K8sClusterCreateRequest struct {
@@ -652,6 +656,7 @@ type K8sClusterCreateRequest struct {
 	Region        string         `json:"region"`
 	K8sVersion    string         `json:"k8s_version"`
 	OsTemplateKey string         `json:"os_template_key"`
+	OsImage       string         `json:"os_image,omitempty"`
 	VpcID         string         `json:"vpc_id"`
 	VnetID        string         `json:"vnet_id"`
 	PodCIDR       string         `json:"pod_cidr,omitempty"`
@@ -715,20 +720,23 @@ type NodePoolTaint struct {
 }
 
 type K8sNodePool struct {
-	ID                    string            `json:"id"`
-	ClusterID             string            `json:"cluster_id"`
-	Name                  string            `json:"name"`
-	Plan                  string            `json:"plan"`
-	Replicas              int               `json:"replicas"`
-	Labels                map[string]string `json:"labels"`
-	Taints                []NodePoolTaint   `json:"taints"`
-	MinSize               *int              `json:"min_size,omitempty"`
-	MaxSize               *int              `json:"max_size,omitempty"`
-	MachineDeploymentName *string           `json:"machine_deployment_name,omitempty"`
-	Status                string            `json:"status"`
-	ErrorMessage          *string           `json:"error_message,omitempty"`
-	CreatedAt             time.Time         `json:"created_at"`
-	UpdatedAt             time.Time         `json:"updated_at"`
+	ID        string            `json:"id"`
+	ClusterID string            `json:"cluster_id"`
+	Name      string            `json:"name"`
+	Plan      string            `json:"plan"`
+	Replicas  int               `json:"replicas"`
+	Labels    map[string]string `json:"labels"`
+	Taints    []NodePoolTaint   `json:"taints"`
+	MinSize   *int              `json:"min_size,omitempty"`
+	MaxSize   *int              `json:"max_size,omitempty"`
+	// K8sVersion is the Kubernetes version of the worker nodes in this pool.
+	// NULL means the pool inherits the cluster control-plane version.
+	K8sVersion            *string   `json:"k8s_version,omitempty"`
+	MachineDeploymentName *string   `json:"machine_deployment_name,omitempty"`
+	Status                string    `json:"status"`
+	ErrorMessage          *string   `json:"error_message,omitempty"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 type K8sNodePoolCreateRequest struct {
@@ -739,6 +747,8 @@ type K8sNodePoolCreateRequest struct {
 	Taints   []NodePoolTaint   `json:"taints,omitempty"`
 	MinSize  *int              `json:"min_size,omitempty"`
 	MaxSize  *int              `json:"max_size,omitempty"`
+	// K8sVersion pins the worker Kubernetes version (NULL inherits control-plane).
+	K8sVersion *string `json:"k8s_version,omitempty"`
 }
 
 type K8sNodePoolUpdateRequest struct {
@@ -747,6 +757,8 @@ type K8sNodePoolUpdateRequest struct {
 	Taints   []NodePoolTaint   `json:"taints,omitempty"`
 	MinSize  *int              `json:"min_size,omitempty"`
 	MaxSize  *int              `json:"max_size,omitempty"`
+	// K8sVersion triggers a rolling upgrade when changed.
+	K8sVersion *string `json:"k8s_version,omitempty"`
 }
 
 // ─── DB PostgreSQL Instance (DBaaS — Phase 5) ────────────────────────────────
@@ -1372,6 +1384,7 @@ type DbEngineVersion struct {
 type K8sTemplate struct {
 	OsKey       string  `json:"os_key"`
 	OsLabel     string  `json:"os_label"`
+	Os          string  `json:"os"`
 	DisplayName string  `json:"display_name"`
 	K8sVersion  string  `json:"k8s_version"`
 	Region      string  `json:"region"`

@@ -28,6 +28,16 @@ resource "ccp_k8s_node_pool" "workers" {
   }
 }
 
+# Worker pool pinned to an older Kubernetes version than the control plane
+# (e.g. staged upgrade). Omit `k8s_version` to inherit the control-plane version.
+resource "ccp_k8s_node_pool" "legacy_workers" {
+  cluster_id  = ccp_k8s_cluster.prod.id
+  name        = "legacy-workers"
+  plan        = "medium"
+  replicas    = 2
+  k8s_version = "v1.33.4" # must be <= the cluster control-plane version
+}
+
 # Memory-optimised pool for data workloads — dedicated with taint
 resource "ccp_k8s_node_pool" "data_workers" {
   cluster_id = ccp_k8s_cluster.prod.id
@@ -58,6 +68,7 @@ resource "ccp_k8s_node_pool" "data_workers" {
 
 ### Optional
 
+- `k8s_version` - (Optional) Kubernetes version of the worker nodes in this pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Must be less than or equal to the cluster control-plane version (`ccp_k8s_cluster.k8s_version`); omit to inherit it. This attribute is mutable — changing it triggers a rolling upgrade of the pool's nodes.
 - `min_size` - (Optional) Minimum number of nodes when autoscaling is enabled. Must be greater than or equal to 1.
 - `max_size` - (Optional) Maximum number of nodes when autoscaling is enabled. Must be greater than or equal to `replicas`.
 - `labels` - (Optional) Map of Kubernetes node labels to apply to all nodes in this pool (e.g. `{ "workload-type" = "gpu" }`). Labels in the `kubernetes.io/*` namespace are propagated via the MachineDeployment metadata.

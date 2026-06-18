@@ -28,8 +28,23 @@ resource "ccp_k8s_cluster" "dev" {
 }
 ```
 
+## Example Usage — choose the node OS family
+
+```hcl
+resource "ccp_k8s_cluster" "ubuntu" {
+  name            = "ubuntu-cluster"
+  region          = "RNN"
+  vpc_id          = ccp_vpc.main.id
+  vnet_id         = ccp_vnet.workers.id
+  k8s_version     = "v1.34.8"
+  os_template_key = "kube-v1-34-8"
+  os_image        = "ubuntu" # node OS family — one of flatcar (default), ubuntu, rocky9
+}
+```
+
 Default behavior:
 - `tier = "dev"` → single apiserver frontend (SPOF acceptable in dev).
+- `os_image = "flatcar"` → nodes run Flatcar Container Linux unless overridden.
 - `ingress_controller_enabled = true`, `ingress_controller_class = "incluster"`, `ingress_controller_scope = "internal"` → ingress handled by Cilium inside the cluster on an auto-allocated VNet IP.
 - Apiserver private only (no public IP).
 - Pod CIDR `10.244.0.0/16`, service CIDR `10.96.0.0/12`.
@@ -66,6 +81,15 @@ resource "ccp_k8s_cluster" "prod" {
   autoscaler_scale_down_delay_after_add = "10m"
   autoscaler_scale_down_unneeded_time   = "10m"
 
+  # Initial worker pool pinned one minor behind the control plane.
+  # Omit k8s_version to inherit the control-plane version.
+  initial_pool {
+    name        = "default"
+    plan        = "small"
+    replicas    = 2
+    k8s_version = "v1.33.4" # must be <= the control-plane k8s_version
+  }
+
   tags = ["k8s", "env:prod"]
 }
 ```
@@ -84,6 +108,7 @@ resource "ccp_k8s_cluster" "prod" {
 ### Optional — cluster topology
 
 - `display_name` - Display name shown in the console. Defaults to `name`.
+- `os_image` - (Forces new resource) Operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky9`. Defaults to `flatcar` when omitted. Changing the node OS forces destroy + recreate.
 - `tier` - (Forces new resource) Topology of the apiserver frontend:
     * `dev` (default) — single frontend (SPOF acceptable in dev/staging).
     * `prod` — redundant frontend (primary + secondary) with automatic failover on a floating address, providing HA at the apiserver layer.
@@ -96,6 +121,7 @@ resource "ccp_k8s_cluster" "prod" {
     * `name` - (Forces new resource) Pool name. Default `"default"`.
     * `plan` - (Forces new resource) Instance plan (`nano` … `xlarge`). Default `"small"`.
     * `replicas` - Worker count. Mutable in-place (rolling).
+    * `k8s_version` - (Optional) Kubernetes version of the worker nodes in the initial pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Must be `<=` the cluster control-plane version (`k8s_version`); omit to inherit it. Mutable in-place (changing it triggers a rolling upgrade of the pool's nodes).
     * `labels` - Map of Kubernetes labels applied to the pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.
     * `taints` - Set of Kubernetes taints (`{ key, value?, effect }`, `effect` ∈ `NoSchedule`/`PreferNoSchedule`/`NoExecute`) applied to the pool's nodes (parity with `ccp_k8s_node_pool.taints`). Mutable in-place.
     * `min_size` / `max_size` - Cluster autoscaler bounds (see *Optional — autoscaler*).

@@ -28,6 +28,7 @@ type k8sTemplatesModel struct {
 type k8sTemplateModel struct {
 	OsKey       types.String `tfsdk:"os_key"`
 	OsLabel     types.String `tfsdk:"os_label"`
+	Os          types.String `tfsdk:"os"`
 	DisplayName types.String `tfsdk:"display_name"`
 	K8sVersion  types.String `tfsdk:"k8s_version"`
 	Region      types.String `tfsdk:"region"`
@@ -54,6 +55,10 @@ func (d *k8sTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 						},
 						"os_label": schema.StringAttribute{
 							Description: "Human-readable OS label.",
+							Computed:    true,
+						},
+						"os": schema.StringAttribute{
+							Description: "Node OS family slug for this template. One of `flatcar`, `ubuntu`, `rocky9`.",
 							Computed:    true,
 						},
 						"display_name": schema.StringAttribute{
@@ -117,6 +122,7 @@ func (d *k8sTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequ
 		state.Templates = append(state.Templates, k8sTemplateModel{
 			OsKey:       types.StringValue(t.OsKey),
 			OsLabel:     types.StringValue(t.OsLabel),
+			Os:          types.StringValue(t.Os),
 			DisplayName: types.StringValue(t.DisplayName),
 			K8sVersion:  types.StringValue(t.K8sVersion),
 			Region:      types.StringValue(t.Region),
