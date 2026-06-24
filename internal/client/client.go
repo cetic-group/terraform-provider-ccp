@@ -1292,6 +1292,26 @@ func (c *Client) DeleteVnetPeering(ctx context.Context, id string) error {
 
 // ─── VPC Peering ───────────────────────────────────────────────────────────
 
+func (c *Client) GetVpcPeering(ctx context.Context, id string) (*VpcPeering, error) {
+	var out VpcPeering
+	if err := c.do(ctx, http.MethodGet, "/v1/vpc-peerings/"+id, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) CreateVpcPeering(ctx context.Context, req VpcPeeringCreateRequest) (*VpcPeering, error) {
+	var out VpcPeering
+	if err := c.do(ctx, http.MethodPost, "/v1/vpc-peerings", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteVpcPeering(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/vpc-peerings/"+id, nil, nil)
+}
+
 // ─── Support Ticket ────────────────────────────────────────────────────────
 
 func (c *Client) GetSupportTicket(ctx context.Context, id string) (*SupportTicket, error) {

@@ -1013,6 +1013,25 @@ type VnetPeeringCreateRequest struct {
 
 // ─── VPC Peering ──────────────────────────────────────────────────────────
 
+type VpcPeering struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	VpcAID       string    `json:"vpc_a_id"`
+	VpcBID       string    `json:"vpc_b_id"`
+	Tags         []string  `json:"tags"`
+	Status       string    `json:"status"`
+	TenantID     string    `json:"tenant_id,omitempty"`
+	ErrorMessage *string   `json:"error_message,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type VpcPeeringCreateRequest struct {
+	Name   string   `json:"name"`
+	VpcAID string   `json:"vpc_a_id"`
+	VpcBID string   `json:"vpc_b_id"`
+	Tags   []string `json:"tags,omitempty"`
+}
+
 // ─── Support Ticket ────────────────────────────────────────────────────────
 
 type SupportTicket struct {
