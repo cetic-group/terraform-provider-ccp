@@ -37,7 +37,7 @@ resource "ccp_vnet" "db" {
 
 - `vpc_id` - (Required, Forces new resource) UUID of the parent VPC.
 - `name` - (Required) Name of the VNet.
-- `cidr` - (Required, Forces new resource) CIDR block for the VNet (e.g. `10.0.1.0/24`). Must not overlap with other VNets in the same VPC.
+- `cidr` - (Optional, Computed, Forces new resource) CIDR block for the VNet (e.g. `10.0.1.0/24`). **Auto-allocated by the platform from a free private range when omitted.** Must not overlap with other VNets in the same VPC.
 
 ### Optional
 

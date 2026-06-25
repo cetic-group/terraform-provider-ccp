@@ -106,7 +106,7 @@ func (r *vpcResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud VPC. A VPC is a regional layer-3 boundary " +
-			"(backed by a Proxmox SDN VXLAN zone and a per-VPC NAT gateway). The API has no " +
+			"(an isolated private network with an optional per-VPC NAT gateway). The API has no " +
 			"in-place update endpoint, so any change to `name`, `region`, or `tags` forces " +
 			"replacement. Creation is asynchronous: the provider polls until the VPC reaches " +
 			"the `active` state (or up to 90 seconds).",
@@ -166,16 +166,15 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"vlan_id": schema.Int64Attribute{
-				MarkdownDescription: "VLAN tag assigned by Proxmox SDN. Allocated by the API " +
-					"from the per-tenant pool (100–3999); not user-settable.",
+				MarkdownDescription: "Internal network segmentation tag allocated by the platform " +
+					"from the per-tenant pool; not user-settable.",
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
 			"sdn_type": schema.StringAttribute{
-				MarkdownDescription: "Backing SDN zone type. `vxlan` for VPCs created today, " +
-					"`simple` for pre-2026-04-19 legacy VPCs.",
+				MarkdownDescription: "Internal network backing type assigned by the platform.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

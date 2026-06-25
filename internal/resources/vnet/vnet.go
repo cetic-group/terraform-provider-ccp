@@ -1,7 +1,7 @@
 // Package vnet implements the ccp_vnet Terraform resource.
 //
 // A VNet in CETIC Cloud is a Proxmox SDN VXLAN VNet nested under a VPC, with
-// IPAM allocations served by the per-VPC NAT GW LXC. Most fields are
+// IPAM allocations served by the per-VPC NAT gateway. Most fields are
 // immutable post-create (CIDR, DHCP range, parent VPC) and force replacement
 // on change. Only `name` and `snat` are mutable via the PATCH endpoint.
 //
@@ -115,8 +115,8 @@ func (r *vnetResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud VNet inside a VPC. A VNet is a Proxmox SDN " +
-			"VXLAN VNet with its own CIDR and (optional) DHCP range, served by the per-VPC " +
+		MarkdownDescription: "Manages a CETIC Cloud VNet inside a VPC. A VNet is a private subnet " +
+			"with its own CIDR and (optional) DHCP range, served by the per-VPC " +
 			"NAT gateway. Only `name` and `snat` can be updated in place; changes to `vpc_id`, " +
 			"`cidr`, `dhcp_start`, `dhcp_end`, or `tags` force replacement. Creation is " +
 			"asynchronous: the provider polls until the VNet reaches `active` (up to 90 seconds).",
@@ -155,10 +155,12 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"cidr": schema.StringAttribute{
-				MarkdownDescription: "Private IPv4 CIDR for the VNet. Must be a `/16` to `/28` " +
-					"block (e.g. `10.0.0.0/24`). Cannot be changed after creation — any change " +
-					"forces replacement.",
-				Required: true,
+				MarkdownDescription: "Private IPv4 CIDR for the VNet (`/16` to `/28`, e.g. " +
+					"`10.0.0.0/24`). Optional — auto-allocated by the platform from a free " +
+					"private range when omitted. Immutable after creation — changing it forces " +
+					"replacement.",
+				Optional: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						cidrPattern,
@@ -167,6 +169,7 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"dhcp_start": schema.StringAttribute{
@@ -227,7 +230,7 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"gateway": schema.StringAttribute{
-				MarkdownDescription: "Default gateway IPv4 of the VNet (the NAT GW LXC interface " +
+				MarkdownDescription: "Default gateway IPv4 of the VNet (the per-VPC NAT gateway interface " +
 					"on this VNet, conventionally `<cidr>.1`). Computed by the API.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{

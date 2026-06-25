@@ -68,7 +68,7 @@ type VNet struct {
 
 type VNetCreateRequest struct {
 	Name      string   `json:"name"`
-	CIDR      string   `json:"cidr"`
+	CIDR      string   `json:"cidr,omitempty"`
 	DHCPStart *string  `json:"dhcp_start,omitempty"`
 	DHCPEnd   *string  `json:"dhcp_end,omitempty"`
 	SNAT      bool     `json:"snat"`

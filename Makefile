@@ -1,7 +1,7 @@
 HOSTNAME=registry.terraform.io
 NAMESPACE=cetic-group
 NAME=ccp
-VERSION=5.3.0
+VERSION=5.4.0
 OS_ARCH=$(shell go env GOOS)_$(shell go env GOARCH)
 BIN=terraform-provider-$(NAME)
 INSTALL_DIR=$$HOME/.terraform.d/plugins/$(HOSTNAME)/$(NAMESPACE)/$(NAME)/$(VERSION)/$(OS_ARCH)
