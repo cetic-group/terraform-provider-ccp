@@ -69,6 +69,7 @@ resource "ccp_k8s_node_pool" "data_workers" {
 ### Optional
 
 - `k8s_version` - (Optional) Kubernetes version of the worker nodes in this pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Must be less than or equal to the cluster control-plane version (`ccp_k8s_cluster.k8s_version`); omit to inherit it. This attribute is mutable — changing it triggers a rolling upgrade of the pool's nodes.
+- `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB of every node in the pool. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for node pools, so changing this value forces replacement of the pool.
 - `min_size` - (Optional) Minimum number of nodes when autoscaling is enabled. Must be greater than or equal to 1.
 - `max_size` - (Optional) Maximum number of nodes when autoscaling is enabled. Must be greater than or equal to `replicas`.
 - `labels` - (Optional) Map of Kubernetes node labels to apply to all nodes in this pool (e.g. `{ "workload-type" = "gpu" }`). Labels in the `kubernetes.io/*` namespace are propagated via the MachineDeployment metadata.

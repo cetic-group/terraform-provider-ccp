@@ -49,6 +49,17 @@ func (c *Client) DeleteRegistry(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/registries/"+id, nil, nil)
 }
 
+// ResizeRegistryDisk grows the registry's storage quota. Grow-only — the API
+// rejects a storageGB smaller than the current quota (#577).
+func (c *Client) ResizeRegistryDisk(ctx context.Context, id string, storageGB int) (*Registry, error) {
+	var out Registry
+	if err := c.do(ctx, http.MethodPost, "/v1/registries/"+id+"/resize-disk",
+		RegistryResizeDiskRequest{StorageGB: storageGB}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ─── Registry users ───────────────────────────────────────────────────────────
 
 func (c *Client) ListRegistryUsers(ctx context.Context, registryID string) ([]RegistryUser, error) {

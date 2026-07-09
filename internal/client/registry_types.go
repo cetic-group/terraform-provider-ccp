@@ -19,22 +19,26 @@ import "time"
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 type Registry struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	Region         string    `json:"region"`
-	ExposePublic   bool      `json:"expose_public"`
-	ExposePrivate  bool      `json:"expose_private"`
-	URL            *string   `json:"url,omitempty"`
-	ImageTag       string    `json:"registry_image_tag"`
-	GCScheduleCron string    `json:"gc_schedule_cron"`
-	Status         string    `json:"status"`
-	StorageUsedGB  *int64    `json:"storage_used_gb,omitempty"`
-	LastPushAt     *string   `json:"last_push_at,omitempty"`
-	AdminUsername  *string   `json:"admin_username,omitempty"`
-	ErrorMessage   *string   `json:"error_message,omitempty"`
-	Tags           []string  `json:"tags"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Slug           string  `json:"slug"`
+	Region         string  `json:"region"`
+	ExposePublic   bool    `json:"expose_public"`
+	ExposePrivate  bool    `json:"expose_private"`
+	URL            *string `json:"url,omitempty"`
+	ImageTag       string  `json:"registry_image_tag"`
+	GCScheduleCron string  `json:"gc_schedule_cron"`
+	Status         string  `json:"status"`
+	StorageUsedGB  *int64  `json:"storage_used_gb,omitempty"`
+	// StorageGB is the provisioned storage quota (GB), distinct from
+	// StorageUsedGB (actual blob usage). Nil when the API does not echo it
+	// back — the provider then preserves the configured value (#577).
+	StorageGB     *int      `json:"storage_gb,omitempty"`
+	LastPushAt    *string   `json:"last_push_at,omitempty"`
+	AdminUsername *string   `json:"admin_username,omitempty"`
+	ErrorMessage  *string   `json:"error_message,omitempty"`
+	Tags          []string  `json:"tags"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // RegistryCreateResponse is returned by POST /v1/registries.
@@ -55,6 +59,9 @@ type RegistryCreateRequest struct {
 	ExposePrivate bool     `json:"expose_private"`
 	ImageTag      *string  `json:"image_tag,omitempty"`
 	Tags          []string `json:"tags,omitempty"`
+	// StorageGB overrides the provisioned storage quota (GB). Optional —
+	// defaults to the platform-managed default when omitted (#577).
+	StorageGB *int `json:"storage_gb,omitempty"`
 }
 
 // RegistryUpdateRequest — PATCH /v1/registries/{id}. Toggle exposure +
@@ -63,6 +70,12 @@ type RegistryUpdateRequest struct {
 	ExposePublic  *bool    `json:"expose_public,omitempty"`
 	ExposePrivate *bool    `json:"expose_private,omitempty"`
 	Tags          []string `json:"tags,omitempty"`
+}
+
+// RegistryResizeDiskRequest is sent to POST /v1/registries/{id}/resize-disk.
+// Grow-only — the API rejects a size smaller than the current quota (#577).
+type RegistryResizeDiskRequest struct {
+	StorageGB int `json:"storage_gb"`
 }
 
 // ─── Registry users (token-based JWT auth via cesanta/docker_auth) ───────────

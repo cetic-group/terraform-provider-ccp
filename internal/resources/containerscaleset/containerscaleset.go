@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -55,6 +56,7 @@ type cssResourceModel struct {
 	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
 	AutoRepair       types.Bool   `tfsdk:"auto_repair"`
 	BastionAccess    types.Bool   `tfsdk:"bastion_access"`
+	DiskGB           types.Int64  `tfsdk:"disk_gb"`
 	Status           types.String `tfsdk:"status"`
 	Tags             types.List   `tfsdk:"tags"`
 	CreatedAt        types.String `tfsdk:"created_at"`
@@ -153,6 +155,21 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"read, so changes force replacement.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+			},
+			"disk_gb": schema.Int64Attribute{
+				MarkdownDescription: "Root disk size (GB) applied to every replica. " +
+					"Optional — defaults to the selected plan's disk size when omitted. " +
+					"No resize endpoint exists for scale sets, so changing this value " +
+					"forces replacement of the whole scale set.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+					int64planmodifier.UseStateForUnknown(),
+				},
 			},
 			"status": schema.StringAttribute{
 				Computed:      true,
@@ -282,6 +299,10 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 		plan.Tags.ElementsAs(ctx, &tags, false)
 		createReq.Tags = tags
 	}
+	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
+		v := int(plan.DiskGB.ValueInt64())
+		createReq.DiskGB = &v
+	}
 
 	created, err := r.client.CreateContainerScaleSet(ctx, createReq)
 	if err != nil {
@@ -298,6 +319,16 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 	state.RootPassword = plan.RootPassword
 	// API ne renvoie pas bastion_access (write-only) ; conserver l'intent du plan.
 	state.BastionAccess = plan.BastionAccess
+	// disk_gb : préfère la valeur renvoyée par l'API ; sinon conserve le plan
+	// (Optional+Computed sans garantie de readback ; jamais Unknown en state).
+	switch {
+	case created.DiskGB != nil:
+		state.DiskGB = types.Int64Value(int64(*created.DiskGB))
+	case plan.DiskGB.IsUnknown():
+		state.DiskGB = types.Int64Null()
+	default:
+		state.DiskGB = plan.DiskGB
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -325,6 +356,14 @@ func (r *cssResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	newState.UserData = state.UserData
 	newState.RootPassword = state.RootPassword
 	newState.BastionAccess = state.BastionAccess
+	switch {
+	case got.DiskGB != nil:
+		newState.DiskGB = types.Int64Value(int64(*got.DiskGB))
+	case state.DiskGB.IsUnknown():
+		newState.DiskGB = types.Int64Null()
+	default:
+		newState.DiskGB = state.DiskGB
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -380,6 +419,15 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	newState.SSHKeyIDs = plan.SSHKeyIDs
 	newState.UserData = plan.UserData
 	newState.BastionAccess = plan.BastionAccess
+	// disk_gb is RequiresReplace — an Update call means it didn't change.
+	switch {
+	case updated.DiskGB != nil:
+		newState.DiskGB = types.Int64Value(int64(*updated.DiskGB))
+	case plan.DiskGB.IsUnknown():
+		newState.DiskGB = types.Int64Null()
+	default:
+		newState.DiskGB = plan.DiskGB
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 

@@ -92,6 +92,10 @@ resource "ccp_registry" "public" {
 - `image_tag` - (Optional, Computed) Tag of the upstream `registry` image to
   deploy. Defaults to the platform-managed default (currently `2.8`). Pin to
   opt out of platform-driven bumps.
+- `storage_gb` - (Optional, Computed) Provisioned storage quota in GB, distinct
+  from `storage_used_gb` (actual blob usage). Defaults to the platform-managed
+  default when omitted. **Mutable in place** — growing this value resizes the
+  quota via the API. Shrinking is rejected with a diagnostic.
 - `tags` - (Optional, Computed) Free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference

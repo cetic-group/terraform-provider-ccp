@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -45,6 +46,7 @@ type initialPoolModel struct {
 	Plan       types.String `tfsdk:"plan"`
 	Replicas   types.Int64  `tfsdk:"replicas"`
 	K8sVersion types.String `tfsdk:"k8s_version"`
+	DiskGB     types.Int64  `tfsdk:"disk_gb"`
 	Labels     types.Map    `tfsdk:"labels"`
 	Taints     types.Set    `tfsdk:"taints"`
 	MinSize    types.Int64  `tfsdk:"min_size"`
@@ -356,6 +358,19 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 							"(`vX.Y.Z`). Must be `<=` the cluster control-plane version (`k8s_version`); omit to inherit it.",
 						Optional: true,
 					},
+					"disk_gb": schema.Int64Attribute{
+						MarkdownDescription: "Root disk size (GB) of every node in the initial pool. " +
+							"Optional — defaults to the pool's plan disk size when omitted. No resize " +
+							"endpoint exists for node pools, so changing it forces destroy + recreate " +
+							"of the cluster (like `name`/`plan`).",
+						Optional: true,
+						Validators: []validator.Int64{
+							int64validator.AtLeast(1),
+						},
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.RequiresReplace(),
+						},
+					},
 					"labels": schema.MapAttribute{
 						MarkdownDescription: "Kubernetes labels propagated to the initial pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.",
 						ElementType:         types.StringType,
@@ -533,6 +548,10 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		if !plan.InitialPool.K8sVersion.IsNull() && !plan.InitialPool.K8sVersion.IsUnknown() {
 			v := plan.InitialPool.K8sVersion.ValueString()
 			pool.K8sVersion = &v
+		}
+		if !plan.InitialPool.DiskGB.IsNull() && !plan.InitialPool.DiskGB.IsUnknown() {
+			v := int(plan.InitialPool.DiskGB.ValueInt64())
+			pool.DiskGB = &v
 		}
 		if !plan.InitialPool.MinSize.IsNull() && !plan.InitialPool.MinSize.IsUnknown() {
 			v := int(plan.InitialPool.MinSize.ValueInt64())

@@ -31,6 +31,7 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/snatvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -266,8 +267,16 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"disk_gb": schema.Int64Attribute{
-				MarkdownDescription: "Root disk size in GB derived from the selected plan.",
-				Computed:            true,
+				MarkdownDescription: "Root disk size in GB. Optional — defaults to the " +
+					"selected plan's disk size when omitted. Mutable in place: growing this " +
+					"value resizes the disk via the CETIC Cloud API without recreating the " +
+					"container. Shrinking is rejected by the provider with a diagnostic — " +
+					"the underlying block storage does not support safe shrinking.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
@@ -426,6 +435,10 @@ func (r *containerInstanceResource) Create(ctx context.Context, req resource.Cre
 	}
 	if !plan.BastionAccess.IsNull() && !plan.BastionAccess.IsUnknown() {
 		createReq.BastionAccess = plan.BastionAccess.ValueBool()
+	}
+	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
+		v := int(plan.DiskGB.ValueInt64())
+		createReq.DiskGB = &v
 	}
 
 	created, err := r.client.CreateContainer(ctx, createReq)
@@ -588,6 +601,39 @@ func (r *containerInstanceResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	id := state.ID.ValueString()
+
+	// ── Root disk resize (grow only) ────────────────────────────────────
+	if !plan.DiskGB.IsUnknown() {
+		planDisk := plan.DiskGB.ValueInt64()
+		stateDisk := state.DiskGB.ValueInt64()
+		switch {
+		case planDisk < stateDisk:
+			resp.Diagnostics.AddError(
+				"Container disk cannot be shrunk",
+				fmt.Sprintf("disk_gb can only grow (current: %d, requested: %d). "+
+					"The underlying block storage does not support safe shrinking; "+
+					"create a smaller container and migrate the data manually if you "+
+					"need to reduce size.", stateDisk, planDisk),
+			)
+			return
+		case planDisk > stateDisk:
+			if _, err := r.client.ResizeContainerDisk(ctx, id, int(planDisk)); err != nil {
+				if client.IsConflict(err) {
+					resp.Diagnostics.AddError(
+						"Container disk resize conflicts with current state",
+						fmt.Sprintf("CETIC Cloud rejected the resize call for container %s: %s",
+							id, err.Error()),
+					)
+					return
+				}
+				resp.Diagnostics.AddError(
+					"Failed to resize container disk",
+					fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
+				)
+				return
+			}
+		}
+	}
 
 	planIPID := plan.PublicIPID.ValueString()
 	stateIPID := state.PublicIPID.ValueString()
