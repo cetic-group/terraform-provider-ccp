@@ -135,11 +135,20 @@ type ContainerCreateRequest struct {
 	Tags         []string `json:"tags,omitempty"`
 	// BastionAccess opts the container into SSH access through the tenant Bastion (#307).
 	BastionAccess bool `json:"bastion_access,omitempty"`
+	// DiskGB overrides the root disk size (GB). Optional — defaults to the
+	// plan's disk size when omitted; must be >= the plan's minimum (#577).
+	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
 // ContainerActionRequest is sent to /actions: action ∈ {start, stop, restart}.
 type ContainerActionRequest struct {
 	Action string `json:"action"`
+}
+
+// ContainerResizeDiskRequest is sent to POST /v1/containers/{id}/resize-disk.
+// Grow-only — the API rejects a size smaller than the current disk (#577).
+type ContainerResizeDiskRequest struct {
+	DiskGB int `json:"disk_gb"`
 }
 
 // Container statuses.
@@ -332,6 +341,15 @@ type VMInstanceCreateRequest struct {
 	// license. Required (true) when the template is a Windows image — the API
 	// returns 422 otherwise. Ignored for Linux templates.
 	WindowsLicenseConsent bool `json:"windows_license_consent,omitempty"`
+	// DiskGB overrides the root disk size (GB). Optional — defaults to the
+	// plan's disk size when omitted; must be >= the plan's minimum (#577).
+	DiskGB *int `json:"disk_gb,omitempty"`
+}
+
+// VMInstanceResizeDiskRequest is sent to POST /v1/vm-instances/{id}/resize-disk.
+// Grow-only — the API rejects a size smaller than the current disk (#577).
+type VMInstanceResizeDiskRequest struct {
+	DiskGB int `json:"disk_gb"`
 }
 
 // VMInstanceUpdateRequest — only metadata mutable (name + tags).
@@ -483,21 +501,25 @@ const (
 // ─── Container Scale Set ─────────────────────────────────────────────────────
 
 type ContainerScaleSet struct {
-	ID               string    `json:"id"`
-	Name             string    `json:"name"`
-	Region           string    `json:"region"`
-	Plan             string    `json:"plan"`
-	Template         string    `json:"template"`
-	VnetID           *string   `json:"vnet_id,omitempty"`
-	MinInstances     int       `json:"min_instances"`
-	MaxInstances     int       `json:"max_instances"`
-	DesiredInstances int       `json:"desired_instances"`
-	AutoRepair       bool      `json:"auto_repair"`
-	Status           string    `json:"status"`
-	ErrorMessage     *string   `json:"error_message,omitempty"`
-	Tags             []string  `json:"tags"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Region           string   `json:"region"`
+	Plan             string   `json:"plan"`
+	Template         string   `json:"template"`
+	VnetID           *string  `json:"vnet_id,omitempty"`
+	MinInstances     int      `json:"min_instances"`
+	MaxInstances     int      `json:"max_instances"`
+	DesiredInstances int      `json:"desired_instances"`
+	AutoRepair       bool     `json:"auto_repair"`
+	Status           string   `json:"status"`
+	ErrorMessage     *string  `json:"error_message,omitempty"`
+	Tags             []string `json:"tags"`
+	// DiskGB is the root disk size (GB) applied to every member. Nil when the
+	// API does not echo it back — the provider then preserves the configured
+	// value rather than surfacing an inconsistent plan (#577).
+	DiskGB    *int      `json:"disk_gb,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type ContainerScaleSetCreateRequest struct {
@@ -516,6 +538,11 @@ type ContainerScaleSetCreateRequest struct {
 	Tags             []string `json:"tags,omitempty"`
 	// BastionAccess opts members into SSH access through the tenant Bastion (#307).
 	BastionAccess bool `json:"bastion_access,omitempty"`
+	// DiskGB overrides the root disk size (GB) applied to every member.
+	// Optional — defaults to the plan's disk size when omitted. No
+	// dedicated resize endpoint exists for scale sets, so the provider
+	// treats changes as ForceNew (#577).
+	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
 type ContainerScaleSetUpdateRequest struct {
@@ -555,7 +582,11 @@ type VMScaleSet struct {
 	ErrorMessage     *string  `json:"error_message,omitempty"`
 	Tags             []string `json:"tags"`
 	// OSFamily is the OS family of the scale set template: "linux" or "windows".
-	OSFamily  string    `json:"os_family"`
+	OSFamily string `json:"os_family"`
+	// DiskGB is the root disk size (GB) applied to every member. Nil when the
+	// API does not echo it back — the provider then preserves the configured
+	// value rather than surfacing an inconsistent plan (#577).
+	DiskGB    *int      `json:"disk_gb,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -580,6 +611,11 @@ type VMScaleSetCreateRequest struct {
 	// license. Required (true) when the template is a Windows image — the API
 	// returns 422 otherwise. Ignored for Linux templates.
 	WindowsLicenseConsent bool `json:"windows_license_consent,omitempty"`
+	// DiskGB overrides the root disk size (GB) applied to every member.
+	// Optional — defaults to the plan's disk size when omitted. No
+	// dedicated resize endpoint exists for scale sets, so the provider
+	// treats changes as ForceNew (#577).
+	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
 type VMScaleSetUpdateRequest struct {
@@ -648,6 +684,11 @@ type K8sInitialPool struct {
 	// K8sVersion pins the Kubernetes version of the worker nodes in this pool.
 	// NULL inherits the cluster control-plane version. Must be <= control-plane.
 	K8sVersion *string `json:"k8s_version,omitempty"`
+	// DiskGB overrides the root disk size (GB) of every node in the initial
+	// pool. Optional — defaults to the plan's disk size when omitted. No
+	// resize endpoint exists for node pools, so the provider treats a change
+	// as ForceNew (recreates the cluster) (#577).
+	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
 type K8sClusterCreateRequest struct {
@@ -731,12 +772,16 @@ type K8sNodePool struct {
 	MaxSize   *int              `json:"max_size,omitempty"`
 	// K8sVersion is the Kubernetes version of the worker nodes in this pool.
 	// NULL means the pool inherits the cluster control-plane version.
-	K8sVersion            *string   `json:"k8s_version,omitempty"`
-	MachineDeploymentName *string   `json:"machine_deployment_name,omitempty"`
-	Status                string    `json:"status"`
-	ErrorMessage          *string   `json:"error_message,omitempty"`
-	CreatedAt             time.Time `json:"created_at"`
-	UpdatedAt             time.Time `json:"updated_at"`
+	K8sVersion            *string `json:"k8s_version,omitempty"`
+	MachineDeploymentName *string `json:"machine_deployment_name,omitempty"`
+	// DiskGB is the root disk size (GB) of every node in the pool. Nil when
+	// the API does not echo it back — the provider then preserves the
+	// configured value rather than surfacing an inconsistent plan (#577).
+	DiskGB       *int      `json:"disk_gb,omitempty"`
+	Status       string    `json:"status"`
+	ErrorMessage *string   `json:"error_message,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type K8sNodePoolCreateRequest struct {
@@ -749,6 +794,11 @@ type K8sNodePoolCreateRequest struct {
 	MaxSize  *int              `json:"max_size,omitempty"`
 	// K8sVersion pins the worker Kubernetes version (NULL inherits control-plane).
 	K8sVersion *string `json:"k8s_version,omitempty"`
+	// DiskGB overrides the root disk size (GB) of every node in the pool.
+	// Optional — defaults to the plan's disk size when omitted. No resize
+	// endpoint exists for node pools, so the provider treats a change as
+	// ForceNew (#577).
+	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
 type K8sNodePoolUpdateRequest struct {

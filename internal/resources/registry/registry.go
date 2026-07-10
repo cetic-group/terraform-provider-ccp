@@ -20,11 +20,13 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -32,10 +34,10 @@ import (
 )
 
 var (
-	_ resource.Resource                     = (*registryResource)(nil)
-	_ resource.ResourceWithConfigure        = (*registryResource)(nil)
-	_ resource.ResourceWithImportState      = (*registryResource)(nil)
-	_ resource.ResourceWithValidateConfig   = (*registryResource)(nil)
+	_ resource.Resource                   = (*registryResource)(nil)
+	_ resource.ResourceWithConfigure      = (*registryResource)(nil)
+	_ resource.ResourceWithImportState    = (*registryResource)(nil)
+	_ resource.ResourceWithValidateConfig = (*registryResource)(nil)
 )
 
 // New returns the resource factory used by `provider.Resources()`.
@@ -54,6 +56,7 @@ type registryResourceModel struct {
 	ImageTag       types.String `tfsdk:"image_tag"`
 	GCScheduleCron types.String `tfsdk:"gc_schedule_cron"`
 	Status         types.String `tfsdk:"status"`
+	StorageGB      types.Int64  `tfsdk:"storage_gb"`
 	StorageUsedGB  types.Int64  `tfsdk:"storage_used_gb"`
 	LastPushAt     types.String `tfsdk:"last_push_at"`
 	AdminUsername  types.String `tfsdk:"admin_username"`
@@ -136,6 +139,21 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "Provisioning status: `creating` | `provisioning` | `active` | `error` | `deleting`.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"storage_gb": schema.Int64Attribute{
+				MarkdownDescription: "Provisioned storage quota (GB), distinct from " +
+					"`storage_used_gb` (actual blob usage). Optional — defaults to the " +
+					"platform-managed default when omitted. Mutable in place: growing " +
+					"this value resizes the quota via the CETIC Cloud API. Shrinking is " +
+					"rejected by the provider with a diagnostic.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
 			},
 			"storage_used_gb": schema.Int64Attribute{
 				MarkdownDescription: "Approximate storage used by registry blobs (gigabytes).",
@@ -242,6 +260,15 @@ func setState(ctx context.Context, m *registryResourceModel, p *client.Registry)
 	} else {
 		m.StorageUsedGB = types.Int64Null()
 	}
+	// storage_gb : préfère la valeur renvoyée par l'API ; sinon conserve la
+	// valeur déjà présente dans `m` (plan/état courant) — jamais Unknown en
+	// state (#577).
+	switch {
+	case p.StorageGB != nil:
+		m.StorageGB = types.Int64Value(int64(*p.StorageGB))
+	case m.StorageGB.IsUnknown():
+		m.StorageGB = types.Int64Null()
+	}
 	if p.LastPushAt != nil {
 		m.LastPushAt = types.StringValue(*p.LastPushAt)
 	} else {
@@ -278,6 +305,10 @@ func (r *registryResource) Create(ctx context.Context, req resource.CreateReques
 		tags := []string{}
 		plan.Tags.ElementsAs(ctx, &tags, false)
 		createReq.Tags = tags
+	}
+	if !plan.StorageGB.IsNull() && !plan.StorageGB.IsUnknown() {
+		v := int(plan.StorageGB.ValueInt64())
+		createReq.StorageGB = &v
 	}
 
 	created, err := r.client.CreateRegistry(ctx, createReq)
@@ -331,6 +362,39 @@ func (r *registryResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	id := state.ID.ValueString()
+
+	// ── Storage quota resize (grow only) ────────────────────────────────
+	if !plan.StorageGB.IsUnknown() {
+		planStorage := plan.StorageGB.ValueInt64()
+		stateStorage := state.StorageGB.ValueInt64()
+		switch {
+		case planStorage < stateStorage:
+			resp.Diagnostics.AddError(
+				"Registry storage quota cannot be shrunk",
+				fmt.Sprintf("storage_gb can only grow (current: %d, requested: %d). "+
+					"Reduce blob usage and delete unused tags/repositories instead.",
+					stateStorage, planStorage),
+			)
+			return
+		case planStorage > stateStorage:
+			if _, err := r.client.ResizeRegistryDisk(ctx, id, int(planStorage)); err != nil {
+				if client.IsConflict(err) {
+					resp.Diagnostics.AddError(
+						"Registry storage resize conflicts with current state",
+						fmt.Sprintf("CETIC Cloud rejected the resize call for registry %s: %s",
+							id, err.Error()),
+					)
+					return
+				}
+				resp.Diagnostics.AddError(
+					"Failed to resize CETIC Container Registry storage quota",
+					fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
+				)
+				return
+			}
+		}
+	}
+
 	var updReq client.RegistryUpdateRequest
 	patchNeeded := false
 	if !plan.ExposePublic.Equal(state.ExposePublic) {

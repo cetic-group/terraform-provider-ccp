@@ -9,11 +9,13 @@ import (
 	"fmt"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -37,6 +39,7 @@ type poolResourceModel struct {
 	Plan       types.String `tfsdk:"plan"`
 	Replicas   types.Int64  `tfsdk:"replicas"`
 	K8sVersion types.String `tfsdk:"k8s_version"`
+	DiskGB     types.Int64  `tfsdk:"disk_gb"`
 	MinSize    types.Int64  `tfsdk:"min_size"`
 	MaxSize    types.Int64  `tfsdk:"max_size"`
 	Labels     types.Map    `tfsdk:"labels"`
@@ -91,6 +94,23 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "Kubernetes version of the worker nodes in this pool " +
 					"(`vX.Y.Z`). Must be `<=` the cluster control-plane version; omit to inherit it. " +
 					"Mutable — changing it triggers a rolling upgrade.",
+			},
+			"disk_gb": schema.Int64Attribute{
+				// Root disk size (GB) of every node in the pool. No resize
+				// endpoint exists for node pools — changing it forces
+				// replacement of the pool (unlike replicas/k8s_version).
+				Optional: true,
+				Computed: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+					int64planmodifier.UseStateForUnknown(),
+				},
+				MarkdownDescription: "Root disk size (GB) of every node in this pool. " +
+					"Optional — defaults to the selected plan's disk size when omitted. " +
+					"Forces replacement of the pool on change (no resize endpoint).",
 			},
 			"min_size": schema.Int64Attribute{Optional: true},
 			"max_size": schema.Int64Attribute{Optional: true},
@@ -228,6 +248,15 @@ func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) 
 	} else {
 		m.K8sVersion = types.StringNull()
 	}
+	// disk_gb : contrairement à k8s_version, on ne sait pas si l'API l'échote
+	// toujours dans sa réponse → on préfère la valeur reçue, sinon on
+	// conserve le plan/état déjà présent dans `m` (jamais Unknown en state).
+	switch {
+	case p.DiskGB != nil:
+		m.DiskGB = types.Int64Value(int64(*p.DiskGB))
+	case m.DiskGB.IsUnknown():
+		m.DiskGB = types.Int64Null()
+	}
 	// L'autoscaler est DÉSACTIVÉ ⟺ max_size absent ou 0 (annotations min=0/max=0).
 	// Le backend stocke 0/0 quand on désactive (un PATCH ne peut pas effacer un
 	// champ → on envoie 0). Comme `min_size`/`max_size` sont Optional (non-Computed),
@@ -272,6 +301,10 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if !plan.K8sVersion.IsNull() && !plan.K8sVersion.IsUnknown() {
 		v := plan.K8sVersion.ValueString()
 		createReq.K8sVersion = &v
+	}
+	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
+		v := int(plan.DiskGB.ValueInt64())
+		createReq.DiskGB = &v
 	}
 	if !plan.MinSize.IsNull() && !plan.MinSize.IsUnknown() {
 		v := int(plan.MinSize.ValueInt64())

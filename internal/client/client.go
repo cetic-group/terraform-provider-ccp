@@ -509,6 +509,17 @@ func (c *Client) ContainerAction(ctx context.Context, id, action string) error {
 		ContainerActionRequest{Action: action}, nil)
 }
 
+// ResizeContainerDisk grows the container's root disk. Grow-only — the API
+// rejects a diskGB smaller than the current size (#577).
+func (c *Client) ResizeContainerDisk(ctx context.Context, id string, diskGB int) (*Container, error) {
+	var out Container
+	if err := c.do(ctx, http.MethodPost, "/v1/containers/"+id+"/resize-disk",
+		ContainerResizeDiskRequest{DiskGB: diskGB}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ─── Block Volumes ───────────────────────────────────────────────────────────
 
 func (c *Client) ListBlockVolumes(ctx context.Context, region string) ([]BlockVolume, error) {
@@ -760,6 +771,17 @@ func (c *Client) DeleteVMInstance(ctx context.Context, id string) error {
 func (c *Client) VMInstanceAction(ctx context.Context, id, action string) error {
 	return c.do(ctx, http.MethodPost, "/v1/vm-instances/"+id+"/actions",
 		VMActionRequest{Action: action}, nil)
+}
+
+// ResizeVMInstanceDisk grows the VM's root disk. Grow-only — the API
+// rejects a diskGB smaller than the current size (#577).
+func (c *Client) ResizeVMInstanceDisk(ctx context.Context, id string, diskGB int) (*VMInstance, error) {
+	var out VMInstance
+	if err := c.do(ctx, http.MethodPost, "/v1/vm-instances/"+id+"/resize-disk",
+		VMInstanceResizeDiskRequest{DiskGB: diskGB}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // ─── Organizations ───────────────────────────────────────────────────────────

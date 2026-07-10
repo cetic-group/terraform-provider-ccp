@@ -73,6 +73,7 @@ resource "ccp_vm_scale_set" "win_workers" {
 - `auto_repair` - (Optional) Recreate failed/stopped members automatically. Defaults to `true`.
 - `bastion_access` - (Optional, Forces new resource) Allow SSH access to every replica through the tenant Bastion (opt-in, Linux only). Defaults to `false`. Requires a Bastion configured for the organization.
 - `windows_license_consent` - (Optional, Forces new resource) Acknowledge that CETIC Cloud provides no Windows license (you must hold a valid license per member instance). **Required (`true`) when `template` is a Windows system image (`win-*`) or a custom template captured from a Windows VM** — the API rejects the create with HTTP 422 otherwise. Ignored for Linux templates. Windows scale sets also require a `medium`+ plan and a strong administrator password (≥ 12 chars, ≥ 3 categories).
+- `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB applied to every replica. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for scale sets, so changing this value forces replacement of the whole scale set.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference

@@ -88,6 +88,7 @@ resource "ccp_k8s_cluster" "prod" {
     plan        = "small"
     replicas    = 2
     k8s_version = "v1.33.4" # must be <= the control-plane k8s_version
+    disk_gb     = 60        # optional — defaults to the plan's disk size
   }
 
   tags = ["k8s", "env:prod"]
@@ -122,6 +123,7 @@ resource "ccp_k8s_cluster" "prod" {
     * `plan` - (Forces new resource) Instance plan (`nano` … `xlarge`). Default `"small"`.
     * `replicas` - Worker count. Mutable in-place (rolling).
     * `k8s_version` - (Optional) Kubernetes version of the worker nodes in the initial pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Must be `<=` the cluster control-plane version (`k8s_version`); omit to inherit it. Mutable in-place (changing it triggers a rolling upgrade of the pool's nodes).
+    * `disk_gb` - (Optional, Forces new resource) Root disk size in GB of every node in the initial pool. Defaults to the pool's plan disk size when omitted. No resize endpoint exists for node pools, so changing it forces destroy + recreate of the cluster (like `name`/`plan`).
     * `labels` - Map of Kubernetes labels applied to the pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.
     * `taints` - Set of Kubernetes taints (`{ key, value?, effect }`, `effect` ∈ `NoSchedule`/`PreferNoSchedule`/`NoExecute`) applied to the pool's nodes (parity with `ccp_k8s_node_pool.taints`). Mutable in-place.
     * `min_size` / `max_size` - Cluster autoscaler bounds (see *Optional — autoscaler*).

@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -56,6 +57,7 @@ type vmssResourceModel struct {
 	AutoRepair            types.Bool   `tfsdk:"auto_repair"`
 	BastionAccess         types.Bool   `tfsdk:"bastion_access"`
 	WindowsLicenseConsent types.Bool   `tfsdk:"windows_license_consent"`
+	DiskGB                types.Int64  `tfsdk:"disk_gb"`
 	Status                types.String `tfsdk:"status"`
 	Tags                  types.List   `tfsdk:"tags"`
 	OsFamily              types.String `tfsdk:"os_family"`
@@ -167,6 +169,21 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 					"Write-only — not returned on read, so changes force replacement.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+			},
+			"disk_gb": schema.Int64Attribute{
+				MarkdownDescription: "Root disk size (GB) applied to every replica. " +
+					"Optional — defaults to the selected plan's disk size when omitted. " +
+					"No resize endpoint exists for scale sets, so changing this value " +
+					"forces replacement of the whole scale set.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+					int64planmodifier.UseStateForUnknown(),
+				},
 			},
 			"status": schema.StringAttribute{
 				Computed:      true,
@@ -311,6 +328,10 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 		plan.Tags.ElementsAs(ctx, &tags, false)
 		createReq.Tags = tags
 	}
+	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
+		v := int(plan.DiskGB.ValueInt64())
+		createReq.DiskGB = &v
+	}
 
 	created, err := r.client.CreateVMScaleSet(ctx, createReq)
 	if err != nil {
@@ -330,6 +351,16 @@ func (r *vmssResource) Create(ctx context.Context, req resource.CreateRequest, r
 	state.BastionAccess = plan.BastionAccess
 	// idem windows_license_consent (write-only, non relu).
 	state.WindowsLicenseConsent = plan.WindowsLicenseConsent
+	// disk_gb : préfère la valeur renvoyée par l'API ; sinon conserve le plan
+	// (Optional+Computed sans garantie de readback ; jamais Unknown en state).
+	switch {
+	case created.DiskGB != nil:
+		state.DiskGB = types.Int64Value(int64(*created.DiskGB))
+	case plan.DiskGB.IsUnknown():
+		state.DiskGB = types.Int64Null()
+	default:
+		state.DiskGB = plan.DiskGB
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -359,6 +390,14 @@ func (r *vmssResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	newState.RootPassword = state.RootPassword
 	newState.BastionAccess = state.BastionAccess
 	newState.WindowsLicenseConsent = state.WindowsLicenseConsent
+	switch {
+	case got.DiskGB != nil:
+		newState.DiskGB = types.Int64Value(int64(*got.DiskGB))
+	case state.DiskGB.IsUnknown():
+		newState.DiskGB = types.Int64Null()
+	default:
+		newState.DiskGB = state.DiskGB
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -410,6 +449,15 @@ func (r *vmssResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	newState.UserData = plan.UserData
 	newState.BastionAccess = plan.BastionAccess
 	newState.WindowsLicenseConsent = plan.WindowsLicenseConsent
+	// disk_gb is RequiresReplace — an Update call means it didn't change.
+	switch {
+	case updated.DiskGB != nil:
+		newState.DiskGB = types.Int64Value(int64(*updated.DiskGB))
+	case plan.DiskGB.IsUnknown():
+		newState.DiskGB = types.Int64Null()
+	default:
+		newState.DiskGB = plan.DiskGB
+	}
 	for _, d := range diags {
 		resp.Diagnostics.AddWarning("Tags conversion warning", d)
 	}

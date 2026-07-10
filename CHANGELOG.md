@@ -4,6 +4,46 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v5.5.0
+
+### Added — disk sizing (`disk_gb` / `storage_gb`, #577)
+
+Explicit disk sizing on create, plus grow-only in-place resize where the API
+exposes a dedicated `resize-disk` endpoint:
+
+- `ccp_container_instance.disk_gb` and `ccp_vm_instance.disk_gb` are now
+  **Optional + Computed** (previously read-only, derived from `plan`).
+  Omit to keep the plan's default disk size. **Mutable in place**: growing
+  the value calls `POST /v1/containers/{id}/resize-disk` (or the VM
+  equivalent) without recreating the resource. Shrinking is rejected by the
+  provider with a diagnostic (the API and the underlying block storage do
+  not support safe shrinking).
+- `ccp_registry.storage_gb` (new attribute, Optional + Computed) — the
+  provisioned storage quota, distinct from the existing read-only
+  `storage_used_gb` (actual blob usage). Mutable in place via
+  `POST /v1/registries/{id}/resize-disk`, same grow-only semantics.
+- `ccp_container_scale_set.disk_gb`, `ccp_vm_scale_set.disk_gb`,
+  `ccp_k8s_node_pool.disk_gb`, and `ccp_k8s_cluster.initial_pool.disk_gb`
+  (all new, Optional [+ Computed where the API echoes a value]) — no
+  dedicated resize endpoint exists for scale sets or node pools, so changing
+  these forces replacement (ForceNew), consistent with how `plan`/`template`
+  are already handled on those resources.
+
+Fully additive and backward-compatible — omitting the new attributes
+preserves the exact prior behavior (plan-derived default disk size).
+
+```hcl
+resource "ccp_vm_instance" "app" {
+  name          = "app-server"
+  region        = "RNN"
+  plan          = "medium"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.web.id
+  root_password = var.vm_root_password
+  disk_gb       = 120 # grows in place; shrinking is rejected
+}
+```
+
 ## v5.2.0
 
 ### Added — per-pool Kubernetes version (`k8s_version` on node pools)

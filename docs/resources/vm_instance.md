@@ -9,7 +9,7 @@ description: |-
 
 Manages a virtual machine instance on CETIC Cloud Platform. VMs are full virtual machines with cloud-init support for initial user, SSH key, and package configuration. They run guest kernels and are suitable for workloads that require kernel-level isolation or specific kernel versions.
 
-~> **Note:** VM creation is asynchronous and includes cloud-init execution on first boot. The provider polls until the VM reaches `running` status. Provisioning typically takes 2 to 4 minutes. Changing `plan` updates the VM in-place (requires a stop/start cycle). Changing `template`, `vnet_id`, or `region` forces a new resource.
+~> **Note:** VM creation is asynchronous and includes cloud-init execution on first boot. The provider polls until the VM reaches `running` status. Provisioning typically takes 2 to 4 minutes. Changing `plan` updates the VM in-place (requires a stop/start cycle). Changing `template`, `vnet_id`, or `region` forces a new resource. `disk_gb` grows in place via a resize call — shrinking is rejected.
 
 ## Example Usage
 
@@ -81,6 +81,7 @@ resource "ccp_vm_instance" "win" {
 - `user_data` - (Optional, Forces new resource) Cloud-init user data. Can be a cloud-config YAML document (`#cloud-config`) or a shell script (`#!/bin/bash`).
 - `bastion_access` - (Optional, Forces new resource) Allow SSH access to the VM through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
 - `windows_license_consent` - (Optional, Forces new resource) Acknowledge that CETIC Cloud provides no Windows license (you must hold a valid license per instance). **Required (`true`) when `template` is a Windows system image (`win-*`) or a custom template captured from a Windows VM** — the API rejects the create with HTTP 422 otherwise. Ignored for Linux templates. Windows VMs also require a `medium`+ plan and a strong administrator password (≥ 12 chars, ≥ 3 categories).
+- `disk_gb` - (Optional, Computed) Root disk size in GB. Defaults to the selected plan's disk size when omitted. **Mutable in place** — growing this value resizes the disk via the API without recreating the VM. Shrinking is rejected with a diagnostic.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference

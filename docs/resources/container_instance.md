@@ -9,7 +9,7 @@ description: |-
 
 Manages a container instance on CETIC Cloud Platform. Containers are high-performance, lightweight compute units that boot in seconds, share the host kernel, and support cloud-init for first-boot configuration.
 
-~> **Note:** Container creation is asynchronous. The provider polls until the container reaches `running` status. Provisioning typically completes within 60 seconds. Changing `plan` updates the container in-place (requires a stop/start cycle). Changing `template`, `vnet_id`, or `region` forces a new resource.
+~> **Note:** Container creation is asynchronous. The provider polls until the container reaches `running` status. Provisioning typically completes within 60 seconds. Changing `plan` updates the container in-place (requires a stop/start cycle). Changing `template`, `vnet_id`, or `region` forces a new resource. `disk_gb` grows in place via a resize call — shrinking is rejected.
 
 ## Example Usage
 
@@ -54,6 +54,7 @@ resource "ccp_container_instance" "web" {
 - `ssh_key_ids` - (Optional) List of SSH key UUIDs to inject at creation time. Keys are added to `/root/.ssh/authorized_keys` inside the container.
 - `user_data` - (Optional, Forces new resource) Cloud-init script executed on first boot. Can be a shell script (`#!/bin/bash`) or cloud-config YAML (`#cloud-config`).
 - `bastion_access` - (Optional, Forces new resource) Allow SSH access to the container through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
+- `disk_gb` - (Optional, Computed) Root disk size in GB. Defaults to the selected plan's disk size when omitted. **Mutable in place** — growing this value resizes the disk via the API without recreating the container. Shrinking is rejected with a diagnostic.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
