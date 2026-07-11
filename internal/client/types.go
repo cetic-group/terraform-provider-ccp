@@ -138,6 +138,10 @@ type ContainerCreateRequest struct {
 	// Docker opts the container into Docker/nesting. When false (default) the
 	// container is hardened against host-topology leakage.
 	Docker bool `json:"docker,omitempty"`
+	// IsTemplateSource marks the container as a template-preparation instance
+	// (hidden from the regular container listing, meant to be converted into a
+	// custom template then deleted).
+	IsTemplateSource bool `json:"is_template_source,omitempty"`
 	// DiskGB overrides the root disk size (GB). Optional — defaults to the
 	// plan's disk size when omitted; must be >= the plan's minimum (#577).
 	DiskGB *int `json:"disk_gb,omitempty"`

@@ -79,9 +79,10 @@ type containerInstanceResourceModel struct {
 	UserData        types.String `tfsdk:"user_data"`
 	PublicIPID      types.String `tfsdk:"public_ip_id"`
 	RootPassword    types.String `tfsdk:"root_password"`
-	BastionAccess   types.Bool   `tfsdk:"bastion_access"`
-	Docker          types.Bool   `tfsdk:"docker"`
-	Tags            types.List   `tfsdk:"tags"`
+	BastionAccess    types.Bool   `tfsdk:"bastion_access"`
+	Docker           types.Bool   `tfsdk:"docker"`
+	IsTemplateSource types.Bool   `tfsdk:"is_template_source"`
+	Tags             types.List   `tfsdk:"tags"`
 	Cores           types.Int64  `tfsdk:"cores"`
 	MemoryMB        types.Int64  `tfsdk:"memory_mb"`
 	DiskGB          types.Int64  `tfsdk:"disk_gb"`
@@ -218,6 +219,16 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				MarkdownDescription: "Required to run Docker inside the container (enables " +
 					"nesting; opt-in, default false). Immutable — changing it forces " +
 					"replacement.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
+			},
+			"is_template_source": schema.BoolAttribute{
+				MarkdownDescription: "Create a template-preparation instance (opt-in, " +
+					"default false): hidden from the regular container listing, meant to " +
+					"be converted into a custom template then deleted. Immutable — " +
+					"changing it forces replacement.",
 				Optional: true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.RequiresReplace(),
@@ -448,6 +459,9 @@ func (r *containerInstanceResource) Create(ctx context.Context, req resource.Cre
 	}
 	if !plan.Docker.IsNull() && !plan.Docker.IsUnknown() {
 		createReq.Docker = plan.Docker.ValueBool()
+	}
+	if !plan.IsTemplateSource.IsNull() && !plan.IsTemplateSource.IsUnknown() {
+		createReq.IsTemplateSource = plan.IsTemplateSource.ValueBool()
 	}
 	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
 		v := int(plan.DiskGB.ValueInt64())
