@@ -215,9 +215,9 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"docker": schema.BoolAttribute{
-				MarkdownDescription: "Enable Docker (nesting) inside the container (opt-in, " +
-					"default false). When disabled, the container is hardened against " +
-					"host-topology leakage. Immutable — changing it forces replacement.",
+				MarkdownDescription: "Required to run Docker inside the container (enables " +
+					"nesting; opt-in, default false). Immutable — changing it forces " +
+					"replacement.",
 				Optional: true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.RequiresReplace(),

@@ -158,9 +158,9 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"docker": schema.BoolAttribute{
-				MarkdownDescription: "Enable Docker (nesting) on every replica (opt-in, default " +
-					"false). When disabled, replicas are hardened against host-topology leakage. " +
-					"Immutable — changing it forces replacement.",
+				MarkdownDescription: "Required to run Docker on every replica (enables " +
+					"nesting; opt-in, default false). Immutable — changing it forces " +
+					"replacement.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
