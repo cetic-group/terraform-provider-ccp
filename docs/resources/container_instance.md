@@ -54,6 +54,7 @@ resource "ccp_container_instance" "web" {
 - `ssh_key_ids` - (Optional) List of SSH key UUIDs to inject at creation time. Keys are added to `/root/.ssh/authorized_keys` inside the container.
 - `user_data` - (Optional, Forces new resource) Cloud-init script executed on first boot. Can be a shell script (`#!/bin/bash`) or cloud-config YAML (`#cloud-config`).
 - `bastion_access` - (Optional, Forces new resource) Allow SSH access to the container through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
+- `docker` - (Optional, Forces new resource) Enable Docker (nesting) inside the container (opt-in). Defaults to `false`. When disabled, the container is hardened against host-topology leakage.
 - `disk_gb` - (Optional, Computed) Root disk size in GB. Defaults to the selected plan's disk size when omitted. **Mutable in place** — growing this value resizes the disk via the API without recreating the container. Shrinking is rejected with a diagnostic.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
