@@ -135,6 +135,9 @@ type ContainerCreateRequest struct {
 	Tags         []string `json:"tags,omitempty"`
 	// BastionAccess opts the container into SSH access through the tenant Bastion (#307).
 	BastionAccess bool `json:"bastion_access,omitempty"`
+	// Docker opts the container into Docker/nesting. When false (default) the
+	// container is hardened against host-topology leakage.
+	Docker bool `json:"docker,omitempty"`
 	// DiskGB overrides the root disk size (GB). Optional — defaults to the
 	// plan's disk size when omitted; must be >= the plan's minimum (#577).
 	DiskGB *int `json:"disk_gb,omitempty"`
@@ -538,6 +541,9 @@ type ContainerScaleSetCreateRequest struct {
 	Tags             []string `json:"tags,omitempty"`
 	// BastionAccess opts members into SSH access through the tenant Bastion (#307).
 	BastionAccess bool `json:"bastion_access,omitempty"`
+	// Docker opts every member into Docker/nesting. When false (default) the
+	// members are hardened against host-topology leakage.
+	Docker bool `json:"docker,omitempty"`
 	// DiskGB overrides the root disk size (GB) applied to every member.
 	// Optional — defaults to the plan's disk size when omitted. No
 	// dedicated resize endpoint exists for scale sets, so the provider

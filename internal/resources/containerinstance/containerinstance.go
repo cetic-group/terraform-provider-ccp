@@ -80,6 +80,7 @@ type containerInstanceResourceModel struct {
 	PublicIPID      types.String `tfsdk:"public_ip_id"`
 	RootPassword    types.String `tfsdk:"root_password"`
 	BastionAccess   types.Bool   `tfsdk:"bastion_access"`
+	Docker          types.Bool   `tfsdk:"docker"`
 	Tags            types.List   `tfsdk:"tags"`
 	Cores           types.Int64  `tfsdk:"cores"`
 	MemoryMB        types.Int64  `tfsdk:"memory_mb"`
@@ -208,6 +209,15 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				MarkdownDescription: "Allow SSH access to the container through the tenant " +
 					"Bastion (opt-in, default false). Write-only — the API does not return this " +
 					"field on read, so changes force replacement.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
+			},
+			"docker": schema.BoolAttribute{
+				MarkdownDescription: "Enable Docker (nesting) inside the container (opt-in, " +
+					"default false). When disabled, the container is hardened against " +
+					"host-topology leakage. Immutable — changing it forces replacement.",
 				Optional: true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.RequiresReplace(),
@@ -435,6 +445,9 @@ func (r *containerInstanceResource) Create(ctx context.Context, req resource.Cre
 	}
 	if !plan.BastionAccess.IsNull() && !plan.BastionAccess.IsUnknown() {
 		createReq.BastionAccess = plan.BastionAccess.ValueBool()
+	}
+	if !plan.Docker.IsNull() && !plan.Docker.IsUnknown() {
+		createReq.Docker = plan.Docker.ValueBool()
 	}
 	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
 		v := int(plan.DiskGB.ValueInt64())

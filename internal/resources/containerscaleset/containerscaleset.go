@@ -56,6 +56,7 @@ type cssResourceModel struct {
 	DesiredInstances types.Int64  `tfsdk:"desired_instances"`
 	AutoRepair       types.Bool   `tfsdk:"auto_repair"`
 	BastionAccess    types.Bool   `tfsdk:"bastion_access"`
+	Docker           types.Bool   `tfsdk:"docker"`
 	DiskGB           types.Int64  `tfsdk:"disk_gb"`
 	Status           types.String `tfsdk:"status"`
 	Tags             types.List   `tfsdk:"tags"`
@@ -153,6 +154,13 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				MarkdownDescription: "Allow SSH access to every replica through the tenant Bastion " +
 					"(opt-in, default false). Write-only — the API does not return this field on " +
 					"read, so changes force replacement.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+			},
+			"docker": schema.BoolAttribute{
+				MarkdownDescription: "Enable Docker (nesting) on every replica (opt-in, default " +
+					"false). When disabled, replicas are hardened against host-topology leakage. " +
+					"Immutable — changing it forces replacement.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
@@ -277,6 +285,7 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 		DesiredInstances: int(plan.DesiredInstances.ValueInt64()),
 		AutoRepair:       plan.AutoRepair.ValueBool(),
 		BastionAccess:    plan.BastionAccess.ValueBool(),
+		Docker:           plan.Docker.ValueBool(),
 	}
 	if !plan.VnetID.IsNull() && !plan.VnetID.IsUnknown() {
 		v := plan.VnetID.ValueString()
@@ -319,6 +328,7 @@ func (r *cssResource) Create(ctx context.Context, req resource.CreateRequest, re
 	state.RootPassword = plan.RootPassword
 	// API ne renvoie pas bastion_access (write-only) ; conserver l'intent du plan.
 	state.BastionAccess = plan.BastionAccess
+	state.Docker = plan.Docker
 	// disk_gb : préfère la valeur renvoyée par l'API ; sinon conserve le plan
 	// (Optional+Computed sans garantie de readback ; jamais Unknown en state).
 	switch {
@@ -356,6 +366,7 @@ func (r *cssResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	newState.UserData = state.UserData
 	newState.RootPassword = state.RootPassword
 	newState.BastionAccess = state.BastionAccess
+	newState.Docker = state.Docker
 	switch {
 	case got.DiskGB != nil:
 		newState.DiskGB = types.Int64Value(int64(*got.DiskGB))
@@ -419,6 +430,7 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	newState.SSHKeyIDs = plan.SSHKeyIDs
 	newState.UserData = plan.UserData
 	newState.BastionAccess = plan.BastionAccess
+	newState.Docker = plan.Docker
 	// disk_gb is RequiresReplace — an Update call means it didn't change.
 	switch {
 	case updated.DiskGB != nil:
