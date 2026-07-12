@@ -69,30 +69,31 @@ type containerInstanceResource struct {
 // containerInstanceResourceModel mirrors the schema below 1-to-1. Tag names
 // must match the schema attribute keys exactly.
 type containerInstanceResourceModel struct {
-	ID              types.String `tfsdk:"id"`
-	Name            types.String `tfsdk:"name"`
-	Region          types.String `tfsdk:"region"`
-	Plan            types.String `tfsdk:"plan"`
-	Template        types.String `tfsdk:"template"`
-	VnetID          types.String `tfsdk:"vnet_id"`
-	SSHKeyIDs       types.List   `tfsdk:"ssh_key_ids"`
-	UserData        types.String `tfsdk:"user_data"`
-	PublicIPID      types.String `tfsdk:"public_ip_id"`
-	RootPassword    types.String `tfsdk:"root_password"`
-	BastionAccess   types.Bool   `tfsdk:"bastion_access"`
-	Docker          types.Bool   `tfsdk:"docker"`
-	Tags            types.List   `tfsdk:"tags"`
-	Cores           types.Int64  `tfsdk:"cores"`
-	MemoryMB        types.Int64  `tfsdk:"memory_mb"`
-	DiskGB          types.Int64  `tfsdk:"disk_gb"`
-	Status          types.String `tfsdk:"status"`
-	IPAddress       types.String `tfsdk:"ip_address"`
-	PublicIPAddress types.String `tfsdk:"public_ip_address"`
-	ScaleSetID      types.String `tfsdk:"scale_set_id"`
-	ErrorMessage    types.String `tfsdk:"error_message"`
-	HasRootPassword types.Bool   `tfsdk:"has_root_password"`
-	CreatedAt       types.String `tfsdk:"created_at"`
-	UpdatedAt       types.String `tfsdk:"updated_at"`
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	Region           types.String `tfsdk:"region"`
+	Plan             types.String `tfsdk:"plan"`
+	Template         types.String `tfsdk:"template"`
+	VnetID           types.String `tfsdk:"vnet_id"`
+	SSHKeyIDs        types.List   `tfsdk:"ssh_key_ids"`
+	UserData         types.String `tfsdk:"user_data"`
+	PublicIPID       types.String `tfsdk:"public_ip_id"`
+	RootPassword     types.String `tfsdk:"root_password"`
+	BastionAccess    types.Bool   `tfsdk:"bastion_access"`
+	Docker           types.Bool   `tfsdk:"docker"`
+	IsTemplateSource types.Bool   `tfsdk:"is_template_source"`
+	Tags             types.List   `tfsdk:"tags"`
+	Cores            types.Int64  `tfsdk:"cores"`
+	MemoryMB         types.Int64  `tfsdk:"memory_mb"`
+	DiskGB           types.Int64  `tfsdk:"disk_gb"`
+	Status           types.String `tfsdk:"status"`
+	IPAddress        types.String `tfsdk:"ip_address"`
+	PublicIPAddress  types.String `tfsdk:"public_ip_address"`
+	ScaleSetID       types.String `tfsdk:"scale_set_id"`
+	ErrorMessage     types.String `tfsdk:"error_message"`
+	HasRootPassword  types.Bool   `tfsdk:"has_root_password"`
+	CreatedAt        types.String `tfsdk:"created_at"`
+	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
 
 // nameValidatorPattern matches the API constraint: alphanumerics, underscores
@@ -215,9 +216,19 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"docker": schema.BoolAttribute{
-				MarkdownDescription: "Enable Docker (nesting) inside the container (opt-in, " +
-					"default false). When disabled, the container is hardened against " +
-					"host-topology leakage. Immutable — changing it forces replacement.",
+				MarkdownDescription: "Required to run Docker inside the container (enables " +
+					"nesting; opt-in, default false). Immutable — changing it forces " +
+					"replacement.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
+			},
+			"is_template_source": schema.BoolAttribute{
+				MarkdownDescription: "Create a template-preparation instance (opt-in, " +
+					"default false): hidden from the regular container listing, meant to " +
+					"be converted into a custom template then deleted. Immutable — " +
+					"changing it forces replacement.",
 				Optional: true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.RequiresReplace(),
@@ -448,6 +459,9 @@ func (r *containerInstanceResource) Create(ctx context.Context, req resource.Cre
 	}
 	if !plan.Docker.IsNull() && !plan.Docker.IsUnknown() {
 		createReq.Docker = plan.Docker.ValueBool()
+	}
+	if !plan.IsTemplateSource.IsNull() && !plan.IsTemplateSource.IsUnknown() {
+		createReq.IsTemplateSource = plan.IsTemplateSource.ValueBool()
 	}
 	if !plan.DiskGB.IsNull() && !plan.DiskGB.IsUnknown() {
 		v := int(plan.DiskGB.ValueInt64())
