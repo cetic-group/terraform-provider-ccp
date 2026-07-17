@@ -170,7 +170,9 @@ func parseAPIError(resp *http.Response, method, path string) error {
 		Method:     method,
 		Path:       path,
 	}
-	// FastAPI: {"detail": "..."} — but detail can also be a list of validation errors
+	// FastAPI: {"detail": "..."} — but detail can also be a structured error
+	// object {"code","message","action_url"} (unified error contract, backend
+	// #618) or a list of validation errors.
 	var parsed struct {
 		Detail any `json:"detail"`
 	}
@@ -178,6 +180,17 @@ func parseAPIError(resp *http.Response, method, path string) error {
 		switch d := parsed.Detail.(type) {
 		case string:
 			apiErr.Detail = d
+		case map[string]any:
+			// Structured error object — surface the human-readable message,
+			// falling back to code then the raw JSON. Without this a 4xx/5xx
+			// carrying a dict detail would render as raw JSON to the operator.
+			if msg, ok := d["message"].(string); ok && msg != "" {
+				apiErr.Detail = msg
+			} else if code, ok := d["code"].(string); ok && code != "" {
+				apiErr.Detail = code
+			} else if raw, e := json.Marshal(d); e == nil {
+				apiErr.Detail = string(raw)
+			}
 		default:
 			// Validation error array — re-encode for visibility
 			if raw, e := json.Marshal(d); e == nil {
