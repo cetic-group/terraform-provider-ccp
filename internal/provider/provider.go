@@ -39,6 +39,7 @@ import (
 	dsregistry "github.com/cetic-group/terraform-provider-ccp/internal/datasources/registry"
 	dsregistryacl "github.com/cetic-group/terraform-provider-ccp/internal/datasources/registryacl"
 	dsregistryuser "github.com/cetic-group/terraform-provider-ccp/internal/datasources/registryuser"
+	dsschedule "github.com/cetic-group/terraform-provider-ccp/internal/datasources/schedule"
 	dssecret "github.com/cetic-group/terraform-provider-ccp/internal/datasources/secret"
 	dsserviceaccount "github.com/cetic-group/terraform-provider-ccp/internal/datasources/serviceaccount"
 	dssshkey "github.com/cetic-group/terraform-provider-ccp/internal/datasources/sshkey"
@@ -85,6 +86,7 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registry"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registryacl"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registryuser"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/schedule"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/secret"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/serviceaccount"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/sshkey"
@@ -241,6 +243,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		secret.New,
 		budget.New,
 		commit.New,
+		schedule.New,
 	}
 }
 
@@ -304,5 +307,7 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsapikey.New,
 		// Secrets
 		dssecret.New,
+		// Scheduler
+		dsschedule.New,
 	}
 }

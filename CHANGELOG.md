@@ -4,6 +4,29 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added — resource scheduler (`ccp_schedule`)
+
+New `ccp_schedule` resource (and `ccp_schedule` data source) to define recurring
+start/stop windows for a resource (VM, container, VM/container scale set, CCKS
+node pool, or managed database instance). The target is powered off during the
+weekly OFF windows and powered back on outside them — data and persistent storage
+are preserved (the resource is stopped, not destroyed).
+
+- Polymorphic target via `resource_type` + `resource_id` (both ForceNew).
+- `windows` — required list of weekly OFF intervals
+  `{ start_day, start_hour, end_day, end_hour }` (day `0`=Monday..`6`, whole
+  hours `0..24`, wrap-around across Sunday→Monday supported).
+- `timezone` (default `Europe/Paris`) and `enabled` (default `true`).
+- Read-only `current_state` (`on`/`off`), `last_transition_at`,
+  `estimated_monthly_fee_cents`.
+- The API enforces anti-flapping rules (min 1 h per window, at most 2 cycles per
+  day); the business `422` message is surfaced verbatim in the plan/apply
+  diagnostics.
+
+Additive, non-breaking. Version number to be assigned at release/tag time.
+
 ## v5.5.0
 
 ### Added — disk sizing (`disk_gb` / `storage_gb`, #577)

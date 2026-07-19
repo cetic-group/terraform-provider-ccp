@@ -129,6 +129,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Database | `ccp_db_pg_instance` / `ccp_db_mysql_instance` / `ccp_db_valkey_instance` / `ccp_db_ferretdb_instance` | Managed PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) / MongoDB-compatible (FerretDB v2). |
 | Registry | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` | Per-tenant CETIC Container Registry (Distribution + cesanta JWT). `admin_password` and user `password` returned once at create. |
 | Secrets | `ccp_secret` | Encrypted key/value store, projected as native Kubernetes Secrets via the `CCPSecret` CRD. `data` is Sensitive — kept in state. |
+| Scheduler | `ccp_schedule` | Weekly start/stop planner — powers a VM / container / scale set / K8s node pool / database instance off during declared windows to save on compute. Stops, never destroys. |
 | Support | `ccp_support_ticket` / `ccp_quota_request` | Ticketing + quota self-service. |
 
 ## Data sources
@@ -149,6 +150,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | `ccp_db_valkey_credentials` | Admin password of a Valkey (Redis-compatible) instance (sensitive). |
 | `ccp_registry` | Look up a CETIC Container Registry by `id` or by `(name, region)`. |
 | `ccp_secret` | Look up secret metadata by `id` or `name`. Never returns plaintext `data`. |
+| `ccp_schedule` | Look up a start/stop schedule by `id` or `name` — target, windows, computed power state and fee. |
 | `ccp_application_gateway` | Look up an Application Gateway by `id` or `(name, region)` with embedded listeners / target groups / routes. |
 
 ## Multi-organization
