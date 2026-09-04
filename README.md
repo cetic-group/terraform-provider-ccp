@@ -13,7 +13,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   required_providers {
 >     ccp = {
 >       source  = "cetic-group/ccp"
->       version = "~> 5.0"
+>       version = "~> 6.3"
 >     }
 >   }
 > }
@@ -87,7 +87,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 5.0"
+      version = "~> 6.3"
     }
   }
 }
@@ -119,6 +119,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` | IP reservations + peering intra/inter-VPC. |
 | Network | `ccp_public_ip` / `ccp_ipaas_pool` | Public IPs + BYOIP edge pools. |
 | Network | `ccp_load_balancer` | Highly available with floating VIP, automatic failover. |
+| Network | `ccp_dns_zone` / `ccp_dns_record` | Private DNS — a zone answered only inside your own private network, and the records in it. Machines of the network receive its name server automatically, **at their creation**. |
 | Network | `ccp_application_gateway` / `ccp_appgw_listener` / `ccp_appgw_target_group` / `ccp_appgw_target_group_member` / `ccp_appgw_route` | L7 reverse proxy with TLS, SNI, rate limit, IP allow/deny, CORS, basic auth, WAF presets. |
 | Compute | `ccp_container_instance` / `ccp_container_scale_set` / `ccp_container_snapshot` | Linux containers — fast boot, low overhead. |
 | Compute | `ccp_vm_instance` / `ccp_vm_scale_set` / `ccp_vm_snapshot` | Full virtual machines — kernel isolation. |
@@ -130,6 +131,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Registry | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` | Per-tenant CETIC Container Registry (Distribution + cesanta JWT). `admin_password` and user `password` returned once at create. |
 | Secrets | `ccp_secret` | Encrypted key/value store, projected as native Kubernetes Secrets via the `CCPSecret` CRD. `data` is Sensitive — kept in state. |
 | Scheduler | `ccp_schedule` | Weekly start/stop planner — powers a VM / container / scale set / K8s node pool / database instance off during declared windows to save on compute. Stops, never destroys. |
+| Email | `ccp_email_domain` / `ccp_email_account` / `ccp_email_alias` | Hosted mail — domain, mailboxes and aliases. A domain is created **on hold** until its ownership record is published; `password` is write only. |
 | Support | `ccp_support_ticket` / `ccp_quota_request` | Ticketing + quota self-service. |
 
 ## Data sources
@@ -152,6 +154,9 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | `ccp_secret` | Look up secret metadata by `id` or `name`. Never returns plaintext `data`. |
 | `ccp_schedule` | Look up a start/stop schedule by `id` or `name` — target, windows, computed power state and fee. |
 | `ccp_application_gateway` | Look up an Application Gateway by `id` or `(name, region)` with embedded listeners / target groups / routes. |
+| `ccp_dns_zone` / `ccp_dns_records` | Look up a private DNS zone by `id` or `name` — including the name server address to use **per subnet** — and list the records of a zone. |
+| `ccp_email_domain` / `ccp_email_domains` | Look up a mail domain by `id` or `name` — including the DNS records to publish and the state observed in your zone — or list them all. |
+| `ccp_email_accounts` / `ccp_email_aliases` | Mailboxes and aliases of the organisation, optionally restricted to one domain. Passwords never appear. |
 
 ## Multi-organization
 
