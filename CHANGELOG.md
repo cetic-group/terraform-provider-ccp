@@ -4,6 +4,32 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed — an isolated subnet no longer refuses a startup script (#67)
+
+`snatvalidator` raised a **hard plan-time error** as soon as a
+`ccp_vm_instance`, `ccp_container_instance`, `ccp_vm_scale_set` or
+`ccp_container_scale_set` carried a non-empty `user_data` in a subnet with
+`snat = false`. It now raises a **warning**, and three things motivated the
+change:
+
+- An isolated subnet is a supported configuration, not a mistake. The check
+  never looked at the script — a `user_data` that writes a file, creates a user
+  or starts software already present in the image needs no internet at all, and
+  was refused anyway, with no escape hatch.
+- The check **failed open**: it returns silently on any lookup error, so the
+  hard verdict was raised only when the probe worked and skipped when it did
+  not. A gate bypassed by breaking its own probe protects nothing; a warning
+  that is occasionally absent is at least honest about what it is.
+- The real failure, when it happens, occurs at first boot and is visible in the
+  guest's own logs. The warning brings that forward without deciding for the
+  operator.
+
+The notice names the subnet, relays what the script would lose, says the failure
+will not appear in Terraform, and points at `snat = true` as the way out.
+Documented on `ccp_vnet.snat`, where the behaviour had never been written down.
+
 ## v6.3.0 (2026-09-04)
 
 ### Added — private DNS (`ccp_dns_zone`, `ccp_dns_record`, #65)

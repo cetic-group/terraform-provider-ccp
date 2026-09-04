@@ -46,6 +46,8 @@ resource "ccp_vnet" "db" {
   - `false` (the default) — **isolated subnet**: no outbound internet access, and **no public address can be attached** to anything in it. The platform rejects the attachment rather than creating an address that would never answer.
 
   Changed in place. Turning it off is rejected while public addresses are still attached to resources of this subnet — detach them first. A [`ccp_k8s_cluster`](k8s_cluster.md) runs in an isolated subnet: its nodes no longer need internet access to start.
+
+  ~> A `ccp_vm_instance`, `ccp_container_instance` or scale set started in an isolated subnet **with** a `user_data` script gets a plan-time **warning**, not a refusal. Whatever the script downloads will not resolve and the machine finishes starting without it — the failure shows in its own boot logs. A script that only writes files, creates users or starts software already present in the image runs exactly as it would elsewhere.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference

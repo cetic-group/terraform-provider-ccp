@@ -366,9 +366,11 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 	}
 }
 
-// ModifyPlan validates that the target VNet has outbound internet egress
-// when the user supplies a `user_data` cloud-init script. Without
-// `snat=true`, package installs at first boot fail silently.
+// ModifyPlan warns — it does not refuse — when a `user_data` script is set on
+// an isolated subnet. What the script downloads will not resolve, and the
+// container finishes starting without it; the failure shows in its own boot
+// logs. An isolated subnet is a supported configuration: see the package doc
+// of `internal/snatvalidator` (#67).
 func (r *containerInstanceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -388,8 +390,8 @@ func (r *containerInstanceResource) ModifyPlan(ctx context.Context, req resource
 	}
 	snatvalidator.CheckVnetSnat(
 		ctx, r.client, plan.VnetID.ValueString(),
-		"Cloud-init `user_data` scripts that install packages or fetch any "+
-			"external endpoint will fail without outbound NAT.",
+		"This container carries a `user_data` script: anything in it that installs "+
+			"packages or calls an external endpoint will not go through.",
 		&resp.Diagnostics,
 	)
 }

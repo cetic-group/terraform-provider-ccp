@@ -380,10 +380,13 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	}
 }
 
-// ModifyPlan validates VNet egress requirements before apply. When the
-// user supplies a `user_data` script, the target VNet MUST have
-// `snat=true` — otherwise the script's package downloads (apt, curl, etc.)
-// will silently fail at first boot and leave the VM in a broken state.
+// ModifyPlan warns — it does not refuse — when a `user_data` script is set on
+// an isolated subnet. What the script downloads will not resolve, and the VM
+// finishes starting without it; the failure shows in its own boot logs. An
+// isolated subnet is a supported configuration, and a script that only writes
+// files or starts software already in the image works there as anywhere: see
+// the package doc of `internal/snatvalidator` (#67).
+//
 // Skips during destroy plans and when `vnet_id` / `user_data` are unknown.
 func (r *vmInstanceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
@@ -404,9 +407,9 @@ func (r *vmInstanceResource) ModifyPlan(ctx context.Context, req resource.Modify
 	}
 	snatvalidator.CheckVnetSnat(
 		ctx, r.client, plan.VnetID.ValueString(),
-		"Cloud-init `user_data` scripts that install packages, fetch container "+
-			"images, or reach any external endpoint will fail without outbound "+
-			"NAT.",
+		"This instance carries a `user_data` script: anything in it that installs "+
+			"packages, pulls container images or calls an external endpoint will "+
+			"not go through.",
 		&resp.Diagnostics,
 	)
 }
