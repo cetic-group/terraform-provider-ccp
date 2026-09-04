@@ -1,4 +1,4 @@
-# End-to-end example for ccp_registry — VPC + VNet + public IP + registry
+# End-to-end example for ccp_registry — VPC + VNet + registry
 # + 2 users (admin/ci-pull) + 2 ACLs.
 
 terraform {
@@ -27,22 +27,24 @@ resource "ccp_vnet" "registry" {
   snat   = true
 }
 
-# Public IP for the public exposure.
-resource "ccp_public_ip" "registry" {
-  region = "RNN"
-}
-
-# ─── Registry (public exposure) ────────────────────────────────────────────
+# ─── Registry ──────────────────────────────────────────────────────────────
+#
+# Exposure is two independent switches, not one mode: `expose_public` opens the
+# registry to the internet, `expose_private` serves it inside the tenant's own
+# networks — the VNet above and anything peered with it. Both can be on; both
+# off is refused.
+#
+# The registry is not attached to a VNet: there is no `vpc_id` or `vnet_id` on
+# this resource, and no public IP to reserve — the platform provisions and
+# renews the certificate for `<slug>.cloud.cetic-group.com` itself.
 
 resource "ccp_registry" "main" {
-  name             = "ccr-demo"
-  region           = "RNN"
-  vpc_id           = ccp_vpc.main.id
-  vnet_id          = ccp_vnet.registry.id
-  exposure         = "public"
-  public_ip_id     = ccp_public_ip.registry.id
-  gc_schedule_cron = "0 3 * * 0" # Sunday 03:00 UTC
-  tags             = ["env:demo"]
+  name           = "ccr-demo"
+  region         = "RNN"
+  expose_public  = true
+  expose_private = true
+  storage_gb     = 50
+  tags           = ["env:demo"]
 }
 
 # ─── Users ─────────────────────────────────────────────────────────────────
@@ -77,9 +79,9 @@ resource "ccp_registry_acl" "ci_push_myapp" {
 
 # ─── Outputs ───────────────────────────────────────────────────────────────
 
-output "registry_hostname" {
-  description = "Use as the docker hostname: docker login <hostname>."
-  value       = ccp_registry.main.hostname
+output "registry_url" {
+  description = "Use as the docker hostname: docker login <url>."
+  value       = ccp_registry.main.url
 }
 
 output "registry_admin_username" {

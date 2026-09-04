@@ -20,6 +20,14 @@ provider "ccp" {
   api_key = "ccp_live_..." # or via CCP_API_KEY env var
 }
 
+# The root password of a container is required and write-only: the API never
+# returns it. Keep it out of the source — pass it with `TF_VAR_root_password`.
+variable "root_password" {
+  description = "Root password of the container (12 characters minimum)."
+  type        = string
+  sensitive   = true
+}
+
 # ---------------------------------------------------------------------------
 # Data source — list available regions
 # ---------------------------------------------------------------------------
@@ -84,11 +92,12 @@ resource "ccp_public_ip" "web" {
 # ---------------------------------------------------------------------------
 
 resource "ccp_container_instance" "web" {
-  name     = "web-1"
-  region   = "RNN"
-  plan     = "small"
-  template = "ubuntu-24.04"
-  vnet_id  = ccp_vnet.web.id
+  name          = "web-1"
+  region        = "RNN"
+  plan          = "small"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.web.id
+  root_password = var.root_password
 
   ssh_key_ids = [ccp_ssh_key.admin.id]
 
