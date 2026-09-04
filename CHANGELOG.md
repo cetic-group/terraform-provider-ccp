@@ -4,7 +4,7 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v6.3.0 (2026-09-04)
 
 ### Added — private DNS (`ccp_dns_zone`, `ccp_dns_record`, #65)
 
@@ -106,7 +106,7 @@ are preserved (the resource is stopped, not destroyed).
   day); the business `422` message is surfaced verbatim in the plan/apply
   diagnostics.
 
-Additive, non-breaking. Version number to be assigned at release/tag time.
+Additive, non-breaking. Released in v6.3.0.
 
 ## v5.5.0
 
