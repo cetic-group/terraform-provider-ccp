@@ -209,10 +209,11 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 	}
 }
 
-// ModifyPlan validates that the target VNet has outbound NAT when the
-// scale set carries a `user_data` cloud-init script. Every cloned VM
-// runs the same script; if the VNet has `snat=false`, every instance
-// fails identically at first boot.
+// ModifyPlan warns — it does not refuse — when the scale set carries a
+// `user_data` script in an isolated subnet. Every cloned VM runs the same
+// script, so whatever in it reaches outside fails identically on all of them.
+// Isolated subnets are a supported configuration and plenty of scripts need no
+// internet at all: see the package doc of `internal/snatvalidator` (#67).
 func (r *vmssResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -232,9 +233,8 @@ func (r *vmssResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	}
 	snatvalidator.CheckVnetSnat(
 		ctx, r.client, plan.VnetID.ValueString(),
-		"Every cloned VM in the scale set runs the same `user_data`; a VNet "+
-			"without outbound NAT will break first boot identically on every "+
-			"instance.",
+		"Every VM of this scale set runs the same `user_data`, so anything in it "+
+			"that reaches outside will fail identically on every instance.",
 		&resp.Diagnostics,
 	)
 }

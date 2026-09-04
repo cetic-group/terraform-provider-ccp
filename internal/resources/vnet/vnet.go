@@ -224,7 +224,10 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 					"Changed in place. Turning it off is rejected while public addresses are still " +
 					"attached to resources of this subnet — detach them first.\n\n" +
 					"A `ccp_k8s_cluster` runs in an isolated subnet: its nodes no longer need " +
-					"internet access to start. See its documentation for what that costs you.",
+					"internet access to start. See its documentation for what that costs you.\n\n" +
+					"A machine started here with a `user_data` script gets a plan-time **warning**, " +
+					"not a refusal: whatever the script downloads will not resolve, but a script " +
+					"that only writes files or starts software already in the image runs normally.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(false),
