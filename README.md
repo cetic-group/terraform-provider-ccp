@@ -2,6 +2,8 @@
 
 Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 
+📖 **[Documentation on the Terraform Registry](https://registry.terraform.io/providers/cetic-group/ccp/latest/docs)** — the reference for every resource and data source, rendered from `docs/` at each release.
+
 > **Declaring the provider.**
 >
 > The provider is published on the Terraform Registry as
