@@ -116,8 +116,9 @@ func (r *vnetResource) Metadata(_ context.Context, req resource.MetadataRequest,
 func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud VNet inside a VPC. A VNet is a private subnet " +
-			"with its own CIDR and (optional) DHCP range, served by the per-VPC " +
-			"NAT gateway. Only `name` and `snat` can be updated in place; changes to `vpc_id`, " +
+			"with its own CIDR and (optional) DHCP range. Its `snat` attribute decides whether " +
+			"the subnet reaches the internet or is isolated. Only `name` and `snat` can be " +
+			"updated in place; changes to `vpc_id`, " +
 			"`cidr`, `dhcp_start`, `dhcp_end`, or `tags` force replacement. Creation is " +
 			"asynchronous: the provider polls until the VNet reaches `active` (up to 90 seconds).",
 		Attributes: map[string]schema.Attribute{
@@ -207,10 +208,23 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"snat": schema.BoolAttribute{
-				MarkdownDescription: "Whether outbound traffic from this VNet is SNAT'd through " +
-					"the per-VPC NAT gateway. Defaults to `false`. Mutable in place via PATCH; " +
-					"setting to `false` is rejected (409) if IPaaS routed public IPs are still " +
-					"attached to instances in this VNet.",
+				// This is THE attribute that says whether the subnet is isolated, so its
+				// description has to answer the two questions that follow from that — can my
+				// machines reach the internet, and can I give them a public address — without
+				// naming any of the machinery underneath. See the anti-leak rule in CLAUDE.md:
+				// these strings are published on the Terraform Registry.
+				MarkdownDescription: "Outbound mode of the subnet, and the one setting that " +
+					"distinguishes an isolated network:\n\n" +
+					"- `true` — resources in this subnet reach the internet, and a public address " +
+					"can be attached to them;\n" +
+					"- `false` (the default) — **isolated subnet**: no outbound internet access, " +
+					"and **no public address can be attached** to anything in it. The platform " +
+					"rejects the attachment rather than creating an address that would never " +
+					"answer.\n\n" +
+					"Changed in place. Turning it off is rejected while public addresses are still " +
+					"attached to resources of this subnet — detach them first.\n\n" +
+					"A `ccp_k8s_cluster` runs in an isolated subnet: its nodes no longer need " +
+					"internet access to start. See its documentation for what that costs you.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(false),

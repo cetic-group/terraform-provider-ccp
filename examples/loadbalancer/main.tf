@@ -2,13 +2,21 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 5.0"
+      version = "~> 6.3"
     }
   }
 }
 
 provider "ccp" {
   # api_key depuis env CCP_API_KEY
+}
+
+# Le mot de passe root d'un conteneur est obligatoire et en écriture seule :
+# l'API ne le rend jamais. Le passer par `TF_VAR_root_password`.
+variable "root_password" {
+  description = "Mot de passe root du conteneur (12 caractères minimum)."
+  type        = string
+  sensitive   = true
 }
 
 # ─── Network pre-requisites ──────────────────────────────────────────────────
@@ -28,11 +36,12 @@ resource "ccp_vnet" "front" {
 # ─── Backend container ───────────────────────────────────────────────────────
 
 resource "ccp_container_instance" "web" {
-  name     = "web-1"
-  region   = "RNN"
-  plan     = "small"
-  template = "ubuntu-24.04"
-  vnet_id  = ccp_vnet.front.id
+  name          = "web-1"
+  region        = "RNN"
+  plan          = "small"
+  template      = "ubuntu-24.04"
+  vnet_id       = ccp_vnet.front.id
+  root_password = var.root_password
 }
 
 # ─── Public IP (optional, attach to LB) ─────────────────────────────────────

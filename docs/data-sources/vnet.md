@@ -47,7 +47,7 @@ data "ccp_vnet" "by_id" {
 - `cidr` — IPv4 CIDR block.
 - `gateway` — Gateway IP address (nullable).
 - `dhcp_start`, `dhcp_end` — DHCP range bounds (nullable).
-- `snat` — Whether outbound SNAT is enabled.
+- `snat` — Outbound mode of the subnet, and the one setting that distinguishes an isolated network: `true` means resources reach the internet and a public address can be attached to them; `false` means an **isolated subnet** — no outbound internet access, and no public address can be attached to anything in it.
 - `isolated` — Whether the VNet is isolated (no L3 routing).
 - `status` — `active`, `deleting`, or `error`.
 - `tags`

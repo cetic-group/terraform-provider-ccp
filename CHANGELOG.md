@@ -6,6 +6,87 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added — private DNS (`ccp_dns_zone`, `ccp_dns_record`, #65)
+
+A DNS zone answered **only inside the customer's own private network** — never
+published to the internet — and the records in it. The machines of the network
+receive its name server automatically, at their creation.
+
+- `ccp_dns_zone` — `name` and `vpc_id` (Required, ForceNew), `tier`
+  (`dev`/`prod`, default `dev`, ForceNew), `default_ttl` and `dnssec_enabled`
+  (ForceNew). Computed: `status`, `region`, `record_sets_count`,
+  `error_message`, `resolver_addresses`, `resolver_endpoints`, `resolver_tier`,
+  `resolver_status`, `ns_hostname`, `applies_to_new_guests_only` and
+  `ownership_challenge`. Create polls until the zone is answered; delete polls
+  until it is really gone, because the name server of the network goes with the
+  last zone.
+- `ccp_dns_record` — `zone_id`, `name` and `type` (Required, ForceNew, no `NS`),
+  `records` (Required **Set**), `ttl` (default 3600, changed in place).
+  Computed: `fqdn`, `is_system_managed`. Imported by
+  `<zone_id>/<name>/<type>`.
+- Data sources `ccp_dns_zone` (by `id` xor `name`) and `ccp_dns_records`.
+
+Three points that are not guessable from the schema, and are documented on the
+resources:
+
+- **The service level belongs to the network.** All zones of a `vpc_id` share
+  one name server, so they share its `tier`; asking for another one is rejected
+  and the message names the level in place. The provider relays it verbatim.
+- **`records` is a set that REPLACES.** The API returns values in its own order,
+  so a list would show a change at every plan; and every write sends the whole
+  set, which is exactly Terraform's model.
+- **A public domain name is held until its ownership is proved.** The record to
+  publish is exposed in `ownership_challenge`; `wait_for_verification = true` on
+  a later apply checks the proof and waits. An internal suffix has nothing to
+  prove and goes straight through.
+
+### Added — hosted email (`ccp_email_domain`, `ccp_email_account`, `ccp_email_alias`, #63)
+
+- `ccp_email_domain` — `name` (Required, ForceNew) and `wait_for_verification`.
+  Computed: `status`, `verified_at`, `dkim_generated_at`, `externally_managed`,
+  `accounts_count`, `aliases_count`, `verification`, `dns_records` and
+  `client_config`. A domain is created **on hold**: `verification` carries the
+  record that blocks activation, and `dns_records` the `MX`, SPF, DKIM and DMARC
+  lines expected in the public zone, each with the state observed there.
+- `ccp_email_account` — `address` (Required, ForceNew) and `password` (Required,
+  Sensitive, **write only** — changing it resets the mailbox password). Optional
+  `quota_gb`, `enabled`, `enable_imap`, `enable_pop`, `comment`,
+  `displayed_name`, `forward_enabled`, `forward_destination`, `forward_keep`.
+  All of them are `Optional + Computed`: the platform's update route reads an
+  omitted field as "leave it alone" and cannot un-set one, so removing an
+  attribute keeps what is in place rather than recording a `null` the platform
+  never applied. A quota in particular is changed, never released.
+  Computed: `quota_bytes` (the billing basis), `usage_bytes`,
+  `usage_updated_at`, `is_system_managed`, `send_as_any_address`,
+  `send_as_pending`, `client_config`.
+- `ccp_email_alias` — `address` (Required, ForceNew) and `destinations`
+  (Required list), `wildcard`, `comment`. Declaring `*@domain` with
+  `wildcard = false` is rejected at plan time: the two would be read
+  differently by the platform and by the mail server.
+- Data sources `ccp_email_domain`, `ccp_email_domains`, `ccp_email_accounts`
+  and `ccp_email_aliases`. No password appears in any of them.
+
+### Changed — isolated networks are documented, not refused (#64)
+
+Since the platform preloads node images and serves name resolution from inside
+the network, a `ccp_k8s_cluster` runs in an **isolated** subnet. The provider
+carries no plan-time guard against it, and a regression test now keeps it that
+way.
+
+- `ccp_vnet.snat` (resource and data source) is documented as the one setting
+  that distinguishes an isolated network: `true` reaches the internet and can
+  carry a public address, `false` is isolated and **no public address can be
+  attached** to anything in it.
+- `docs/resources/k8s_cluster.md` gains an isolated-network example and states
+  what it rules out (`apiserver_public_ip_id`, `ingress_public_ip_id`,
+  `ingress_controller_scope = "external"`).
+
+### Changed — version pins in examples and docs
+
+All HCL examples, `README.md` and `docs/index.md` moved from `~> 5.0` to
+`~> 6.3`. They had been left behind by the `v6.x` releases, so a copy-pasted
+snippet pinned users to a line that does not contain these resources.
+
 ### Added — resource scheduler (`ccp_schedule`)
 
 New `ccp_schedule` resource (and `ccp_schedule` data source) to define recurring
