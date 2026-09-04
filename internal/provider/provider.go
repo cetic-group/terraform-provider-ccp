@@ -24,6 +24,10 @@ import (
 	dsdbvalkeyinstance "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbvalkeyinstance"
 	dsdnsrecords "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dnsrecords"
 	dsdnszone "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dnszone"
+	dsemailaccounts "github.com/cetic-group/terraform-provider-ccp/internal/datasources/emailaccounts"
+	dsemailaliases "github.com/cetic-group/terraform-provider-ccp/internal/datasources/emailaliases"
+	dsemaildomain "github.com/cetic-group/terraform-provider-ccp/internal/datasources/emaildomain"
+	dsemaildomains "github.com/cetic-group/terraform-provider-ccp/internal/datasources/emaildomains"
 	dsiampolicydocument "github.com/cetic-group/terraform-provider-ccp/internal/datasources/iampolicydocument"
 	dsiamrole "github.com/cetic-group/terraform-provider-ccp/internal/datasources/iamrole"
 	dsipaaspool "github.com/cetic-group/terraform-provider-ccp/internal/datasources/ipaaspool"
@@ -75,6 +79,9 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/dbvalkeyinstance"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/dnsrecord"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/dnszone"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/emailaccount"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/emailalias"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/emaildomain"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/iamrole"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/iamroleassignment"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/ipaaspool"
@@ -251,6 +258,10 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		// Private DNS (#1387)
 		dnszone.New,
 		dnsrecord.New,
+		// Hosted email (#932)
+		emaildomain.New,
+		emailaccount.New,
+		emailalias.New,
 	}
 }
 
@@ -316,6 +327,11 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsapikey.New,
 		// Secrets
 		dssecret.New,
+		// Hosted email
+		dsemaildomain.New,
+		dsemaildomains.New,
+		dsemailaccounts.New,
+		dsemailaliases.New,
 		// Scheduler
 		dsschedule.New,
 	}
