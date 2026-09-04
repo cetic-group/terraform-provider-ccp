@@ -52,10 +52,14 @@ resource "ccp_email_account" "archive" {
 
 ### Optional
 
-- `quota_gb` - (Optional) Space reserved for the mailbox, in gigabytes (1 to 1024). Omit to take the
-  platform default. Changed in place, but **never below what the mailbox already holds** — the
-  platform refuses that. Not computed on purpose: this is what you asked for, while `quota_bytes`
-  reports what was actually reserved.
+- `quota_gb` - (Optional, Computed) Space reserved for the mailbox, in gigabytes (1 to 1024). Omit
+  on creation to take the platform default. Changed in place, but **never below what the mailbox
+  already holds** — the platform refuses that.
+
+  ~> **A quota is changed, never un-set.** The platform's update route reads an omitted quota as
+  "leave it alone"; it has no way to release one. Removing the attribute therefore keeps the space
+  already reserved — and billed. Write the value you want instead. `quota_bytes` reports what was
+  actually reserved, to the byte.
 - `enabled` - (Optional, Computed) Whether the mailbox accepts logins and deliveries. Defaults to
   `true`. Turning it off deletes nothing and frees nothing: the space stays reserved, so it stays
   billed.

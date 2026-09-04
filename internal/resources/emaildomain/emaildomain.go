@@ -45,11 +45,15 @@ type emailDomainResource struct{ client *client.Client }
 
 // A record published at a registrar takes minutes to become visible, and the
 // platform re-resolves it on each attempt.
-const (
-	verifyTimeout     = 20 * time.Minute
-	verifyInterval    = 30 * time.Second
-	deleteWaitTimeout = 5 * time.Minute
+//
+// Variables rather than constants so a test can exercise the timeout path
+// without waiting twenty minutes for it. Nothing else writes them.
+var (
+	verifyTimeout  = 20 * time.Minute
+	verifyInterval = 30 * time.Second
 )
+
+const deleteWaitTimeout = 5 * time.Minute
 
 // DNSRecordAttrTypes mirrors one expected DNS record. Exported so the data
 // source builds the identical shape from the identical API payload.

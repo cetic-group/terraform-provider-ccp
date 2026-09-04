@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -52,6 +53,10 @@ type emailAccountResource struct{ client *client.Client }
 const (
 	passwordMinLength = 12
 	passwordMaxLength = 128
+	// The platform stores `quota_gb * gibibyte` exactly, and bills on the
+	// result. The two units are not interchangeable, which is why they are two
+	// attributes here — and why converting between them needs a stated rule.
+	gibibyte = 1024 * 1024 * 1024
 )
 
 // Deliberately loose — one shape check, `local@domain`, and nothing more.
@@ -131,16 +136,33 @@ func (r *emailAccountResource) Schema(_ context.Context, _ resource.SchemaReques
 					stringvalidator.LengthBetween(passwordMinLength, passwordMaxLength),
 				},
 			},
+			// Optional AND Computed, for the same reason as `comment` below: the
+			// update route reads an omitted quota as "leave it alone" — it cannot
+			// un-set one.
+			//
+			// Left plain Optional, removing the attribute after having set it
+			// planned `20 → null`, the API ignored the absent field, and the
+			// mailbox stayed reserved — and BILLED — at 20 GiB while the state
+			// recorded null. The next plan then converged on that null, so nothing
+			// ever surfaced the gap again: a silent divergence, which is worse than
+			// a diff that keeps coming back.
+			//
+			// Computed makes the removal mean "keep what is reserved", which is
+			// what the platform actually does. To go back to the platform default,
+			// write that value explicitly — a quota is changed, never un-set.
 			"quota_gb": schema.Int64Attribute{
 				MarkdownDescription: "Space reserved for the mailbox, in gigabytes (1 to 1024). " +
-					"Omit to take the platform default. Changed in place, but **never below what " +
-					"the mailbox already holds** — the platform refuses that.\n\n" +
-					"Not computed on purpose: this is what you asked for. What was actually " +
-					"reserved is reported in `quota_bytes`.",
+					"Omit on creation to take the platform default. Changed in place, but " +
+					"**never below what the mailbox already holds** — the platform refuses that.\n\n" +
+					"~> A quota is changed, never un-set: removing the attribute keeps the space " +
+					"already reserved (and billed). Write the value you want instead.\n\n" +
+					"`quota_bytes` reports what was actually reserved, to the byte.",
 				Optional: true,
+				Computed: true,
 				Validators: []validator.Int64{
 					int64validator.Between(1, 1024),
 				},
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether the mailbox accepts logins and deliveries. Turning it " +
@@ -301,12 +323,38 @@ func (r *emailAccountResource) Configure(_ context.Context, req resource.Configu
 	r.client = c
 }
 
+// quotaGBFrom expresses the space the platform actually reserved, in whole
+// gigabytes.
+//
+// The configured value wins when it matches to the byte: it is what the
+// operator wrote, and rewriting it would be churn — worse, on a Required-like
+// value it is what raises "inconsistent result after apply".
+//
+// Otherwise the RESERVED space is reported, rounded UP. Rounding up is the
+// platform's own convention when it has to express a byte quota in gigabytes,
+// and it is the safe direction: understating a quota that is billed in full
+// would invite the operator to write back a smaller number, which the platform
+// would then apply.
+func quotaGBFrom(quotaBytes int64, configured types.Int64) types.Int64 {
+	if !configured.IsNull() && !configured.IsUnknown() && configured.ValueInt64()*gibibyte == quotaBytes {
+		return configured
+	}
+	if quotaBytes <= 0 {
+		return types.Int64Null()
+	}
+	return types.Int64Value((quotaBytes + gibibyte - 1) / gibibyte)
+}
+
 // stateFrom maps the API mailbox onto the model.
 //
-// `password` and `quota_gb` are carried over from the configuration, not from
-// the response: the API returns neither. Writing them from the response would
-// blank the password and lose the requested quota — the shape of CLAUDE.md
-// pitfall #5, with a secret at stake.
+// `password` is carried over from the configuration, not from the response: no
+// response of this API carries one, and writing it from the response would
+// blank the only copy Terraform holds — the shape of CLAUDE.md pitfall #5, with
+// a secret at stake.
+//
+// `quota_gb` is NOT carried over blindly. The API answers in bytes, and the
+// space it reserved is the truth: taking the configured value on faith is what
+// let a removed attribute record `null` over a mailbox still reserved at 20 GiB.
 func stateFrom(ctx context.Context, a *client.EmailAccount, password types.String, quotaGB types.Int64) (emailAccountModel, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -320,7 +368,7 @@ func stateFrom(ctx context.Context, a *client.EmailAccount, password types.Strin
 		ID:                 types.StringValue(a.ID),
 		Address:            types.StringValue(a.Address),
 		Password:           password,
-		QuotaGB:            quotaGB,
+		QuotaGB:            quotaGBFrom(a.QuotaBytes, quotaGB),
 		Enabled:            types.BoolValue(a.Enabled),
 		EnableIMAP:         types.BoolValue(a.EnableIMAP),
 		EnablePOP:          types.BoolValue(a.EnablePOP),
@@ -371,6 +419,19 @@ func optBool(v types.Bool) *bool {
 	}
 	b := v.ValueBool()
 	return &b
+}
+
+// quotaChange returns the quota to send, or nil when the plan asks for exactly
+// what is already reserved.
+func quotaChange(planned types.Int64, reservedBytes types.Int64) *int64 {
+	if planned.IsNull() || planned.IsUnknown() {
+		return nil
+	}
+	want := planned.ValueInt64()
+	if !reservedBytes.IsNull() && !reservedBytes.IsUnknown() && want*gibibyte == reservedBytes.ValueInt64() {
+		return nil
+	}
+	return &want
 }
 
 func optInt64(v types.Int64) *int64 {
@@ -496,7 +557,14 @@ func (r *emailAccountResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	patch := client.EmailAccountUpdateRequest{
-		QuotaGB:        optInt64(plan.QuotaGB),
+		// Sent only when the operator actually wants a DIFFERENT quota.
+		//
+		// `quota_gb` is now always concrete in the plan (Optional + Computed), so
+		// forwarding it unconditionally would resend, on every unrelated edit, the
+		// value derived from the reserved bytes. On a quota that is not a whole
+		// number of gigabytes that derived value is rounded UP — resending it would
+		// quietly GROW the mailbox, and the bill, because someone renamed a sender.
+		QuotaGB:        quotaChange(plan.QuotaGB, state.QuotaBytes),
 		Enabled:        optBool(plan.Enabled),
 		Comment:        optString(plan.Comment),
 		DisplayedName:  optString(plan.DisplayedName),

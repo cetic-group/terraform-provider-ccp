@@ -52,6 +52,10 @@ resources:
   Sensitive, **write only** — changing it resets the mailbox password). Optional
   `quota_gb`, `enabled`, `enable_imap`, `enable_pop`, `comment`,
   `displayed_name`, `forward_enabled`, `forward_destination`, `forward_keep`.
+  All of them are `Optional + Computed`: the platform's update route reads an
+  omitted field as "leave it alone" and cannot un-set one, so removing an
+  attribute keeps what is in place rather than recording a `null` the platform
+  never applied. A quota in particular is changed, never released.
   Computed: `quota_bytes` (the billing basis), `usage_bytes`,
   `usage_updated_at`, `is_system_managed`, `send_as_any_address`,
   `send_as_pending`, `client_config`.
