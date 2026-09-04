@@ -49,6 +49,44 @@ Default behavior:
 - Apiserver private only (no public IP).
 - Pod CIDR `10.244.0.0/16`, service CIDR `10.96.0.0/12`.
 
+## Example Usage — isolated network (no internet access)
+
+A cluster can run in an **isolated** subnet — one whose `snat` is `false`. The nodes no longer need
+internet access to start: their images are preloaded and name resolution is served from inside the
+network.
+
+```hcl
+resource "ccp_vnet" "airgap" {
+  vpc_id = ccp_vpc.main.id
+  name   = "airgap-workers"
+  cidr   = "10.30.0.0/24"
+  snat   = false # isolated: no outbound internet access
+}
+
+resource "ccp_k8s_cluster" "airgap" {
+  name            = "airgap-cluster"
+  region          = "RNN"
+  vpc_id          = ccp_vpc.main.id
+  vnet_id         = ccp_vnet.airgap.id
+  k8s_version     = "v1.34.8"
+  os_template_key = "kube-v1-34-8"
+
+  # Keep the ingress internal: `external` needs a public address, which an
+  # isolated subnet cannot have.
+  ingress_controller_scope = "internal"
+}
+```
+
+~> **No public address can be attached in an isolated subnet.** `apiserver_public_ip_id`,
+`ingress_public_ip_id` and `ingress_controller_scope = "external"` all require a public address, and
+the platform rejects attaching one to a resource of a subnet with `snat = false`. Reach such a
+cluster over a private path — [`ccp_vpn_gateway`](vpn_gateway.md), [`ccp_bastion`](bastion.md), or a
+peering — or set `snat = true` on the subnet.
+
+~> Everything the workloads pull must be reachable without leaving the network. A private
+[`ccp_registry`](registry.md) exposed inside the network covers images; anything else fetched from
+the internet at runtime will not resolve.
+
 ## Example Usage — production HA with public ingress
 
 ```hcl
@@ -102,7 +140,7 @@ resource "ccp_k8s_cluster" "prod" {
 - `name` - Name of the Kubernetes cluster.
 - `region` - (Forces new resource) Region where the cluster is created. One of: `RNN`, `PAR`, `ABJ`.
 - `vpc_id` - (Forces new resource) UUID of the VPC.
-- `vnet_id` - (Forces new resource) UUID of the VNet where worker nodes attach.
+- `vnet_id` - (Forces new resource) UUID of the VNet where worker nodes attach. An **isolated** subnet (`snat = false`) is accepted — see the isolated-network example above for what it rules out.
 - `k8s_version` - Kubernetes version (e.g. `"v1.34.8"`). Mutable — triggers a rolling upgrade when changed. Must match an `os_template_key` available in the region — list available versions via the [`ccp_k8s_templates`](../data-sources/k8s_templates.md) data source.
 - `os_template_key` - (Forces new resource) OS template key for worker nodes (e.g. `"kube-v1-34-8"`). Must match the chosen `k8s_version` and be available in the region.
 
@@ -133,7 +171,7 @@ resource "ccp_k8s_cluster" "prod" {
 The apiserver always has a private endpoint (auto-allocated from the VNet CIDR or pinned via `apiserver_internal_ip`). It can additionally be exposed publicly via `apiserver_public_ip_id`.
 
 - `apiserver_internal_ip` - (Forces new resource) Pinned private IP for the apiserver. Defaults to auto-allocated within the VNet.
-- `apiserver_public_ip_id` - UUID of a public IP attached to the apiserver (public kubeconfig). **Mutable** — set the UUID to attach, remove it (`null`) to detach, change it to rotate, all **without recreating the cluster**. Works both at create time and later. The IP must be in the same region as the cluster and come from a routed BYOIP pool; the cluster VNet must have SNAT enabled.
+- `apiserver_public_ip_id` - UUID of a public IP attached to the apiserver (public kubeconfig). **Mutable** — set the UUID to attach, remove it (`null`) to detach, change it to rotate, all **without recreating the cluster**. Works both at create time and later. The IP must be in the same region as the cluster and come from a routed BYOIP pool. **Not available in an isolated subnet**: the platform refuses to attach a public address in a subnet whose `snat` is `false`.
 
 > **Migration (provider v3.0.0)**: the former separate `public_ip_id` attribute is removed — `apiserver_public_ip_id` is now the single, mutable knob for the apiserver public IP. If you used `public_ip_id`, rename it to `apiserver_public_ip_id`.
 

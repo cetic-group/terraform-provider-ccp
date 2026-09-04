@@ -62,16 +62,16 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `autoscaler_scale_down_unneeded_time` — Cluster Autoscaler — duration a node must be unneeded before removal.
 - `ingress_controller_enabled` — Whether an ingress controller is deployed in the cluster.
 - `ingress_controller_scope` — `internal` (VNet only) or `external` (public IP).
-- `ingress_controller_class` — `incluster` (Cilium IPAM) or `managed` (CETIC Cloud LXC LB).
+- `ingress_controller_class` — `incluster` (ingress deployed inside the cluster, no extra load balancer) or `managed` (a dedicated CETIC Cloud load balancer in front of the cluster).
 - `ingress_public_ip_id` — UUID of the public IP pre-reserved for the ingress controller (nullable).
 - `ingress_public_ip_address` — Effective public IP address of the ingress (nullable).
 - `ingress_internal_ip` — VNet IP pre-reserved for the ingress controller (nullable).
-- `tier` — Topology of the LXC proxy fronting the apiserver:
-    * `dev` — single LXC proxy (SPOF acceptable in dev/staging).
-    * `prod` — 2 LXC proxies (primary + secondary) with Keepalived VRRP and a floating VIP (HA).
-- `proxy_secondary_vmid` — Proxmox VMID of the secondary LXC proxy. Null when `tier = "dev"`.
-- `proxy_secondary_node` — Proxmox node hosting the secondary LXC proxy. Null when `tier = "dev"`.
-- `proxy_vip_vnet` — Keepalived VRRP floating VIP shared between the LXC proxies. Null when `tier = "dev"`.
+- `tier` — Topology of the apiserver frontend:
+    * `dev` — single frontend (SPOF acceptable in dev/staging).
+    * `prod` — redundant frontend (primary + secondary) with automatic failover on a floating address, providing HA at the apiserver layer.
+- `proxy_secondary_vmid` — Internal identifier of the secondary apiserver frontend. Null when `tier = "dev"`.
+- `proxy_secondary_node` — Internal placement of the secondary apiserver frontend. Null when `tier = "dev"`.
+- `proxy_vip_vnet` — Floating address on the VNet shared between the two apiserver frontends — the address the kubeconfig points at when HA is active. Null when `tier = "dev"`.
 - `status` — `creating`, `provisioning`, `active`, `updating`, `error`, or `deleting`.
 - `error_message` — Last error message reported by the provisioning workflow (nullable).
 - `tags` — Free-form tags.

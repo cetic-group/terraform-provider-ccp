@@ -64,7 +64,14 @@ func (d *vnetDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 			"gateway":    schema.StringAttribute{Computed: true},
 			"dhcp_start": schema.StringAttribute{Computed: true},
 			"dhcp_end":   schema.StringAttribute{Computed: true},
-			"snat":       schema.BoolAttribute{Computed: true},
+			"snat": schema.BoolAttribute{
+				Computed: true,
+				MarkdownDescription: "Outbound mode of the subnet, and the one setting that " +
+					"distinguishes an isolated network: `true` means resources reach the internet " +
+					"and a public address can be attached to them; `false` means an **isolated " +
+					"subnet** — no outbound internet access, and no public address can be attached " +
+					"to anything in it.",
+			},
 			"isolated":   schema.BoolAttribute{Computed: true},
 			"status":     schema.StringAttribute{Computed: true},
 			"tags":       schema.ListAttribute{ElementType: types.StringType, Computed: true},
