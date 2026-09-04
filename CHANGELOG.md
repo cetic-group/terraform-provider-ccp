@@ -4,7 +4,7 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v6.3.1 (2026-09-04)
 
 ### Changed — an isolated subnet no longer refuses a startup script (#67)
 
