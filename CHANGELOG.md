@@ -4,6 +4,63 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.4.0 (2026-09-05)
+
+### Fixed — catalogue plans are reachable again (#71)
+
+`ccp_container_instance`, `ccp_vm_instance` and `ccp_load_balancer` froze the
+plan list in the provider schema:
+
+```
+Attribute plan value must be one of: ["nano" "micro" "small" "medium" "large" "xlarge"]
+```
+
+The error was raised **at schema validation, before any API call**, so no plan
+added to the platform catalogue was reachable without a provider release — the
+`c-*` (CPU, 1 GB per vCPU) and `m-*` (memory) families included, as well as
+`tiny`, `small-plus`, `medium-plus` and `xxxlarge` in the balanced family.
+
+For a container, `c-nano` (2 vCPU / 2 GB / 20 GB) had to be replaced by `small`
+(same compute, twice the disk): **+67 % on every container's bill**, with
+nothing in return.
+
+The validator is gone from those three resources; the API decides, and its 422
+enumerates the valid keys for the tenant.
+
+⚠️ **Checked on every resource that takes a plan, and the answer differs.**
+`ccp_vpn_gateway` and `ccp_bastion` **keep** their validator: the API itself
+freezes `("small","medium","large")` and refuses anything else with a 422 —
+removing it there would only move an identical refusal from plan time to apply
+time, losing the early feedback. `ccp_k8s_node_pool`, `ccp_k8s_cluster`,
+`ccp_application_gateway` and the `ccp_db_*` family already carried none. The
+`tier` attributes of `ccp_k8s_cluster` and `ccp_dns_zone` (`dev`/`prod`) are a
+genuine two-value enum, not a catalogue, and keep theirs.
+
+### Fixed — `ccp_object_bucket` no longer returns an unknown value after apply (#72)
+
+With a `write`-scoped API key the resource failed **every** apply:
+
+```
+Error: Provider returned invalid result object after apply
+  […] still indicated an unknown value for […].access_key.
+  All values must be known after apply, so this is always a bug in the provider
+```
+
+`GET /v1/buckets/{id}/credentials` hands out the tenant's S3 **master key**, so
+the platform denies it to `write` keys by design — an explicit Deny beats any
+Allow, and attaching another role changes nothing. Facing that 403 the provider
+left `access_key` and `secret_key` **unknown**, which the protocol forbids.
+
+They are now **null**, which is the truth: this key cannot read them. The bucket
+is created and fully usable; only two optional attributes are empty. The
+warning also tells a permanent refusal (403) apart from a transient one
+(404/409) — "re-run once provisioning settles" was sending users chasing a
+latency that does not exist.
+
+`docs/resources/object_bucket.md` did not document those two attributes at all;
+it now does, and points to `ccp_object_storage_key` for bucket-scoped
+credentials rather than handing the master key to a configuration.
+
 ## v6.3.1 (2026-09-04)
 
 ### Changed — an isolated subnet no longer refuses a startup script (#67)
