@@ -48,6 +48,24 @@ In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the bucket.
 - `endpoint_url` - S3 endpoint URL for this region (e.g. `https://s3-rnn.cloud.cetic-group.com`). Use this as the `endpoint_url` in your S3 client configuration.
+- `access_key` - S3 access key. **Sensitive.** Null when the API key running Terraform is not allowed to read it — see the note below.
+- `secret_key` - S3 secret key paired with `access_key`. **Sensitive.** Same nullability rule.
+
+### Credentials and API key scope
+
+`access_key` and `secret_key` are read from `GET /v1/buckets/{id}/credentials`,
+which hands out the tenant's S3 **master key** — it opens every bucket of the
+region, not just this one. The platform therefore denies that endpoint to
+`write`-scoped API keys: `bucket:GetCredentials` sits in the
+`READ_ONLY_ALL_SENSITIVE_DISCLOSURE_DENY` list, and a `write` key inherits both
+`Member` and `ReadOnlyAll`, where an explicit Deny beats any Allow.
+
+With such a key the bucket is created normally and both attributes are **null**,
+with a warning explaining why. This is a permanent IAM decision, not a transient
+failure: re-running `terraform apply` or attaching another role will not change
+it. Read the credentials with an admin-scoped key or from the console — or
+better, issue a bucket-scoped key with `ccp_object_storage_key` instead of
+handing the master key to your configuration.
 
 ## Import
 

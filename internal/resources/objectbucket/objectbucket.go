@@ -322,15 +322,17 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	// Fetch credentials. Bucket is `active` per the poll above so the API
-	// should hand them out; if it 409s we leave them blank with a warning so
-	// the user can re-apply later.
+	// Fetch credentials. The bucket is `active` per the poll above, so the API
+	// should hand them out — but a `write`-scoped key is denied by design.
+	//
+	// ⚠️ On failure the two attributes MUST be written, not left as they are:
+	// they are Computed, hence unknown at this point, and returning unknown
+	// after apply is a protocol violation Terraform reports as a provider bug.
 	if err := r.refreshCredentials(ctx, &plan, fresh); err != nil {
+		blankCredentials(&plan)
 		resp.Diagnostics.AddWarning(
 			"Object bucket credentials not available",
-			fmt.Sprintf("Bucket %s is active but the credentials endpoint returned: %s. "+
-				"Re-run `terraform apply` once provisioning settles to populate "+
-				"`access_key` and `secret_key`.", created.ID, err.Error()),
+			credentialsUnavailableDetail(created.ID, err),
 		)
 	}
 
@@ -379,11 +381,14 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 	if got.Status == client.BucketStatusActive {
 		if err := r.refreshCredentials(ctx, &state, got); err != nil {
 			// Soft failure: keep prior creds, surface a warning.
+			// Soft failure: prior credentials stay in state. On a 403 they
+			// were never readable by this key, so state simply keeps whatever
+			// it had — null after a create under the same key.
 			resp.Diagnostics.AddWarning(
 				"Could not refresh object bucket credentials",
-				fmt.Sprintf("Bucket %s is active but the credentials endpoint "+
-					"returned: %s. Existing `access_key` / `secret_key` in state "+
-					"are left untouched.", got.ID, err.Error()),
+				credentialsUnavailableDetail(got.ID, err)+
+					" Existing `access_key` / `secret_key` in state are left "+
+					"untouched.",
 			)
 		}
 	}
@@ -530,6 +535,55 @@ func (r *objectBucketResource) ImportState(ctx context.Context, req resource.Imp
 // fails so the caller can choose to surface a warning vs. abort. When src
 // is non-active the call is skipped and the function returns nil — callers
 // that care should pre-check src.Status.
+// blankCredentials pins `access_key` / `secret_key` to NULL.
+//
+// ⚠️ **The whole point of #72.** These two attributes are Computed, so before
+// apply Terraform holds them as *unknown*. When the credentials endpoint
+// refuses, leaving them untouched keeps them unknown — and the protocol
+// forbids that after apply:
+//
+//	Error: Provider returned invalid result object after apply
+//	  […] still indicated an unknown value for […].access_key.
+//	  All values must be known after apply, so this is always a bug in
+//	  the provider […]
+//
+// Null is not a fallback here, it is the truth: this API key cannot read them.
+// The bucket itself is fully usable — only two optional attributes are empty.
+func blankCredentials(dst *objectBucketResourceModel) {
+	dst.AccessKey = types.StringNull()
+	dst.SecretKey = types.StringNull()
+}
+
+// credentialsUnavailableDetail explains why credentials are missing, telling a
+// permanent refusal apart from a transient one.
+//
+// ⚠️ 403 is deliberate and no `write`-scoped key can escape it:
+// `GET /v1/buckets/{id}/credentials` hands out the tenant's S3 **master key**,
+// so `bucket:GetCredentials` sits in the platform's
+// READ_ONLY_ALL_SENSITIVE_DISCLOSURE_DENY list. A `write` key inherits both
+// `Member` and `ReadOnlyAll`, and an explicit Deny beats any Allow — attaching
+// another role changes nothing.
+//
+// Telling the user to "re-run once provisioning settles" on that path sends
+// them chasing a latency that does not exist.
+func credentialsUnavailableDetail(id string, err error) string {
+	if client.IsForbidden(err) {
+		return fmt.Sprintf(
+			"Bucket %s is active, but this API key is not allowed to read its "+
+				"S3 credentials: %s\n\n"+
+				"This is a permanent IAM decision, not a transient failure — the "+
+				"credentials endpoint hands out the tenant's master key, so it is "+
+				"denied to `write`-scoped keys and re-running apply will not help. "+
+				"`access_key` and `secret_key` are therefore null; the bucket "+
+				"itself is fully usable. Read them with an admin-scoped key, or "+
+				"from the console.", id, err.Error())
+	}
+	return fmt.Sprintf(
+		"Bucket %s is active but the credentials endpoint returned: %s. "+
+			"Re-run `terraform apply` once provisioning settles to populate "+
+			"`access_key` and `secret_key`.", id, err.Error())
+}
+
 func (r *objectBucketResource) refreshCredentials(ctx context.Context, dst *objectBucketResourceModel, src *client.ObjectBucket) error {
 	if src.Status != client.BucketStatusActive {
 		return nil

@@ -78,6 +78,17 @@ func IsNotFound(err error) bool {
 	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound
 }
 
+// IsForbidden reports whether err is an *APIError with HTTP 403.
+//
+// A 403 from CCP is an IAM decision, never a transient condition: an explicit
+// Deny always beats an Allow, so retrying or attaching another role changes
+// nothing. Callers must therefore treat it differently from 404/409, which do
+// clear up once provisioning settles (#72).
+func IsForbidden(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden
+}
+
 // IsConflict reports whether err is an APIError with status 409.
 func IsConflict(err error) bool {
 	var apiErr *APIError

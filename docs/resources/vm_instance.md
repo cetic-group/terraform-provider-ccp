@@ -70,7 +70,7 @@ resource "ccp_vm_instance" "win" {
 
 - `name` - (Required) Name of the VM instance.
 - `region` - (Required, Forces new resource) Region where the VM is created. One of: `RNN`, `PAR`, `ABJ`.
-- `plan` - (Required) Instance plan controlling vCPU, RAM, and disk. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
+- `plan` - (Required, Forces new resource) Instance plan key controlling vCPU, RAM and disk, e.g. `small`, `c-nano` (CPU family, 1 GB per vCPU), `m-medium` (memory family). Validated server-side against the live plan catalog (`compute_plans`) — no hardcoded list, so plans added to the catalogue are usable without a provider release. An unknown key returns a 422 that enumerates the valid ones.
 - `template` - (Required, Forces new resource) VM template key (e.g. `ubuntu-24.04`, `debian-12`). Available templates are listed in the console under **Compute → Templates**.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach the VM to.
 - `root_password` - (Required, Sensitive, Forces new resource) Root password injected via cloud-init. Length 8–128 chars. Mark the value as sensitive (`sensitive = true` on the variable) and prefer passing it via a TF variable, environment, or secret backend.
