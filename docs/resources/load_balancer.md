@@ -170,7 +170,7 @@ resource "ccp_load_balancer" "api_ionos" {
 
 ### Optional
 
-- `plan` - (Optional, Forces new resource) Capacity plan. One of: `small` (default), `medium`, `large`. Changing the plan forces replacement.
+- `plan` - (Optional, Forces new resource) Capacity plan key, e.g. `small` (default), `medium`, `large`. Resolved server-side against the live plan catalog (`compute_plans`, key `lb-<plan>`, kind `lb`) — no hardcoded list, so plans added to the catalogue are usable without a provider release. Changing the plan forces replacement.
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Remove to detach.
 - `tags` - (Optional) Free-form tags (max 60 tags, max 50 chars each).
 - `listener` - (Optional) One or more `listener` blocks. See [Listener Reference](#listener-reference) below.

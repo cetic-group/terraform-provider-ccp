@@ -156,12 +156,12 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"plan": schema.StringAttribute{
-				MarkdownDescription: "Compute plan: `nano`, `micro`, `small`, `medium`, " +
-					"`large`, or `xlarge`. Each plan maps to a fixed (cores, memory, disk) tuple.",
+				MarkdownDescription: "Compute plan key, e.g. `small`, `c-nano` (CPU family), " +
+					"`m-medium` (memory family). Each plan maps to a fixed " +
+					"(cores, memory, disk) tuple. Validated server-side against the live " +
+					"plan catalog (`compute_plans`) — no hardcoded list, so plans added to " +
+					"the catalogue are usable without a provider release.",
 				Required: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("nano", "micro", "small", "medium", "large", "xlarge"),
-				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

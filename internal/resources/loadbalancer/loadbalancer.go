@@ -109,14 +109,14 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"plan": schema.StringAttribute{
-				MarkdownDescription: "Capacity plan: `small` (default), `medium` or `large`. " +
+				MarkdownDescription: "Capacity plan key, e.g. `small` (default), `medium`, " +
+					"`large`. Resolved server-side against the live plan catalog " +
+					"(`compute_plans`, key `lb-<plan>`, kind `lb`) — no hardcoded list, so " +
+					"plans added to the catalogue are usable without a provider release. " +
 					"Changing the plan forces replacement.",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString("small"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("small", "medium", "large"),
-				},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"vnet_id": schema.StringAttribute{
