@@ -4,6 +4,50 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.6.0 (2026-09-05)
+
+### Added — `ccp_bucket_key`, and object storage keys work again (#78)
+
+`ccp_object_storage_key` could no longer create anything: since IAM S3 v2
+(2026-05-09) the platform stopped issuing tenant-wide keys, and
+`POST /v1/object-storage/keys` returns **410 Gone**. The resource was unusable
+for creation, whatever the configuration.
+
+`ccp_bucket_key` targets `POST /v1/buckets/{bucket_id}/keys` and takes the same
+arguments — `label`, `access_level`, `expires_in_days` — plus the `bucket_id`
+it is scoped to. It also exports `s3_bucket_name`, which differs from the
+displayed name and is the one external tools expect (Terraform S3 backend,
+`aws` CLI, `boto3`).
+
+```hcl
+resource "ccp_bucket_key" "backup_writer" {
+  bucket_id       = ccp_object_bucket.backup.id
+  label           = "backup-writer"
+  access_level    = "readwrite"
+  expires_in_days = 365
+}
+```
+
+Three API behaviours shaped the design, and each is worth knowing:
+
+- **The reveal endpoint is single-use.** `GET .../keys/{id}/credentials` marks
+  the key as revealed and every later call returns 410. The provider never
+  calls it — not on refresh, not on import — and keeps what creation returned.
+  An imported key therefore leaves `secret_key` **null**, permanently.
+- **A revoked key still answers 200.** Deletion is two-phase: the first DELETE
+  sets `revoked_at`, the second removes the record. A read treats a revoked key
+  as gone, so a revocation made outside Terraform no longer passes unnoticed.
+- **`access_level` changes in place** — the API exposes a PATCH for that field
+  alone, so tightening or widening a key does not rotate its secret. `label` and
+  `expires_in_days` force replacement: the API has no route to change them.
+
+### Changed — the legacy resource says what to do instead
+
+`ccp_object_storage_key` now refuses creation **at plan time**, naming its
+replacement and showing the equivalent configuration, rather than letting a raw
+410 surface in the middle of an apply. It still reads, updates and destroys keys
+created before 2026-05-09, so their lifecycle stays manageable.
+
 ## v6.5.0 (2026-09-05)
 
 ### Added — a scale set's members are readable, so it can sit behind a gateway (#75)
