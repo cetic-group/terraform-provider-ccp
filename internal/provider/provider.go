@@ -67,6 +67,7 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/applicationgateway"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/bastion"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/blockvolume"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/bucketkey"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/budget"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/commit"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/containerinstance"
@@ -240,6 +241,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		ipaaspool.New,
 		quotarequest.New,
 		objectstoragekey.New,
+		bucketkey.New,
 		containersnapshot.New,
 		vmsnapshot.New,
 		vnetipresv.New,

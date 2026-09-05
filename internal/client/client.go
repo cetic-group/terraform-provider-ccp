@@ -1737,3 +1737,36 @@ func (c *Client) UpdateCustomTemplate(ctx context.Context, id string, req Custom
 func (c *Client) DeleteCustomTemplate(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/custom-templates/"+id, nil, nil)
 }
+
+// ─── Clés S3 scopées par bucket (#78) ────────────────────────────────────────
+
+func (c *Client) CreateBucketKey(ctx context.Context, bucketID string, req BucketKeyCreateRequest) (*BucketKey, error) {
+	var out BucketKey
+	if err := c.do(ctx, http.MethodPost, "/v1/buckets/"+bucketID+"/keys", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetBucketKey(ctx context.Context, bucketID, keyID string) (*BucketKey, error) {
+	var out BucketKey
+	if err := c.do(ctx, http.MethodGet, "/v1/buckets/"+bucketID+"/keys/"+keyID, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) UpdateBucketKey(ctx context.Context, bucketID, keyID string, req BucketKeyPatchRequest) (*BucketKey, error) {
+	var out BucketKey
+	if err := c.do(ctx, http.MethodPatch, "/v1/buckets/"+bucketID+"/keys/"+keyID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteBucketKey révoque la clé. L'API ne la supprime pas : elle pose
+// `revoked_at`, et la clé reste listée. C'est voulu — une trace d'audit — mais
+// cela veut dire qu'un `GET` après suppression réussit encore.
+func (c *Client) DeleteBucketKey(ctx context.Context, bucketID, keyID string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/buckets/"+bucketID+"/keys/"+keyID, nil, nil)
+}
