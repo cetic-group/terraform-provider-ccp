@@ -1509,3 +1509,46 @@ type CustomTemplateUpdateRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
 }
+
+// ─── Clés S3 scopées par bucket (IAM S3 v2, #78) ─────────────────────────────
+//
+// Elles remplacent les clés « tenant-wide » de `ObjectStorageKey` : depuis le
+// 2026-05-09, `POST /v1/object-storage/keys` rend **410 Gone**, et une clé se
+// crée sur `POST /v1/buckets/{bucket_id}/keys`.
+
+type BucketKey struct {
+	ID              string     `json:"id"`
+	BucketID        string     `json:"bucket_id"`
+	Label           string     `json:"label"`
+	Region          string     `json:"region"`
+	AccessLevel     string     `json:"access_level"`
+	AccessKeyPrefix string     `json:"access_key_prefix"`
+	CreatedAt       time.Time  `json:"created_at"`
+	LastUsedAt      *time.Time `json:"last_used_at,omitempty"`
+	ExpiresAt       *time.Time `json:"expires_at,omitempty"`
+	RevokedAt       *time.Time `json:"revoked_at,omitempty"`
+	RevealedAt      *time.Time `json:"revealed_at,omitempty"`
+
+	// ⚠️ Les trois champs suivants ne sont renseignés QUE par la réponse de
+	// création. L'API ne les rend jamais en lecture : `GET .../credentials`
+	// existe mais il est à USAGE UNIQUE — le second appel rend 410 Gone pour
+	// toujours. Le provider ne l'appelle donc pas, et conserve ce qu'il a reçu
+	// à la création.
+	AccessKey   string `json:"access_key,omitempty"`
+	SecretKey   string `json:"secret_key,omitempty"`
+	EndpointURL string `json:"endpoint_url,omitempty"`
+	// S3BucketName est le nom du bucket CÔTÉ S3, différent du nom affiché :
+	// c'est lui qu'attendent les outils externes (backend Terraform, aws cli,
+	// boto3).
+	S3BucketName string `json:"s3_bucket_name,omitempty"`
+}
+
+type BucketKeyCreateRequest struct {
+	Label         string `json:"label"`
+	AccessLevel   string `json:"access_level,omitempty"`
+	ExpiresInDays *int   `json:"expires_in_days,omitempty"`
+}
+
+type BucketKeyPatchRequest struct {
+	AccessLevel string `json:"access_level"`
+}

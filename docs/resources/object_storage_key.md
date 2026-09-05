@@ -7,6 +7,14 @@ description: |-
 
 # ccp_object_storage_key (Resource)
 
+~> **This resource can no longer create a key.** Since IAM S3 v2 (2026-05-09)
+the platform issues bucket-scoped keys instead of tenant-wide ones, and
+`POST /v1/object-storage/keys` returns `410 Gone`. Use
+[`ccp_bucket_key`](bucket_key.md) for any new key. This page remains for the
+keys created before that date: reading, updating and destroying them still
+works, so their lifecycle stays manageable.
+
+
 Manages a scoped S3 access key (subuser) for object storage. Keys are scoped to a region and an access level, and are compatible with any S3 client or SDK. The `access_key` and `secret_key` credentials are returned **only at creation time** — the secret key cannot be retrieved afterwards.
 
 ~> **Important:** Store the `secret_key` output securely immediately after `terraform apply` (for example, in a secrets manager or Terraform Cloud variable). It cannot be recovered from the API after creation. If lost, destroy this resource and create a new key.

@@ -114,38 +114,32 @@ func (r *keyResource) Configure(_ context.Context, req resource.ConfigureRequest
 }
 
 func (r *keyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan keyModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	cr := client.ObjectStorageKeyCreateRequest{
-		Region:      plan.Region.ValueString(),
-		Label:       plan.Label.ValueString(),
-		AccessLevel: plan.AccessLevel.ValueString(),
-	}
-	if !plan.ExpiresInDays.IsNull() && !plan.ExpiresInDays.IsUnknown() {
-		v := int(plan.ExpiresInDays.ValueInt64())
-		cr.ExpiresInDays = &v
-	}
-	key, err := r.client.CreateObjectStorageKey(ctx, cr)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to create object storage key", err.Error())
-		return
-	}
-	state := keyModel{
-		ID:              types.StringValue(key.ID),
-		Region:          types.StringValue(key.Region),
-		Label:           types.StringValue(key.Label),
-		AccessLevel:     types.StringValue(key.AccessLevel),
-		ExpiresInDays:   plan.ExpiresInDays,
-		AccessKeyPrefix: types.StringValue(key.AccessKeyPrefix),
-		AccessKey:       types.StringValue(key.AccessKey),
-		SecretKey:       types.StringValue(key.SecretKey),
-		EndpointURL:     types.StringValue(key.EndpointURL),
-		CreatedAt:       types.StringValue(key.CreatedAt),
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	// ⚠️ **Cette ressource ne crée plus rien** (#78). Depuis IAM S3 v2
+	// (2026-05-09), `POST /v1/object-storage/keys` rend **410 Gone** : les clés
+	// « tenant-wide » ne sont plus émises. Laisser l'appel partir donnait un
+	// message d'API brut au milieu d'un apply, sans dire quoi faire.
+	//
+	// On refuse au plus tôt, en nommant le remplaçant. La ressource reste
+	// utilisable en LECTURE et en SUPPRESSION pour les clés d'avant cette date
+	// (`bucket_id IS NULL`), que ces routes servent toujours : casser leur
+	// gestion aurait été une seconde régression.
+	resp.Diagnostics.AddError(
+		"Tenant-wide S3 keys are no longer issued",
+		"`ccp_object_storage_key` can no longer create a key: the platform "+
+			"replaced tenant-wide keys with bucket-scoped ones (IAM S3 v2), and "+
+			"its creation endpoint now returns 410 Gone.\n\n"+
+			"Use `ccp_bucket_key` instead — same `label`, `access_level` and "+
+			"`expires_in_days`, plus the `bucket_id` it is scoped to:\n\n"+
+			"    resource \"ccp_bucket_key\" \"backup\" {\n"+
+			"      bucket_id       = ccp_object_bucket.backup.id\n"+
+			"      label           = \"backup-writer\"\n"+
+			"      access_level    = \"readwrite\"\n"+
+			"      expires_in_days = 365\n"+
+			"    }\n\n"+
+			"This resource still reads, updates and destroys keys created before "+
+			"2026-05-09, so existing ones keep working.",
+	)
+	return
 }
 
 func (r *keyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
