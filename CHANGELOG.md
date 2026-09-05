@@ -4,6 +4,66 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.5.0 (2026-09-05)
+
+### Added — a scale set's members are readable, so it can sit behind a gateway (#75)
+
+`data.ccp_container_scale_set` now exposes `containers`, and
+`data.ccp_vm_scale_set` exposes `vms`. Each entry carries `id`, `name`,
+`status` and `ip_address` — exactly what an Application Gateway target group
+member or a load balancer backend needs.
+
+Nothing changed server-side: `GET /v1/container-scale-sets/{id}` already
+returned `containers` and `GET /v1/vm-scale-sets/{id}` already returned `vms`.
+The provider was calling those endpoints and discarding the information, which
+left **no declarative path at all** between a scale set and a gateway —
+`ccp_appgw_target_group_member` only accepts `container_id`, `vm_instance_id`
+or `target_ip`.
+
+```hcl
+data "ccp_container_scale_set" "prod" {
+  id = ccp_container_scale_set.prod.id
+}
+
+resource "ccp_appgw_target_group_member" "prod" {
+  for_each        = { for m in data.ccp_container_scale_set.prod.containers : m.id => m }
+  appgw_id        = ccp_application_gateway.prod.id
+  target_group_id = ccp_appgw_target_group.prod.id
+  container_id    = each.value.id
+  port            = 8080
+}
+```
+
+⚠️ **This set drifts as soon as the size changes.** A member added or removed
+by the autoscaler is not in state, and the next plan offers to adjust the
+backends. It fits a fixed-size set; a set that actually scales needs a
+`scale_set_id` target reconciled by the platform, which requires an API change
+and is therefore not in this release.
+
+⚠️ Looking a scale set up by `(name, region)` goes through the list endpoint,
+whose payload has no members. The provider re-reads the detail in that case, so
+the attribute does not depend on the *form* of the lookup. A member with no
+address keeps `ip_address = null`, never the empty string — a backend pointed at
+`""` would be accepted and unreachable.
+
+### Fixed — the docs described attributes the provider does not ship
+
+`ccp_container_scale_set` was documented with `replicas`, `min_replicas`,
+`max_replicas` and `current_replicas`, while the provider ships
+`desired_instances`, `min_instances`, `max_instances` — and nothing for the
+fourth. The page's example failed as written, on `Unsupported argument`.
+
+`ccp_vnet_firewall_rule` described `src_cidr` / `dst_cidr` and
+`direction = "IN"` where the schema expects `source_cidr` / `dest_cidr` and
+`in` / `out`. There is no validator on `direction`, so an `"IN"` copied from the
+page reached the API and was refused.
+
+A new test compares, for **every** resource and data source, the documented
+attributes against the schema actually shipped — obtained by instantiating the
+components, not by reading the source. It found seven more pages in drift;
+they are listed as explicit debt rather than guessed at, since the right wording
+requires knowing what each page meant to say.
+
 ## v6.4.0 (2026-09-05)
 
 ### Fixed — catalogue plans are reachable again (#71)
