@@ -106,3 +106,42 @@ func TestCredentialsDetail_ConflictStillSuggestsRetry(t *testing.T) {
 		t.Fatalf("a transient failure is described as permanent:\n%s", detail)
 	}
 }
+
+// Un couple de credentials nul signale un refus permanent : rappeler
+// `/credentials` a chaque Read ne peut rien changer, et imprime un
+// avertissement que le practitioner ne peut pas lever. On saute donc l'appel.
+func TestCredentialsWorthRefreshing(t *testing.T) {
+	cas := []struct {
+		nom       string
+		accessKey types.String
+		secretKey types.String
+		attendu   bool
+	}{
+		{
+			nom:       "les deux nuls — refus permanent, on n'appelle pas",
+			accessKey: types.StringNull(),
+			secretKey: types.StringNull(),
+			attendu:   false,
+		},
+		{
+			nom:       "credentials en etat — on rafraichit pour capter une rotation",
+			accessKey: types.StringValue("AKIAEXAMPLE"),
+			secretKey: types.StringValue("s3cr3t"),
+			attendu:   true,
+		},
+		{
+			nom:       "moitie renseignee — etat incoherent, on rafraichit",
+			accessKey: types.StringValue("AKIAEXAMPLE"),
+			secretKey: types.StringNull(),
+			attendu:   true,
+		},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			m := &objectBucketResourceModel{AccessKey: c.accessKey, SecretKey: c.secretKey}
+			if got := credentialsWorthRefreshing(m); got != c.attendu {
+				t.Fatalf("credentialsWorthRefreshing = %v, attendu %v", got, c.attendu)
+			}
+		})
+	}
+}

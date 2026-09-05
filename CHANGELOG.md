@@ -4,6 +4,28 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.6.1 (2026-09-06)
+
+### Fixed — `ccp_object_bucket` n'interroge plus un endpoint qu'il sait refuse (#72)
+
+`Read` appelait `GET /v1/buckets/{id}/credentials` a chaque plan, refresh et
+apply. Avec une cle d'API de scope `write` l'appel est refuse par construction :
+`bucket:GetCredentials` delivre la master key S3 du tenant et figure dans le
+`Deny` de `ReadOnlyAll`, dont aucun attachement de role supplementaire ne sort.
+
+Chaque execution produisait donc une requete vouee a l'echec et un
+avertissement que le practitioner ne pouvait pas lever, sur deux attributs qui,
+dans cette configuration, ne sont jamais renseignes donc jamais references.
+
+`Read` saute desormais l'appel lorsque `access_key` et `secret_key` sont deja
+nuls en etat — la signature d'un refus permanent, etabli a la creation. Les
+autres cas sont inchanges : des credentials en etat sont toujours rafraichis,
+donc une cle qui PERD la permission reste signalee, et une cle qui la gagne les
+repeuple au prochain create, import ou remplacement. Le message emis a la
+creation est conserve : c'est la qu'il informe utilement.
+
+Aucun changement de schema, aucune migration d'etat.
+
 ## v6.6.0 (2026-09-05)
 
 ### Added — `ccp_bucket_key`, and object storage keys work again (#78)

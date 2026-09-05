@@ -64,8 +64,14 @@ With such a key the bucket is created normally and both attributes are **null**,
 with a warning explaining why. This is a permanent IAM decision, not a transient
 failure: re-running `terraform apply` or attaching another role will not change
 it. Read the credentials with an admin-scoped key or from the console — or
-better, issue a bucket-scoped key with `ccp_object_storage_key` instead of
-handing the master key to your configuration.
+better, issue a bucket-scoped key with `ccp_bucket_key` instead of handing the
+master key to your configuration.
+
+Because the refusal is permanent, the provider stops asking: once both
+attributes are null in state, refresh no longer calls the endpoint, so the
+warning appears at creation and not on every subsequent `plan`. A key that
+holds the permission keeps refreshing them normally — and one that later loses
+it still gets the warning, since state then holds values.
 
 ## Import
 
