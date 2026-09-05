@@ -9,7 +9,7 @@ description: |-
 
 Manages a firewall rule for a VNet. Rules are applied per-instance on all compute resources attached to the VNet when the VNet's isolation mode is enabled. Rules evaluate in ascending `position` order — the first matching rule wins.
 
-~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. Rules are immutable except for `enabled`, `position`, and `comment`. Changing any immutable field (`vnet_id`, `direction`, `action`, `proto`, `src_cidr`, `dst_cidr`, `dport`) forces a new resource.
+~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. Rules are immutable except for `enabled`, `position`, and `comment`. Changing any immutable field (`vnet_id`, `direction`, `action`, `proto`, `source_cidr`, `dest_cidr`, `dport`) forces a new resource.
 
 ## Example Usage
 
@@ -17,10 +17,10 @@ Manages a firewall rule for a VNet. Rules are applied per-instance on all comput
 # Allow inbound HTTP and HTTPS from the public internet
 resource "ccp_vnet_firewall_rule" "allow_http" {
   vnet_id   = ccp_vnet.web.id
-  direction = "IN"
+  direction = "in"
   action    = "ACCEPT"
   proto     = "tcp"
-  src_cidr  = "0.0.0.0/0"
+  source_cidr  = "0.0.0.0/0"
   dport     = "80"
   enabled   = true
   position  = 10
@@ -29,10 +29,10 @@ resource "ccp_vnet_firewall_rule" "allow_http" {
 
 resource "ccp_vnet_firewall_rule" "allow_https" {
   vnet_id   = ccp_vnet.web.id
-  direction = "IN"
+  direction = "in"
   action    = "ACCEPT"
   proto     = "tcp"
-  src_cidr  = "0.0.0.0/0"
+  source_cidr  = "0.0.0.0/0"
   dport     = "443"
   enabled   = true
   position  = 20
@@ -42,10 +42,10 @@ resource "ccp_vnet_firewall_rule" "allow_https" {
 # Allow SSH from the operations subnet only
 resource "ccp_vnet_firewall_rule" "allow_ssh_ops" {
   vnet_id   = ccp_vnet.web.id
-  direction = "IN"
+  direction = "in"
   action    = "ACCEPT"
   proto     = "tcp"
-  src_cidr  = "10.0.99.0/24"
+  source_cidr  = "10.0.99.0/24"
   dport     = "22"
   enabled   = true
   position  = 5
@@ -64,8 +64,8 @@ resource "ccp_vnet_firewall_rule" "allow_ssh_ops" {
 
 ### Optional
 
-- `src_cidr` - (Optional, Forces new resource) Source CIDR to match (e.g. `10.0.0.0/8`). Defaults to `0.0.0.0/0` (all sources).
-- `dst_cidr` - (Optional, Forces new resource) Destination CIDR to match. Defaults to `0.0.0.0/0` (all destinations).
+- `source_cidr` - (Optional, Forces new resource) Source CIDR to match (e.g. `10.0.0.0/8`). Defaults to `0.0.0.0/0` (all sources).
+- `dest_cidr` - (Optional, Forces new resource) Destination CIDR to match. Defaults to `0.0.0.0/0` (all destinations).
 - `dport` - (Optional, Forces new resource) Destination port or port range (e.g. `80`, `8000:9000`). Only applicable to `tcp` and `udp` protocols.
 - `enabled` - (Optional) Whether the rule is currently active. Defaults to `true`. Mutable without forcing a new resource.
 - `position` - (Optional) Evaluation order — lower values are evaluated first. Defaults to `100`. Mutable without forcing a new resource.

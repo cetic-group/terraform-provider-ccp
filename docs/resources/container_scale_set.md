@@ -7,9 +7,9 @@ description: |-
 
 # ccp_container_scale_set (Resource)
 
-Manages a container scale set — a group of identical container instances that scale horizontally. The platform monitors health and automatically replaces failed instances (auto-repair). Setting `min_replicas` and `max_replicas` enables auto-scaling based on CPU utilisation.
+Manages a container scale set — a group of identical container instances that scale horizontally. The platform monitors health and automatically replaces failed instances (auto-repair). Setting `min_instances` and `max_instances` bounds the size the platform may pick.
 
-~> **Note:** Scale set creation is asynchronous. The provider polls until the scale set reaches `active` status. Changing `replicas` scales the set in place. Changing `template`, `vnet_id`, or `region` forces a new resource.
+~> **Note:** Scale set creation is asynchronous. The provider polls until the scale set reaches `active` status. Changing `desired_instances` scales the set in place. Changing `template`, `vnet_id`, or `region` forces a new resource.
 
 ## Example Usage
 
@@ -20,9 +20,9 @@ resource "ccp_container_scale_set" "api_workers" {
   plan          = "small"
   template      = "ubuntu-24.04"
   vnet_id       = ccp_vnet.web.id
-  replicas      = 3
-  min_replicas  = 2
-  max_replicas  = 10
+  desired_instances = 3
+  min_instances     = 2
+  max_instances     = 10
   root_password = var.lxcss_root_password  # sensible — préférer une variable
   tags          = ["api", "env:prod"]
 }
@@ -34,19 +34,19 @@ resource "ccp_container_scale_set" "api_workers" {
 
 - `name` - (Required) Name of the scale set.
 - `region` - (Required, Forces new resource) Region where the scale set is created. One of: `RNN`, `PAR`, `ABJ`.
-- `plan` - (Required) Instance plan for each container. One of: `nano`, `micro`, `small`, `medium`, `large`, `xlarge`.
+- `plan` - (Required) Instance plan key for each container, e.g. `small`, `c-nano` (CPU family), `m-medium` (memory family). Validated server-side against the live plan catalog — no hardcoded list.
 - `template` - (Required, Forces new resource) Template key for the container OS image (e.g. `ubuntu-24.04`).
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet to attach all containers to.
-- `replicas` - (Required) Desired number of container replicas.
+- `desired_instances` - (Required) Number of containers the set should run.
 - `root_password` - (Required, Sensitive, Forces new resource) Root password injected at first boot on every container of the scale set. Length 8–128 chars. Mark the value as sensitive and prefer passing it via a TF variable, environment, or secret backend.
 
 ### Optional
 
-- `min_replicas` - (Optional) Minimum number of replicas for auto-scaling. Must be greater than or equal to 1. Defaults to `1`.
-- `max_replicas` - (Optional) Maximum number of replicas for auto-scaling. Must be greater than or equal to `replicas`. Defaults to `10`.
-- `bastion_access` - (Optional, Forces new resource) Allow SSH access to every replica through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
-- `docker` - (Optional, Forces new resource) Required to run Docker on every replica (enables nesting; opt-in). Defaults to `false`.
-- `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB applied to every replica. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for scale sets, so changing this value forces replacement of the whole scale set.
+- `min_instances` - (Optional) Lower bound on the number of containers. Must be at least 1. Defaults to `1`.
+- `max_instances` - (Optional) Upper bound on the number of containers. Must be at least `desired_instances`. Defaults to `10`.
+- `bastion_access` - (Optional, Forces new resource) Allow SSH access to every container through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
+- `docker` - (Optional, Forces new resource) Required to run Docker on every container (enables nesting; opt-in). Defaults to `false`.
+- `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB applied to every container. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for scale sets, so changing this value forces replacement of the whole scale set.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
@@ -55,7 +55,6 @@ In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the scale set.
 - `status` - Current status. Possible values: `provisioning`, `active`, `scaling`, `error`.
-- `current_replicas` - Current number of running replicas.
 
 ## Import
 
