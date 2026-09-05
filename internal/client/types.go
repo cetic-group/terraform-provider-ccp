@@ -527,6 +527,10 @@ type ContainerScaleSet struct {
 	DiskGB    *int      `json:"disk_gb,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Containers lists the scale set's members. Only
+	// `GET /v1/container-scale-sets/{id}` carries it — the list endpoint does
+	// not, so it is nil there rather than empty (#75).
+	Containers []Container `json:"containers,omitempty"`
 }
 
 type ContainerScaleSetCreateRequest struct {
@@ -599,6 +603,10 @@ type VMScaleSet struct {
 	DiskGB    *int      `json:"disk_gb,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// VMs lists the scale set's members. Only `GET /v1/vm-scale-sets/{id}`
+	// carries it — the list endpoint does not, so it is nil there rather than
+	// empty (#75).
+	VMs []VMInstance `json:"vms,omitempty"`
 }
 
 type VMScaleSetCreateRequest struct {

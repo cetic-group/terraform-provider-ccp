@@ -4,6 +4,7 @@ package vmscaleset
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
@@ -37,6 +38,7 @@ type vmssDSModel struct {
 	Tags             types.List   `tfsdk:"tags"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 	UpdatedAt        types.String `tfsdk:"updated_at"`
+	VMs              types.List   `tfsdk:"vms"`
 }
 
 func (d *vmssDS) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -62,6 +64,29 @@ func (d *vmssDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *dat
 			"tags":              schema.ListAttribute{ElementType: types.StringType, Computed: true},
 			"created_at":        schema.StringAttribute{Computed: true},
 			"updated_at":        schema.StringAttribute{Computed: true},
+			// Les membres du scale set, tels que la plateforme les connaît AU
+			// MOMENT DE LA LECTURE. Ils permettent de placer un scale set
+			// derrière une Application Gateway ou un load balancer, en
+			// dépliant les membres avec `for_each` (#75).
+			//
+			// ⚠️ Cet ensemble DÉRIVE dès que l'effectif change : un membre
+			// ajouté ou retiré par l'autoscaler n'est pas dans l'état
+			// Terraform, et le `plan` suivant proposera d'ajuster les
+			// backends. C'est utilisable sur un effectif fixe ; pour un
+			// groupe qui scale réellement, il faut une cible `scale_set_id`
+			// réconciliée par la plateforme — voir la note de la
+			// documentation.
+			"vms": schema.ListNestedAttribute{
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id":         schema.StringAttribute{Computed: true},
+						"name":       schema.StringAttribute{Computed: true},
+						"status":     schema.StringAttribute{Computed: true},
+						"ip_address": schema.StringAttribute{Computed: true},
+					},
+				},
+			},
 		},
 	}
 }
@@ -132,6 +157,25 @@ func (d *vmssDS) Read(ctx context.Context, req datasource.ReadRequest, resp *dat
 		}
 	}
 
+	// ⚠️ **La liste ne porte pas les membres, seul le détail les porte.**
+	// Une recherche par `(name, region)` passe par `List…`, dont la charge
+	// utile n'a pas de `vms` : sans cette relecture, l'attribut serait
+	// vide ou plein selon la FORME de la recherche, pour le même scale set.
+	// Une incohérence silencieuse, et impossible à diagnostiquer depuis une
+	// configuration (#75).
+	if found.VMs == nil {
+		if detail, err := d.client.GetVMScaleSet(ctx, found.ID); err == nil {
+			found = detail
+		} else {
+			resp.Diagnostics.AddWarning(
+				"Scale set members unavailable",
+				fmt.Sprintf("Could not read the members of VM scale set %s: %s. "+
+					"`vms` is empty; the rest of the data source is accurate.",
+					found.ID, err.Error()),
+			)
+		}
+	}
+
 	state := vmssDSModel{
 		ID:               types.StringValue(found.ID),
 		Name:             types.StringValue(found.Name),
@@ -159,5 +203,43 @@ func (d *vmssDS) Read(ctx context.Context, req datasource.ReadRequest, resp *dat
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags
 
+	membres := make([]membreModel, 0, len(found.VMs))
+	for _, m := range found.VMs {
+		ip := types.StringNull()
+		if m.IPAddress != nil {
+			ip = types.StringValue(*m.IPAddress)
+		}
+		membres = append(membres, membreModel{
+			ID:        types.StringValue(m.ID),
+			Name:      types.StringValue(m.Name),
+			Status:    types.StringValue(m.Status),
+			IPAddress: ip,
+		})
+	}
+	liste, d2 := types.ListValueFrom(ctx, membreObjectType(), membres)
+	resp.Diagnostics.Append(d2...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.VMs = liste
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// membreModel est la projection d'un membre du scale set : juste ce qu'il faut
+// pour l'inscrire comme cible d'une Application Gateway ou d'un load balancer.
+type membreModel struct {
+	ID        types.String `tfsdk:"id"`
+	Name      types.String `tfsdk:"name"`
+	Status    types.String `tfsdk:"status"`
+	IPAddress types.String `tfsdk:"ip_address"`
+}
+
+func membreObjectType() attr.Type {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"id":         types.StringType,
+		"name":       types.StringType,
+		"status":     types.StringType,
+		"ip_address": types.StringType,
+	}}
 }
