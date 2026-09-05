@@ -375,15 +375,24 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	// Refresh credentials only when the bucket is `active`. In any other
-	// state the credentials endpoint is likely to 409, and we'd rather keep
-	// whatever was already in state than blank it out.
-	if got.Status == client.BucketStatusActive {
+	// Refresh credentials only when the bucket is `active` — in any other
+	// state the endpoint is likely to 409, and we'd rather keep whatever was
+	// already in state than blank it out — and only when there is something
+	// to gain from the call.
+	//
+	// A key that could not read the credentials at create time will never be
+	// able to: `bucket:GetCredentials` hands out the tenant-region master key
+	// and is denied to `write`-scoped keys by an explicit IAM Deny, which no
+	// additional role attachment overrides. Calling the endpoint on every
+	// Read then costs one guaranteed-403 request per plan, per refresh and per
+	// apply, and prints a warning the practitioner can do nothing about — on a
+	// resource whose two credential attributes are, in that setup, never
+	// populated and therefore never referenced.
+	if got.Status == client.BucketStatusActive && credentialsWorthRefreshing(&state) {
 		if err := r.refreshCredentials(ctx, &state, got); err != nil {
-			// Soft failure: keep prior creds, surface a warning.
-			// Soft failure: prior credentials stay in state. On a 403 they
-			// were never readable by this key, so state simply keeps whatever
-			// it had — null after a create under the same key.
+			// A 403 here means a key that COULD read them no longer can —
+			// worth reporting, unlike the steady state above, which never
+			// reaches this branch.
 			resp.Diagnostics.AddWarning(
 				"Could not refresh object bucket credentials",
 				credentialsUnavailableDetail(got.ID, err)+
@@ -549,6 +558,19 @@ func (r *objectBucketResource) ImportState(ctx context.Context, req resource.Imp
 //
 // Null is not a fallback here, it is the truth: this API key cannot read them.
 // The bucket itself is fully usable — only two optional attributes are empty.
+// credentialsWorthRefreshing reports whether re-reading `/credentials` can
+// change anything.
+//
+// Both attributes null means the previous read was denied — a permanent IAM
+// decision for `write`-scoped keys, not a transient failure. Skipping the call
+// keeps the steady state silent and saves a request that is known to fail. A
+// key that gains the permission repopulates them on the next create, import or
+// replacement; a key that loses it still gets the warning, since state then
+// holds values and this returns true.
+func credentialsWorthRefreshing(m *objectBucketResourceModel) bool {
+	return !(m.AccessKey.IsNull() && m.SecretKey.IsNull())
+}
+
 func blankCredentials(dst *objectBucketResourceModel) {
 	dst.AccessKey = types.StringNull()
 	dst.SecretKey = types.StringNull()
