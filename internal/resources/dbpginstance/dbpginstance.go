@@ -224,8 +224,12 @@ func (r *dbpgResource) Create(ctx context.Context, req resource.CreateRequest, r
 	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
 	// on the next apply. Dropped from state it would be neither destroyed nor
 	// re-planned, and the next apply would strand it and create a second one.
-	setState(ctx, &plan, created)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	// The projection runs on a COPY: `plan` still carries the practitioner's
+	// intent, which later code reads to decide follow-up calls (VNet isolation,
+	// public IP attach). Overwriting it here would silently drop that intent.
+	early := plan
+	setState(ctx, &early, created)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
