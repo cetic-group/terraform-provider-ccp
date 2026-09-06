@@ -302,8 +302,12 @@ func (r *blockVolumeResource) Create(ctx context.Context, req resource.CreateReq
 	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
 	// on the next apply. Dropped from state it would be neither destroyed nor
 	// re-planned, and the next apply would strand it and create a second one.
-	resp.Diagnostics.Append(applyVolumeToModel(ctx, created, &plan)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	// The projection runs on a COPY: `plan` still carries the practitioner's
+	// intent, which later code reads to decide follow-up calls (VNet isolation,
+	// public IP attach). Overwriting it here would silently drop that intent.
+	early := plan
+	resp.Diagnostics.Append(applyVolumeToModel(ctx, created, &early)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

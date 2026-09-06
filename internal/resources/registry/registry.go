@@ -325,9 +325,13 @@ func (r *registryResource) Create(ctx context.Context, req resource.CreateReques
 	// on the next apply. Dropped from state it would be neither destroyed nor
 	// re-planned, and the next apply would strand it and create a second one.
 	// The password is re-applied right away: state must carry no Unknown value.
-	setState(ctx, &plan, &created.Registry)
+	// The projection runs on a COPY: `plan` still carries the practitioner's
+	// intent, which later code reads to decide follow-up calls (VNet isolation,
+	// public IP attach). Overwriting it here would silently drop that intent.
+	early := plan
+	setState(ctx, &early, &created.Registry)
 	plan.AdminPassword = types.StringValue(adminPassword)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

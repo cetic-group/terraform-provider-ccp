@@ -4,6 +4,36 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.6.3 (2026-09-06)
+
+### Fixed — l'ecriture precoce du state ne perd plus l'intention du practitioner
+
+Regression introduite par la v6.6.2. L'ecriture du state posee avant l'attente
+de provisionnement projetait la reponse de creation dans `plan` lui-meme,
+ecrasant ce que le practitioner avait demande par ce que le backend rapportait
+a cet instant. Le code plus bas relit `plan` pour decider des appels de suite :
+cette intention devait survivre.
+
+`ccp_vnet` en faisait les frais. L'isolation n'est pas acceptee par
+`POST /vnets` — elle demande un appel dedie a `/firewall/isolation` — et la
+decision de le passer lit `plan.Isolated`. La projection le remettait a `false`,
+la bascule ne partait jamais, et l'apply se terminait sur :
+
+    Error: Provider produced inconsistent result after apply
+    .isolated: was cty.True, but now cty.False
+
+La projection travaille desormais sur une copie. `plan` reste intact, et
+l'intention avec lui.
+
+Les autres ressources ont ete auditees : `ccp_k8s_cluster` et
+`ccp_load_balancer` ecrivaient deja dans une variable distincte ;
+`ccp_container_instance` et `ccp_vm_instance` ne lisent `plan.PublicIPID` que
+via une projection qui ne le touche que s'il est `unknown`, puis le relisent
+depuis l'API. Aucune autre n'etait affectee.
+
+Un test de non-regression verifie que l'ecriture precedant l'attente ne vise
+jamais `plan` — verifie dans les deux sens en reintroduisant le defaut.
+
 ## v6.6.2 (2026-09-06)
 
 ### Fixed — une creation echouee n'abandonne plus la ressource hors du state (#82)
