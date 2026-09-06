@@ -320,6 +320,18 @@ func (r *registryResource) Create(ctx context.Context, req resource.CreateReques
 	// Capture the one-shot password BEFORE setState() leaves it Unknown.
 	adminPassword := created.AdminPassword
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	// The password is re-applied right away: state must carry no Unknown value.
+	setState(ctx, &plan, &created.Registry)
+	plan.AdminPassword = types.StringValue(adminPassword)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Poll until provision finishes. Most provisions complete in 1-3 min.
 	final, err := pollUntilActive(ctx, r.client, created.ID, 20*time.Minute)
 	if err != nil {

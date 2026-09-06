@@ -540,6 +540,16 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	early, _ := stateFromAPI(ctx, created, plan.Listeners)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	final, err := pollUntilReady(ctx, r.client, created.ID, 5*time.Minute)
 	if err != nil {
 		resp.Diagnostics.AddError("LB provisioning timed out or failed", err.Error())

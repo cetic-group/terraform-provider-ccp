@@ -219,6 +219,16 @@ func (r *dbpgResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError("Failed to create PostgreSQL instance", err.Error())
 		return
 	}
+
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	setState(ctx, &plan, created)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	final, err := pollUntilActive(ctx, r.client, created.ID, 10*time.Minute)
 	if err != nil {
 		resp.Diagnostics.AddError("PostgreSQL provisioning timed out or failed", err.Error())

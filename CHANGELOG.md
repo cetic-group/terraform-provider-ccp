@@ -4,6 +4,39 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.6.2 (2026-09-06)
+
+### Fixed — une creation echouee n'abandonne plus la ressource hors du state (#82)
+
+Quand un provisionnement asynchrone echouait APRES que l'API ait cree l'objet,
+le provider retournait l'erreur sans jamais ecrire l'ID dans le state.
+Terraform n'en gardait aucune trace : la ressource restait sur la plateforme,
+n'etait ni detruite ni replanifiee, et le `apply` suivant en creait une
+seconde. A chaque tentative, une ressource de plus etait abandonnee — et
+facturee.
+
+Le state est desormais ecrit des que l'objet distant existe, avant l'attente.
+Terraform conserve alors la ressource, la marque `tainted`, et la remplace au
+prochain apply — en detruisant d'abord celle qui est cassee. C'est le contrat
+Terraform pour les creations partielles : des que la ressource distante
+existe, son identifiant doit etre persiste, quitte a ce que le reste du state
+soit incomplet.
+
+La reponse de creation est projetee dans le modele, et non le plan brut : un
+state contenant des valeurs `unknown` serait rejete par Terraform. Sur le
+chemin nominal rien ne change, la seconde ecriture ecrase la premiere avec
+l'etat final.
+
+Quinze ressources sont corrigees : `ccp_application_gateway`,
+`ccp_block_volume`, `ccp_container_instance`, `ccp_db_ferretdb_instance`,
+`ccp_db_mysql_instance`, `ccp_db_pg_instance`, `ccp_db_valkey_instance`,
+`ccp_k8s_cluster`, `ccp_load_balancer`, `ccp_object_bucket`, `ccp_registry`,
+`ccp_vm_instance`, `ccp_vnet`, `ccp_vpc`, `ccp_vpn_gateway`. `ccp_dns_zone` et
+`ccp_email_domain` respectaient deja ce contrat.
+
+Aucun changement de schema : la mise a jour ne demande aucune modification de
+configuration.
+
 ## v6.6.1 (2026-09-06)
 
 ### Fixed — `ccp_object_bucket` n'interroge plus un endpoint qu'il sait refuse (#72)

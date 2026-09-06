@@ -261,6 +261,16 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	resp.Diagnostics.Append(applyVPCToModel(ctx, created, &plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Fast path: the API may already report `active` on the initial response.
 	// Otherwise poll until the status settles.
 	final := created

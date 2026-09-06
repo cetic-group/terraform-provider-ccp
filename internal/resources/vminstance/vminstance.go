@@ -513,6 +513,16 @@ func (r *vmInstanceResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	resp.Diagnostics.Append(applyVMInstanceToModel(ctx, created, &plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Poll until the VM leaves `provisioning`. Success criterion:
 	// status == running AND ip_address resolved. We also accept `running`
 	// without an IP after the timeout, but with a warning so users notice.

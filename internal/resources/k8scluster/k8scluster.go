@@ -632,6 +632,17 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	early, _ := stateFromAPI(ctx, created, plan.InitialPool)
+	early.ApiserverInternalIP = plan.ApiserverInternalIP
+	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Poll until active (15 min)
 	final, err := pollUntilReady(ctx, r.client, created.ID, 15*time.Minute)
 	if err != nil {

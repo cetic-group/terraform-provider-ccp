@@ -298,6 +298,16 @@ func (r *blockVolumeResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	resp.Diagnostics.Append(applyVolumeToModel(ctx, created, &plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Wait for `creating` → `available`. An immediate `error` short-circuits.
 	if err := pollForStatus(ctx, r.client, created.ID, createPollTimeout, client.VolumeStatusAvailable); err != nil {
 		resp.Diagnostics.AddError(
