@@ -360,6 +360,16 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	_ = applyToModel(ctx, created, &plan)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	final, err := pollUntilReady(ctx, r.client, created.ID, 10*time.Minute)
 	if err != nil {
 		resp.Diagnostics.AddError("Application Gateway provisioning failed", err.Error())

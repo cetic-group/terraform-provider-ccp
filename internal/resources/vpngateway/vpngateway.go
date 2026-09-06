@@ -407,6 +407,16 @@ func (r *vpnGatewayResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// The remote object exists from here on. Persist it before waiting: if
+	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
+	// on the next apply. Dropped from state it would be neither destroyed nor
+	// re-planned, and the next apply would strand it and create a second one.
+	resp.Diagnostics.Append(applyToModel(ctx, &plan, created)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Provisioning is asynchronous: the POST returns the gateway in
 	// `provisioning`. Wait until it reaches `active` before returning — otherwise
 	// (a) dependent ccp_vpn_peer creates fire too early and get a 409 "La gateway
