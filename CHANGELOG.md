@@ -4,6 +4,28 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.6.4 (2026-09-06)
+
+### Fixed — le delai de provisionnement des bases suit la taille du cluster (#85)
+
+Les quatre ressources `ccp_db_*_instance` attendaient 10 minutes, quel que soit
+le nombre de replicas. Un cluster PostgreSQL HA a 3 replicas depasse cette
+duree : mesure a 14 min 40 s entre `dbaas_provision_start` et
+`dbaas_service_ready`, redispatch plateforme compris. Terraform rendait donc la
+main pres de cinq minutes avant l'aboutissement, sur un provisionnement qui se
+deroulait normalement.
+
+L'instance partait en `tainted` — correctement conservee dans le state depuis
+la v6.6.2 — et le `apply` suivant la detruisait pour relancer un
+provisionnement voue au meme sort. Un cluster HA etait ainsi inapplicable, en
+boucle.
+
+Le delai vaut desormais 15 minutes pour une instance seule, plus 10 minutes par
+replica supplementaire : 35 minutes pour un cluster a 3 replicas. La valeur
+reste large au regard des 14 min 40 s observees, pour absorber un redispatch.
+
+Aucun changement de schema.
+
 ## v6.6.3 (2026-09-06)
 
 ### Fixed — l'ecriture precoce du state ne perd plus l'intention du practitioner

@@ -214,7 +214,7 @@ func (r *dbvalkeyResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	final, err := pollUntilActive(ctx, r.client, created.ID, 10*time.Minute)
+	final, err := pollUntilActive(ctx, r.client, created.ID, provisionTimeout(plan.Replicas))
 	if err != nil {
 		resp.Diagnostics.AddError("Valkey provisioning timed out or failed", err.Error())
 		return
@@ -270,6 +270,20 @@ func (r *dbvalkeyResource) Delete(ctx context.Context, req resource.DeleteReques
 
 func (r *dbvalkeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// provisionTimeout scales the provisioning wait with the cluster size. Each
+// replica is provisioned in turn, and a redispatch on the platform side adds
+// several minutes on top. The former flat 10 minutes was shorter than a
+// 3-replica HA cluster actually takes: measured at 14m40s from provision_start
+// to service_ready, so an apply timed out on a provisioning that was
+// progressing normally — and left the instance tainted for no good reason.
+func provisionTimeout(replicas types.Int64) time.Duration {
+	n := int64(1)
+	if !replicas.IsNull() && !replicas.IsUnknown() && replicas.ValueInt64() > 1 {
+		n = replicas.ValueInt64()
+	}
+	return time.Duration(15+10*(n-1)) * time.Minute
 }
 
 func pollUntilActive(ctx context.Context, c *client.Client, id string, timeout time.Duration) (*client.DbValkeyInstance, error) {

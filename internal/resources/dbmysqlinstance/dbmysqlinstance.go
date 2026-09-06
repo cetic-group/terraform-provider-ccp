@@ -54,24 +54,24 @@ func (r *dbmysqlResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "CETIC Cloud managed MariaDB instance (DBaaS, Phase 5).",
 		Attributes: map[string]schema.Attribute{
-			"id":   schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"name": schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
-			"region": schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
-			"vpc_id": schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
-			"vnet_id": schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
-			"plan": schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
-			"storage_gb": schema.Int64Attribute{Required: true},
-			"replicas": schema.Int64Attribute{Optional: true, Computed: true},
-			"tier": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"engine_version": schema.StringAttribute{Optional: true, Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
-			"status": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"id":               schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"name":             schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
+			"region":           schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
+			"vpc_id":           schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
+			"vnet_id":          schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
+			"plan":             schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
+			"storage_gb":       schema.Int64Attribute{Required: true},
+			"replicas":         schema.Int64Attribute{Optional: true, Computed: true},
+			"tier":             schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"engine_version":   schema.StringAttribute{Optional: true, Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
+			"status":           schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"endpoint_vnet_ip": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"endpoint_port": schema.Int64Attribute{Computed: true},
-			"admin_username": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"admin_database": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"cpu_millicores": schema.Int64Attribute{Computed: true},
-			"memory_mb":      schema.Int64Attribute{Computed: true},
-			"tags": schema.ListAttribute{ElementType: types.StringType, Optional: true, Computed: true},
+			"endpoint_port":    schema.Int64Attribute{Computed: true},
+			"admin_username":   schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"admin_database":   schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"cpu_millicores":   schema.Int64Attribute{Computed: true},
+			"memory_mb":        schema.Int64Attribute{Computed: true},
+			"tags":             schema.ListAttribute{ElementType: types.StringType, Optional: true, Computed: true},
 		},
 	}
 }
@@ -173,7 +173,7 @@ func (r *dbmysqlResource) Create(ctx context.Context, req resource.CreateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	final, err := pollUntilActive(ctx, r.client, created.ID, 10*time.Minute)
+	final, err := pollUntilActive(ctx, r.client, created.ID, provisionTimeout(plan.Replicas))
 	if err != nil {
 		resp.Diagnostics.AddError("MariaDB provisioning timed out or failed", err.Error())
 		return
@@ -228,6 +228,20 @@ func (r *dbmysqlResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 func (r *dbmysqlResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// provisionTimeout scales the provisioning wait with the cluster size. Each
+// replica is provisioned in turn, and a redispatch on the platform side adds
+// several minutes on top. The former flat 10 minutes was shorter than a
+// 3-replica HA cluster actually takes: measured at 14m40s from provision_start
+// to service_ready, so an apply timed out on a provisioning that was
+// progressing normally — and left the instance tainted for no good reason.
+func provisionTimeout(replicas types.Int64) time.Duration {
+	n := int64(1)
+	if !replicas.IsNull() && !replicas.IsUnknown() && replicas.ValueInt64() > 1 {
+		n = replicas.ValueInt64()
+	}
+	return time.Duration(15+10*(n-1)) * time.Minute
 }
 
 func pollUntilActive(ctx context.Context, c *client.Client, id string, timeout time.Duration) (*client.DbMysqlInstance, error) {
