@@ -74,3 +74,21 @@ func TestLookupByLabelAmbiguous(t *testing.T) {
 		t.Errorf("unexpected detail: %q", detail)
 	}
 }
+
+// #1612 — le type de l'IP est rendu par l'API et lisible via la data source.
+func TestLookupReturnsType(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/public-ips", Status: http.StatusOK, Body: []map[string]any{
+			{"id": "pip-1", "pool_id": "pool-1", "region": "RNN", "type": "firewall", "ip_address": "203.0.113.10", "status": "allocated", "created_at": "2026-05-25T10:00:00Z"},
+		}},
+	})
+	defer srv.Close()
+	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+	got, err := c.GetPublicIP(context.Background(), "pip-1")
+	if err != nil {
+		t.Fatalf("GetPublicIP: %v", err)
+	}
+	if got.Type == nil || *got.Type != "firewall" {
+		t.Errorf("expected type firewall, got %v", got.Type)
+	}
+}

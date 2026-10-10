@@ -4,6 +4,24 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added — `type` sur `ccp_public_ip` (cetic-cloud-platform#1612)
+
+`ccp_public_ip.type` (Optional + Computed) choisit comment l'IP publique arrive
+jusqu'à la ressource : `edge`, `firewall` ou `nat`. Les types proposés dépendent
+de la plateforme ; un type non proposé est refusé à la création. Sans `type`, le
+type par défaut de la région est pris et relu dans l'état. La data source
+`ccp_public_ip` expose aussi `type`.
+
+Changer un `type` **configuré** force le remplacement. Le laisser non configuré
+ne le force jamais : à la montée de version, les IP déjà allouées n'ont pas de
+`type` dans leur état, et un simple `RequiresReplace` les aurait toutes
+détruites puis réallouées — d'où `RequiresReplaceIfConfigured`, figé par
+`TestTypeChangeReplacesOnlyWhenConfigured`.
+
+Nécessite l'API #1612 ; contre une API plus ancienne, `type` reste null.
+
 ## v6.6.4 (2026-09-06)
 
 ### Fixed — le delai de provisionnement des bases suit la taille du cluster (#85)

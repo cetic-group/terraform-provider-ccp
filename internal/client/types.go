@@ -217,6 +217,7 @@ type PublicIP struct {
 	ID               string    `json:"id"`
 	PoolID           string    `json:"pool_id"`
 	Region           string    `json:"region"`
+	Type             *string   `json:"type,omitempty"` // edge | firewall | nat (#1612)
 	IPAddress        string    `json:"ip_address"`
 	Status           string    `json:"status"`
 	ContainerID      *string   `json:"container_id,omitempty"`
@@ -230,6 +231,7 @@ type PublicIP struct {
 
 type PublicIPAllocateRequest struct {
 	Region      string  `json:"region"`
+	Type        *string `json:"type,omitempty"` // nil = type par défaut de la région
 	PoolID      *string `json:"pool_id,omitempty"`
 	Label       *string `json:"label,omitempty"`
 	Description *string `json:"description,omitempty"`
