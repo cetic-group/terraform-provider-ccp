@@ -627,6 +627,27 @@ func (c *Client) GetPublicIP(ctx context.Context, id string) (*PublicIP, error) 
 	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: "/v1/public-ips/" + id, Detail: "public ip not found"}
 }
 
+// PlatformKnowsPublicIPTypes dit si l'API connaît les types d'IP publique
+// (cetic-cloud-platform#1612). Une API plus ancienne ignore le champ `type` à
+// l'allocation et servirait une IP d'un autre type sans erreur : ses pools ne
+// portent pas la clé `type`. Une région sans pool ne permet pas de trancher —
+// l'allocation échouera de toute façon.
+func (c *Client) PlatformKnowsPublicIPTypes(ctx context.Context, region string) (bool, error) {
+	var pools []map[string]any
+	if err := c.do(ctx, http.MethodGet, "/v1/public-ips/pools?region="+url.QueryEscape(region), nil, &pools); err != nil {
+		return false, err
+	}
+	if len(pools) == 0 {
+		return true, nil
+	}
+	for _, p := range pools {
+		if _, ok := p["type"]; ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (c *Client) AllocatePublicIP(ctx context.Context, req PublicIPAllocateRequest) (*PublicIP, error) {
 	var out PublicIP
 	if err := c.do(ctx, http.MethodPost, "/v1/public-ips", req, &out); err != nil {
@@ -894,6 +915,16 @@ func (c *Client) AddLBBackend(ctx context.Context, lbID, listenerID string, req 
 func (c *Client) UpdateLBBackend(ctx context.Context, lbID, listenerID, backendID string, req LBBackendUpdateRequest) (*LBBackend, error) {
 	var out LBBackend
 	if err := c.do(ctx, http.MethodPatch, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends/"+backendID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RotateLBListenerCert pose un nouveau certificat client sur un listener HTTPS
+// existant (#1579) — rotation en place : recréer le listener couperait le trafic.
+func (c *Client) RotateLBListenerCert(ctx context.Context, lbID, listenerID string, body ListenerCertificateUpload) (*LoadBalancer, error) {
+	var out LoadBalancer
+	if err := c.do(ctx, http.MethodPost, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/acme/retry", body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

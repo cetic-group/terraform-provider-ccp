@@ -46,7 +46,7 @@ output "listeners" {
 
 In addition to all arguments above:
 
-- `plan`, `vpc_id`, `vnet_id`, `public_ip_id`, `vip_address`, `status`, `error_message`, `created_at`
+- `plan`, `vpc_id`, `vnet_id`, `vpc_name`, `vnet_name`, `vnet_cidr`, `public_ip_id`, `vip_address`, `status`, `error_message`, `created_at`
 - `force_https`, `hsts_enabled`, `hsts_max_age`
 - `global_rate_limit_per_sec`, `global_allow_cidrs`, `global_deny_cidrs`, `trust_proxy_headers`
 - `tags`

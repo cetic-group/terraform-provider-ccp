@@ -4,6 +4,74 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v6.7.0 (2026-10-10)
+
+### Added — `type` sur `ccp_public_ip` (cetic-cloud-platform#1612)
+
+`ccp_public_ip.type` (Optional + Computed) choisit comment l'IP publique arrive
+jusqu'à la ressource : `edge`, `firewall` ou `nat`. Les types proposés dépendent
+de la plateforme ; un type non proposé est refusé à la création. Sans `type`, le
+premier type proposé qui a encore des IP libres dans la région est pris et
+relu dans l'état. La data source
+`ccp_public_ip` expose aussi `type`.
+
+Changer un `type` **configuré** force le remplacement, mais seulement quand
+l'état en connaît déjà un. À la montée de version, les IP déjà allouées n'ont
+pas de `type` dans leur état : un `RequiresReplace` les aurait toutes
+détruites puis réallouées, et `RequiresReplaceIfConfigured` celle sur laquelle
+on ajoute `type` — l'adresse aurait été perdue dans les deux cas. Figé par
+`TestTypeChangeReplacesOnlyWhenConfigured`.
+
+Nécessite l'API #1612. Contre une API plus ancienne, une **création** avec
+`type` est refusée AVANT toute allocation (l'API ignorerait le champ et
+allouerait, facturée, une IP d'un autre type) ; sans `type`, rien ne change.
+
+### Added — load balancer et application gateway : alignement #1579 (#87)
+
+- **Page d'indisponibilité** : `custom_error_page_html` (Optional) sur
+  `ccp_load_balancer` et `ccp_application_gateway`, servie à la place de la
+  page standard sur 502/503/504. Validée au plan (non vide, sans NUL, 7 Kio
+  UTF-8 max). Retirer l'attribut du HCL envoie `custom_error_page_html: null`
+  EXPLICITEMENT — une clé absente serait lue « inchangée » par l'API et le
+  diff ne convergerait jamais. Les espaces de bord retirés par le serveur
+  (saut de ligne final d'un heredoc ou de `file()`) ne créent pas de diff.
+- **Certificat client** : `acme_challenge = "custom"` + `tls_certificate_pem`
+  / `tls_private_key_pem` (Sensitive, write-only) sur les listeners de
+  `ccp_load_balancer` (https) et sur `ccp_appgw_listener`. Lecture seule :
+  `tls_cert_not_after`, `tls_cert_names`, `tls_cert_issuer`. Changer le
+  certificat ou la clé fait une **rotation en place** (`.../acme/retry`
+  côté LB, `.../renew-cert` côté AppGW) : ni le listener ni le load balancer
+  ne sont recréés. Cohérence vérifiée au plan.
+- **Cibles scale set dynamiques** : `container_scale_set_id` /
+  `vm_scale_set_id` sur les `backend` de `ccp_load_balancer` et sur
+  `ccp_appgw_target_group_member`. Une seule cible envoyée, jamais développée
+  en instances : les instances ajoutées plus tard reçoivent le trafic sans
+  nouvel apply. Exactement une cible exigée au plan (4 pour un backend LB, 5
+  pour un membre AppGW — l'API n'accepte pas `target_ip` sur un backend LB).
+- **Réseau** (Computed) : `vpc_id`, `vpc_name`, `vnet_name`, `vnet_cidr` sur
+  `ccp_load_balancer` (ressource et data source) ; `vpc_name`, `vnet_name`,
+  `vnet_cidr` sur `ccp_application_gateway` (ressource et data source),
+  `vpc_id` y existant déjà.
+
+### Fixed — `ccp_load_balancer` : blocs `dynamic` encore inconnus
+
+La validation du certificat et des cibles décodait la configuration dans des
+listes Go, qui ne savent pas porter un bloc inconnu : un `dynamic "backend"`
+sur une variable (`terraform validate`) ou sur des ressources créées dans le
+même apply échouait avec « Received unknown value ». Le décodage tolère
+désormais ces valeurs (validation et plan). `ModifyPlan` avait déjà le même
+défaut en mise à jour ; il est corrigé aussi.
+
+### À savoir en montant de version
+
+- `custom_error_page_html` est `Optional` : la configuration fait foi. Une
+  page posée depuis la console sur un load balancer ou une application gateway
+  dont le HCL ne porte pas l'attribut sera **retirée** au prochain apply.
+  Ajoutez-la au HCL pour la garder.
+- Après un `terraform import`, le premier apply d'un listener `custom` refait
+  une rotation du certificat : le PEM n'est jamais rendu par l'API, il n'est
+  donc pas dans l'état importé.
+
 ## v6.6.4 (2026-09-06)
 
 ### Fixed — le delai de provisionnement des bases suit la taille du cluster (#85)

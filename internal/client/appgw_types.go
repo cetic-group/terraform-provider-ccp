@@ -31,6 +31,12 @@ type ApplicationGateway struct {
 	Tags                  []string `json:"tags"`
 	CreatedAt             string   `json:"created_at"`
 	UpdatedAt             string   `json:"updated_at"`
+	// Réseau d'attache résolu côté serveur (#1579).
+	VpcName  *string `json:"vpc_name,omitempty"`
+	VnetName *string `json:"vnet_name,omitempty"`
+	VnetCIDR *string `json:"vnet_cidr,omitempty"`
+	// Page d'indisponibilité du client (#1579) — nil = page standard.
+	CustomErrorPageHTML *string `json:"custom_error_page_html,omitempty"`
 
 	// Optionally embedded by the API on GET (nested lists for datasource use).
 	Listeners    []AppGWListener    `json:"listeners,omitempty"`
@@ -65,6 +71,8 @@ type ApplicationGatewayUpdateRequest struct {
 	GlobalDenyCIDRs       *[]string `json:"global_deny_cidrs,omitempty"`
 	TrustProxyHeaders     *bool     `json:"trust_proxy_headers,omitempty"`
 	Tags                  *[]string `json:"tags,omitempty"`
+	// nil = clé absente (inchangée) ; &NullableString{nil} = `null` (page standard).
+	CustomErrorPageHTML *NullableString `json:"custom_error_page_html,omitempty"`
 }
 
 type ApplicationGatewayAttachIPRequest struct {
@@ -106,7 +114,11 @@ type AppGWListener struct {
 	AcmeRenewAfter    *string `json:"acme_renew_after,omitempty"`
 	AcmeLastError     *string `json:"acme_last_error,omitempty"`
 	CertPath          *string `json:"cert_path,omitempty"`
-	CreatedAt         string  `json:"created_at"`
+	// Certificat fourni par le client (#1579) — métadonnées seulement.
+	TLSCertNotAfter *string `json:"tls_cert_not_after,omitempty"`
+	TLSCertNames    *string `json:"tls_cert_names,omitempty"`
+	TLSCertIssuer   *string `json:"tls_cert_issuer,omitempty"`
+	CreatedAt       string  `json:"created_at"`
 }
 
 type AppGWListenerCreateRequest struct {
@@ -114,6 +126,9 @@ type AppGWListenerCreateRequest struct {
 	AcmeChallenge      *string           `json:"acme_challenge,omitempty"`
 	AcmeDNSProvider    *string           `json:"acme_dns_provider,omitempty"`
 	AcmeDNSCredentials map[string]string `json:"acme_dns_credentials,omitempty"`
+	// Avec acme_challenge = "custom" (#1579).
+	TLSCertificatePEM *string `json:"tls_certificate_pem,omitempty"`
+	TLSPrivateKeyPEM  *string `json:"tls_private_key_pem,omitempty"`
 }
 
 // ─── Target Group ───────────────────────────────────────────────────────────
@@ -177,19 +192,25 @@ type AppGWTargetGroupMember struct {
 	ContainerID   *string `json:"container_id,omitempty"`
 	VMInstanceID  *string `json:"vm_instance_id,omitempty"`
 	TargetIP      *string `json:"target_ip,omitempty"`
-	Port          int64   `json:"port"`
-	Weight        int64   `json:"weight"`
-	Enabled       bool    `json:"enabled"`
-	CreatedAt     string  `json:"created_at"`
+	// Cibles dynamiques (#1579).
+	ContainerScaleSetID *string `json:"container_scale_set_id,omitempty"`
+	VMScaleSetID        *string `json:"vm_scale_set_id,omitempty"`
+	Port                int64   `json:"port"`
+	Weight              int64   `json:"weight"`
+	Enabled             bool    `json:"enabled"`
+	CreatedAt           string  `json:"created_at"`
 }
 
 type AppGWTargetGroupMemberCreateRequest struct {
 	ContainerID  *string `json:"container_id,omitempty"`
 	VMInstanceID *string `json:"vm_instance_id,omitempty"`
 	TargetIP     *string `json:"target_ip,omitempty"`
-	Port         int64   `json:"port"`
-	Weight       *int64  `json:"weight,omitempty"`
-	Enabled      *bool   `json:"enabled,omitempty"`
+	// Cibles dynamiques (#1579).
+	ContainerScaleSetID *string `json:"container_scale_set_id,omitempty"`
+	VMScaleSetID        *string `json:"vm_scale_set_id,omitempty"`
+	Port                int64   `json:"port"`
+	Weight              *int64  `json:"weight,omitempty"`
+	Enabled             *bool   `json:"enabled,omitempty"`
 }
 
 type AppGWTargetGroupMemberUpdateRequest struct {

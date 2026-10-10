@@ -26,6 +26,7 @@ type pipDSModel struct {
 	IPAddress        types.String `tfsdk:"ip_address"`
 	PoolID           types.String `tfsdk:"pool_id"`
 	Region           types.String `tfsdk:"region"`
+	Type             types.String `tfsdk:"type"`
 	Status           types.String `tfsdk:"status"`
 	ContainerID      types.String `tfsdk:"container_id"`
 	VMInstanceID     types.String `tfsdk:"vm_instance_id"`
@@ -46,10 +47,14 @@ func (d *pipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 			"Labels are not guaranteed unique — if more than one Public IP carries the same `label`, " +
 			"the lookup fails with an explicit error and you must disambiguate with `id` or `ip_address`.",
 		Attributes: map[string]schema.Attribute{
-			"id":                 schema.StringAttribute{Optional: true, Computed: true},
-			"ip_address":         schema.StringAttribute{Optional: true, Computed: true},
-			"pool_id":            schema.StringAttribute{Computed: true},
-			"region":             schema.StringAttribute{Computed: true},
+			"id":         schema.StringAttribute{Optional: true, Computed: true},
+			"ip_address": schema.StringAttribute{Optional: true, Computed: true},
+			"pool_id":    schema.StringAttribute{Computed: true},
+			"region":     schema.StringAttribute{Computed: true},
+			"type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "How the IP reaches its resource: `edge`, `firewall` or `nat`.",
+			},
 			"status":             schema.StringAttribute{Computed: true},
 			"container_id":       schema.StringAttribute{Computed: true},
 			"vm_instance_id":     schema.StringAttribute{Computed: true},
@@ -116,6 +121,7 @@ func (d *pipDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		Status:    types.StringValue(found.Status),
 		CreatedAt: types.StringValue(found.CreatedAt.Format(time.RFC3339)),
 	}
+	setStrPtr(&state.Type, found.Type)
 	setStrPtr(&state.ContainerID, found.ContainerID)
 	setStrPtr(&state.VMInstanceID, found.VMInstanceID)
 	setStrPtr(&state.LoadBalancerID, found.LoadBalancerID)

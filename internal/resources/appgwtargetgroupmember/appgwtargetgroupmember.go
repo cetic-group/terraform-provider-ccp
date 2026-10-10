@@ -1,8 +1,8 @@
 // Package appgwtargetgroupmember implements the
 // ccp_appgw_target_group_member resource — a single backend inside a
-// target group. Backends are addressed either by container UUID, VM
-// instance UUID or raw IP (exactly one of the three must be set —
-// enforced via ValidateConfig).
+// target group. Backends are addressed by container UUID, VM instance UUID,
+// raw IP, or — dynamically — by container / VM scale set UUID (exactly one of
+// the five must be set — enforced via ValidateConfig, aligned on the API).
 //
 // `target_group_id`, the target identifier and `port` are immutable —
 // changes force a destroy + create. `weight` and `enabled` are PATCHable
@@ -45,6 +45,8 @@ type memberResourceModel struct {
 	ContainerID   types.String `tfsdk:"container_id"`
 	VMInstanceID  types.String `tfsdk:"vm_instance_id"`
 	TargetIP      types.String `tfsdk:"target_ip"`
+	CtScaleSetID  types.String `tfsdk:"container_scale_set_id"`
+	VMScaleSetID  types.String `tfsdk:"vm_scale_set_id"`
 	Port          types.Int64  `tfsdk:"port"`
 	Weight        types.Int64  `tfsdk:"weight"`
 	Enabled       types.Bool   `tfsdk:"enabled"`
@@ -57,8 +59,9 @@ func (r *memberResource) Metadata(_ context.Context, req resource.MetadataReques
 func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a single backend (member) inside a `ccp_appgw_target_group`. Exactly one of " +
-			"`container_id`, `vm_instance_id` or `target_ip` must be set — checked at plan-time via " +
-			"`ValidateConfig`.\n\n" +
+			"`container_id`, `vm_instance_id`, `target_ip`, `container_scale_set_id` or `vm_scale_set_id` " +
+			"must be set — checked at plan-time via `ValidateConfig`. A scale set is a **dynamic target**: " +
+			"every running instance receives traffic, including instances added later.\n\n" +
 			"~> **`appgw_id`, `target_group_id`, the target identifier and `port` are immutable.** Any change " +
 			"forces a destroy + create.",
 		Attributes: map[string]schema.Attribute{
@@ -92,6 +95,19 @@ func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				MarkdownDescription: "Raw IPv4/IPv6 address inside the gateway's VNet used as backend. **Immutable**.",
 				Optional:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"container_scale_set_id": schema.StringAttribute{
+				MarkdownDescription: "UUID of a container scale set used as a **dynamic** backend: every running " +
+					"instance receives traffic, including instances added later — no new apply needed after a " +
+					"scale-up. **Immutable**.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"vm_scale_set_id": schema.StringAttribute{
+				MarkdownDescription: "UUID of a VM scale set used as a **dynamic** backend, like " +
+					"`container_scale_set_id`. **Immutable**.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"port": schema.Int64Attribute{
 				MarkdownDescription: "Backend port (1-65535). **Immutable**.",
@@ -149,44 +165,39 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 	r.client = c
 }
 
-// ValidateConfig enforces XOR on (container_id, vm_instance_id, target_ip).
-// Per CLAUDE.md pitfall #4, we early-return when ANY of the three is
-// Unknown — the planner may not have resolved a reference yet, and a
-// false positive here would block every `terraform validate`.
+// ValidateConfig enforces exactly one target among the five the API accepts
+// (container_id, vm_instance_id, target_ip, container_scale_set_id,
+// vm_scale_set_id). Per CLAUDE.md pitfall #4, we early-return when ANY of
+// them is Unknown — a false positive would block every `terraform validate`.
 func (r *memberResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var cfg memberResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if cfg.ContainerID.IsUnknown() || cfg.VMInstanceID.IsUnknown() || cfg.TargetIP.IsUnknown() {
-		return
+	if msg := targetCountError(cfg); msg != "" {
+		resp.Diagnostics.AddError("Invalid backend target", msg)
 	}
-	setCount := 0
-	if !cfg.ContainerID.IsNull() && cfg.ContainerID.ValueString() != "" {
-		setCount++
+}
+
+// targetCountError — fonction pure : "" si exactement une cible est posée (ou
+// si une valeur est encore inconnue), le message d'erreur sinon.
+func targetCountError(cfg memberResourceModel) string {
+	targets := []types.String{cfg.ContainerID, cfg.VMInstanceID, cfg.TargetIP, cfg.CtScaleSetID, cfg.VMScaleSetID}
+	n := 0
+	for _, t := range targets {
+		if t.IsUnknown() {
+			return ""
+		}
+		if !t.IsNull() && t.ValueString() != "" {
+			n++
+		}
 	}
-	if !cfg.VMInstanceID.IsNull() && cfg.VMInstanceID.ValueString() != "" {
-		setCount++
+	if n == 1 {
+		return ""
 	}
-	if !cfg.TargetIP.IsNull() && cfg.TargetIP.ValueString() != "" {
-		setCount++
-	}
-	switch setCount {
-	case 0:
-		resp.Diagnostics.AddError(
-			"Missing backend target",
-			"Exactly one of `container_id`, `vm_instance_id` or `target_ip` must be set.",
-		)
-	case 1:
-		// OK
-	default:
-		resp.Diagnostics.AddError(
-			"Ambiguous backend target",
-			"Exactly one of `container_id`, `vm_instance_id` or `target_ip` may be set — got "+
-				fmt.Sprintf("%d.", setCount),
-		)
-	}
+	return fmt.Sprintf("Exactly one of `container_id`, `vm_instance_id`, `target_ip`, "+
+		"`container_scale_set_id` or `vm_scale_set_id` must be set — got %d.", n)
 }
 
 func applyToModel(mm *client.AppGWTargetGroupMember, m *memberResourceModel) {
@@ -215,6 +226,15 @@ func applyToModel(mm *client.AppGWTargetGroupMember, m *memberResourceModel) {
 	} else {
 		m.TargetIP = types.StringNull()
 	}
+	m.CtScaleSetID = optStr(mm.ContainerScaleSetID)
+	m.VMScaleSetID = optStr(mm.VMScaleSetID)
+}
+
+func optStr(p *string) types.String {
+	if p == nil {
+		return types.StringNull()
+	}
+	return types.StringValue(*p)
 }
 
 func (r *memberResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -237,6 +257,15 @@ func (r *memberResource) Create(ctx context.Context, req resource.CreateRequest,
 	if !plan.TargetIP.IsNull() && !plan.TargetIP.IsUnknown() && plan.TargetIP.ValueString() != "" {
 		v := plan.TargetIP.ValueString()
 		createReq.TargetIP = &v
+	}
+	// Un scale set part comme UNE cible : jamais développé en instances.
+	if !plan.CtScaleSetID.IsNull() && !plan.CtScaleSetID.IsUnknown() && plan.CtScaleSetID.ValueString() != "" {
+		v := plan.CtScaleSetID.ValueString()
+		createReq.ContainerScaleSetID = &v
+	}
+	if !plan.VMScaleSetID.IsNull() && !plan.VMScaleSetID.IsUnknown() && plan.VMScaleSetID.ValueString() != "" {
+		v := plan.VMScaleSetID.ValueString()
+		createReq.VMScaleSetID = &v
 	}
 	if !plan.Weight.IsNull() && !plan.Weight.IsUnknown() {
 		v := plan.Weight.ValueInt64()

@@ -58,6 +58,7 @@ type publicIPResource struct {
 type publicIPResourceModel struct {
 	ID               types.String `tfsdk:"id"`
 	Region           types.String `tfsdk:"region"`
+	Type             types.String `tfsdk:"type"`
 	PoolID           types.String `tfsdk:"pool_id"`
 	AttachedToID     types.String `tfsdk:"attached_to_id"`
 	AttachedToType   types.String `tfsdk:"attached_to_type"`
@@ -123,6 +124,38 @@ func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"type": schema.StringAttribute{
+				MarkdownDescription: "How the public IP reaches the resource. One of " +
+					"`edge` (routed straight to your network, usable on every " +
+					"resource), `firewall` (published by the platform firewall, for " +
+					"VMs and containers) or `nat` (1:1 translation, the resource keeps " +
+					"its private address). Which types are offered depends on the " +
+					"platform — an unavailable type is rejected at creation. If " +
+					"omitted, the first offered type that still has free IPs in the " +
+					"region is used and reported back here. Changing a configured " +
+					"type forces replacement; leaving it unset, or adding it to an " +
+					"existing IP, never does.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("edge", "firewall", "nat"),
+				},
+				PlanModifiers: []planmodifier.String{
+					// Remplacement seulement si le type est CONFIGURÉ et que l'état
+					// en connaît déjà un autre. À la montée de version, l'état des
+					// IP existantes n'a pas de `type` (null) : RequiresReplace les
+					// remplacerait TOUTES, et RequiresReplaceIfConfigured celle où
+					// l'on ajoute `type` — l'adresse serait perdue dans les deux cas.
+					stringplanmodifier.RequiresReplaceIf(
+						func(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+							resp.RequiresReplace = !req.ConfigValue.IsNull() && !req.StateValue.IsNull()
+						},
+						"Changing a configured type forces replacement.",
+						"Changing a configured type forces replacement.",
+					),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"pool_id": schema.StringAttribute{
@@ -280,6 +313,23 @@ func (r *publicIPResource) Create(ctx context.Context, req resource.CreateReques
 
 	allocReq := client.PublicIPAllocateRequest{
 		Region: plan.Region.ValueString(),
+	}
+	if !plan.Type.IsNull() && !plan.Type.IsUnknown() && plan.Type.ValueString() != "" {
+		// Contrôle AVANT d'allouer : une API antérieure aux types ignorerait le
+		// champ et allouerait (et facturerait) une IP d'un autre type.
+		known, err := r.client.PlatformKnowsPublicIPTypes(ctx, plan.Region.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Cannot check public IP types", err.Error())
+			return
+		}
+		if !known {
+			resp.Diagnostics.AddAttributeError(path.Root("type"), "Public IP type not supported yet",
+				"This platform does not offer a choice of public IP type yet. "+
+					"Remove `type` from the configuration; nothing was allocated.")
+			return
+		}
+		v := plan.Type.ValueString()
+		allocReq.Type = &v
 	}
 	if !plan.PoolID.IsNull() && !plan.PoolID.IsUnknown() && plan.PoolID.ValueString() != "" {
 		v := plan.PoolID.ValueString()
@@ -692,6 +742,14 @@ func applyPublicIPToModel(src *client.PublicIP, dst *publicIPResourceModel) {
 	dst.ID = types.StringValue(src.ID)
 	dst.PoolID = types.StringValue(src.PoolID)
 	dst.Region = types.StringValue(src.Region)
+	switch {
+	case src.Type != nil:
+		dst.Type = types.StringValue(*src.Type)
+	case dst.Type.IsUnknown():
+		// API antérieure à #1612 (pas de `type` rendu) : null plutôt qu'une
+		// valeur inconnue après apply. Un type déjà connu est conservé.
+		dst.Type = types.StringNull()
+	}
 	dst.IPAddress = types.StringValue(src.IPAddress)
 	dst.Status = types.StringValue(src.Status)
 	dst.ContainerID = stringPtrToValue(src.ContainerID)

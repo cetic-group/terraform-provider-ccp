@@ -49,7 +49,19 @@ func applyToModel(l *client.AppGWListener, m *listenerResourceModel) {
 	m.AcmeRenewAfter = optStr(l.AcmeRenewAfter)
 	m.AcmeLastError = optStr(l.AcmeLastError)
 	m.CertPath = optStr(l.CertPath)
+	m.TLSCertNotAfter = optStr(l.TLSCertNotAfter)
+	m.TLSCertNames = optStr(l.TLSCertNames)
+	m.TLSCertIssuer = optStr(l.TLSCertIssuer)
 	m.CreatedAt = types.StringValue(l.CreatedAt)
+
+	// Le certificat et la clé ne sont jamais renvoyés : on garde la valeur
+	// connue (plan ou état), jamais une valeur inconnue.
+	if m.TLSCertificatePEM.IsUnknown() {
+		m.TLSCertificatePEM = types.StringNull()
+	}
+	if m.TLSPrivateKeyPEM.IsUnknown() {
+		m.TLSPrivateKeyPEM = types.StringNull()
+	}
 
 	// acme_dns_credentials is write-only — never returned by the API. Carry
 	// over whatever is already in the model (the plan in Create, the prior
@@ -87,4 +99,42 @@ func validateDNS01(cfg listenerResourceModel) diag.Diagnostics {
 		)
 	}
 	return diags
+}
+
+// validateCustomCert : `custom` exige le certificat ET la clé ; un certificat
+// sans `custom` serait refusé par l'API. Valeurs inconnues → rien (pas
+// d'échec de `terraform validate` avant le plan).
+func validateCustomCert(cfg listenerResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if cfg.AcmeChallenge.IsUnknown() || cfg.TLSCertificatePEM.IsUnknown() || cfg.TLSPrivateKeyPEM.IsUnknown() {
+		return diags
+	}
+	_, hasCert := strVal(cfg.TLSCertificatePEM)
+	_, hasKey := strVal(cfg.TLSPrivateKeyPEM)
+	custom := cfg.AcmeChallenge.ValueString() == "custom"
+	switch {
+	case custom && (!hasCert || !hasKey):
+		diags.AddAttributeError(path.Root("tls_certificate_pem"), "Certificate and key required",
+			"`acme_challenge = \"custom\"` requires both `tls_certificate_pem` and `tls_private_key_pem`.")
+	case !custom && (hasCert || hasKey):
+		diags.AddAttributeError(path.Root("acme_challenge"), "Certificate without custom challenge",
+			"`tls_certificate_pem` / `tls_private_key_pem` require `acme_challenge = \"custom\"`.")
+	}
+	return diags
+}
+
+// certRotationNeeded : le certificat ou la clé du plan diffère de l'état, sur
+// un listener `custom`.
+func certRotationNeeded(plan, state listenerResourceModel) bool {
+	if plan.AcmeChallenge.ValueString() != "custom" {
+		return false
+	}
+	if _, ok := strVal(plan.TLSCertificatePEM); !ok {
+		return false
+	}
+	if _, ok := strVal(plan.TLSPrivateKeyPEM); !ok {
+		return false
+	}
+	return !plan.TLSCertificatePEM.Equal(state.TLSCertificatePEM) ||
+		!plan.TLSPrivateKeyPEM.Equal(state.TLSPrivateKeyPEM)
 }

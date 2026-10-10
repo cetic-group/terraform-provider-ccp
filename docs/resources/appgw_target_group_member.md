@@ -24,6 +24,19 @@ resource "ccp_appgw_target_group_member" "api_01" {
 }
 ```
 
+## Example Usage — Scale set backend (dynamic)
+
+```hcl
+# Every running instance of the scale set receives traffic, including
+# instances added later — no new apply needed after a scale-up.
+resource "ccp_appgw_target_group_member" "api_fleet" {
+  appgw_id               = ccp_application_gateway.web.id
+  target_group_id        = ccp_appgw_target_group.api_pool.id
+  container_scale_set_id = ccp_container_scale_set.api.id
+  port                   = 8080
+}
+```
+
 ## Example Usage — Raw IP backend
 
 ```hcl
@@ -48,6 +61,10 @@ resource "ccp_appgw_target_group_member" "external" {
 - `container_id` - (Optional, Forces new resource) UUID of a `ccp_container_instance` used as backend.
 - `vm_instance_id` - (Optional, Forces new resource) UUID of a `ccp_vm_instance` used as backend.
 - `target_ip` - (Optional, Forces new resource) Raw IPv4/IPv6 address inside the gateway VNet used as backend.
+- `container_scale_set_id` - (Optional, Forces new resource) UUID of a container scale set used as a **dynamic** backend: every running instance receives traffic, including instances added later.
+- `vm_scale_set_id` - (Optional, Forces new resource) UUID of a VM scale set used as a dynamic backend.
+
+Exactly one of the five must be set (checked at plan time).
 
 ### Optional
 

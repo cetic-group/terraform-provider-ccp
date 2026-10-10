@@ -44,7 +44,7 @@ error and you must disambiguate using `id` or `ip_address` instead.
 
 ## Attributes Reference
 
-- `id`, `ip_address`, `pool_id`, `region`, `status`
+- `id`, `ip_address`, `pool_id`, `region`, `type` (`edge`, `firewall` or `nat`), `status`
 - `label` - Display name of the IP, if set.
 - `description` - Free-form description of the IP, if set.
 - `container_id`, `vm_instance_id`, `load_balancer_id`, `load_balancer_name` (nullable)

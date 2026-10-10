@@ -20,6 +20,7 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/errorpage"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -50,6 +51,10 @@ type appgwResourceModel struct {
 	Plan                  types.String `tfsdk:"plan"`
 	VpcID                 types.String `tfsdk:"vpc_id"`
 	VnetID                types.String `tfsdk:"vnet_id"`
+	VpcName               types.String `tfsdk:"vpc_name"`
+	VnetName              types.String `tfsdk:"vnet_name"`
+	VnetCIDR              types.String `tfsdk:"vnet_cidr"`
+	CustomErrorPage       types.String `tfsdk:"custom_error_page_html"`
 	PublicIPID            types.String `tfsdk:"public_ip_id"`
 	PublicIPAddress       types.String `tfsdk:"public_ip_address"`
 	PublicIPStatus        types.String `tfsdk:"public_ip_status"`
@@ -114,6 +119,29 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 					"target group members must be reachable from this VNet. **Immutable**.",
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"vpc_name": schema.StringAttribute{
+				MarkdownDescription: "Name of the VPC the gateway is attached to.",
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"vnet_name": schema.StringAttribute{
+				MarkdownDescription: "Name of the VNet the gateway is attached to.",
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"vnet_cidr": schema.StringAttribute{
+				MarkdownDescription: "Address range (CIDR) of the VNet the gateway is attached to.",
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"custom_error_page_html": schema.StringAttribute{
+				MarkdownDescription: "Your own HTML page, served instead of the default one when no backend can " +
+					"answer (HTTP 502, 503 and 504). At most 7 KiB (UTF-8 bytes) once leading/trailing " +
+					"whitespace is trimmed — inline the styles and host images elsewhere. Updated in place; " +
+					"removing the attribute restores the default page.",
+				Optional:   true,
+				Validators: []validator.String{errorpage.Validator()},
 			},
 			"public_ip_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of a `ccp_public_ip` to attach as the public entrypoint. " +
@@ -238,6 +266,12 @@ func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwRe
 		m.VpcID = types.StringValue(gw.VpcID)
 	}
 	m.VnetID = types.StringValue(gw.VnetID)
+	m.VpcName = optStr(gw.VpcName)
+	m.VnetName = optStr(gw.VnetName)
+	m.VnetCIDR = optStr(gw.VnetCIDR)
+	// La valeur connue (plan ou état) sert de référence : une page relue
+	// identique aux espaces de bord près reste telle que configurée.
+	m.CustomErrorPage = errorpage.FromAPI(m.CustomErrorPage, gw.CustomErrorPageHTML)
 	m.Status = types.StringValue(gw.Status)
 	m.CreatedAt = types.StringValue(gw.CreatedAt)
 	m.ForceHTTPS = types.BoolValue(gw.ForceHTTPS)
@@ -301,6 +335,13 @@ func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwRe
 	}
 	m.Tags = tags
 	return warnings
+}
+
+func optStr(p *string) types.String {
+	if p == nil {
+		return types.StringNull()
+	}
+	return types.StringValue(*p)
 }
 
 func stringsFromList(ctx context.Context, l types.List) []string {
@@ -368,6 +409,7 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	// intent, which later code reads to decide follow-up calls (VNet isolation,
 	// public IP attach). Overwriting it here would silently drop that intent.
 	early := plan
+	early.CustomErrorPage = types.StringNull() // pas encore posée : PATCH après provisioning
 	_ = applyToModel(ctx, created, &early)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
 	if resp.Diagnostics.HasError() {
@@ -378,6 +420,19 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	if err != nil {
 		resp.Diagnostics.AddError("Application Gateway provisioning failed", err.Error())
 		return
+	}
+
+	// La page d'indisponibilité n'est pas acceptée à la création : elle part
+	// dans un PATCH une fois la passerelle en service.
+	if pv := errorpage.PatchValue(plan.CustomErrorPage, types.StringNull()); pv != nil {
+		if _, err := r.client.UpdateApplicationGateway(ctx, created.ID, client.ApplicationGatewayUpdateRequest{CustomErrorPageHTML: pv}); err != nil {
+			resp.Diagnostics.AddError("Failed to set the custom error page", err.Error())
+			return
+		}
+		if final, err = pollUntilReady(ctx, r.client, created.ID, 5*time.Minute); err != nil {
+			resp.Diagnostics.AddError("Application Gateway update did not stabilize", err.Error())
+			return
+		}
 	}
 
 	warnings := applyToModel(ctx, final, &plan)
@@ -480,6 +535,10 @@ func (r *appgwResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			v = []string{}
 		}
 		upd.Tags = &v
+		patchNeeded = true
+	}
+	if pv := errorpage.PatchValue(plan.CustomErrorPage, state.CustomErrorPage); pv != nil {
+		upd.CustomErrorPageHTML = pv
 		patchNeeded = true
 	}
 	if patchNeeded {

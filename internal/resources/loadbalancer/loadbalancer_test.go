@@ -58,7 +58,7 @@ func TestStateFromAPI_MapsAcmeListener(t *testing.T) {
 		},
 	}
 
-	m, diags := stateFromAPI(ctx, lb, prior)
+	m, diags := stateFromAPI(ctx, lb, prior, types.StringNull())
 	if len(diags) != 0 {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
@@ -125,7 +125,7 @@ func TestStateFromAPI_NilPriorCredentialsNull(t *testing.T) {
 			{ID: "lst", Protocol: "https", ListenPort: 443, Algorithm: "roundrobin", HealthCheckEnabled: true},
 		},
 	}
-	m, _ := stateFromAPI(ctx, lb, nil)
+	m, _ := stateFromAPI(ctx, lb, nil, types.StringNull())
 	if !m.Listeners[0].AcmeDNSCredentials.IsNull() {
 		t.Errorf("expected null credentials when no prior, got %v", m.Listeners[0].AcmeDNSCredentials)
 	}

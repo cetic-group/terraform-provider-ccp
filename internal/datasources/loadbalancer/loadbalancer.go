@@ -26,6 +26,10 @@ type lbDSModel struct {
 	Region          types.String `tfsdk:"region"`
 	Plan            types.String `tfsdk:"plan"`
 	VnetID          types.String `tfsdk:"vnet_id"`
+	VpcID           types.String `tfsdk:"vpc_id"`
+	VpcName         types.String `tfsdk:"vpc_name"`
+	VnetName        types.String `tfsdk:"vnet_name"`
+	VnetCIDR        types.String `tfsdk:"vnet_cidr"`
 	VIPAddress      types.String `tfsdk:"vip_address"`
 	PublicIPAddress types.String `tfsdk:"public_ip_address"`
 	PublicIPID      types.String `tfsdk:"public_ip_id"`
@@ -49,6 +53,10 @@ func (d *lbDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, res
 			"region":            schema.StringAttribute{Optional: true, Computed: true},
 			"plan":              schema.StringAttribute{Computed: true},
 			"vnet_id":           schema.StringAttribute{Computed: true},
+			"vpc_id":            schema.StringAttribute{Computed: true, MarkdownDescription: "UUID of the VPC that contains the VNet."},
+			"vpc_name":          schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the VPC."},
+			"vnet_name":         schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the VNet."},
+			"vnet_cidr":         schema.StringAttribute{Computed: true, MarkdownDescription: "Address range (CIDR) of the VNet."},
 			"vip_address":       schema.StringAttribute{Computed: true},
 			"public_ip_address": schema.StringAttribute{Computed: true},
 			"public_ip_id":      schema.StringAttribute{Computed: true},
@@ -141,6 +149,10 @@ func (d *lbDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	setStrPtr(&state.PublicIPAddress, found.PublicIPAddress)
 	setStrPtr(&state.PublicIPID, found.PublicIPID)
 	setStrPtr(&state.ErrorMessage, found.ErrorMessage)
+	setStrPtr(&state.VpcID, found.VpcID)
+	setStrPtr(&state.VpcName, found.VpcName)
+	setStrPtr(&state.VnetName, found.VnetName)
+	setStrPtr(&state.VnetCIDR, found.VnetCIDR)
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags
 

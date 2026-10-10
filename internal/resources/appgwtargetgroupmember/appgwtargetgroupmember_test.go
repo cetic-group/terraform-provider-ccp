@@ -40,3 +40,38 @@ func TestApplyToModel_PreservesTargetGroupIDWhenAPIOmitsIt(t *testing.T) {
 		t.Fatalf("Port doit être mappé depuis la réponse, got %d", m.Port.ValueInt64())
 	}
 }
+
+// #1579 — exactement une cible parmi les cinq, scale sets compris.
+func TestTargetCountError(t *testing.T) {
+	n, v := types.StringNull(), types.StringValue("x")
+	mk := func(ct, vm, ip, ctss, vmss types.String) memberResourceModel {
+		return memberResourceModel{ContainerID: ct, VMInstanceID: vm, TargetIP: ip, CtScaleSetID: ctss, VMScaleSetID: vmss}
+	}
+	cases := map[string]struct {
+		m  memberResourceModel
+		ok bool
+	}{
+		"aucune":           {mk(n, n, n, n, n), false},
+		"container":        {mk(v, n, n, n, n), true},
+		"ip":               {mk(n, n, v, n, n), true},
+		"scale set ct":     {mk(n, n, n, v, n), true},
+		"scale set vm":     {mk(n, n, n, n, v), true},
+		"ct + scale set":   {mk(v, n, n, v, n), false},
+		"deux scale sets":  {mk(n, n, n, v, v), false},
+		"inconnue tolérée": {mk(types.StringUnknown(), n, n, n, n), true},
+	}
+	for name, tc := range cases {
+		if got := targetCountError(tc.m) == ""; got != tc.ok {
+			t.Errorf("%s : valide attendu=%v", name, tc.ok)
+		}
+	}
+}
+
+func TestApplyToModel_MapsScaleSetTarget(t *testing.T) {
+	ss := "ss-1"
+	var m memberResourceModel
+	applyToModel(&client.AppGWTargetGroupMember{ID: "m", VMScaleSetID: &ss, Port: 80, Weight: 100, Enabled: true}, &m)
+	if m.VMScaleSetID.ValueString() != "ss-1" || !m.CtScaleSetID.IsNull() || !m.ContainerID.IsNull() {
+		t.Fatalf("cible scale set mal relue : %+v", m)
+	}
+}
