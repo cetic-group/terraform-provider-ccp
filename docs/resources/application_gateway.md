@@ -94,6 +94,11 @@ resource "ccp_appgw_route" "api_v1" {
 - `global_deny_cidrs` - (Optional) List of CIDRs denied access — evaluated before allow.
 - `trust_proxy_headers` - (Optional, default `false`) Accept incoming `X-Forwarded-For` / `X-Real-IP` headers from clients.
 - `tags` - (Optional) Free-form tags (max 60, max 50 chars each).
+- `custom_error_page_html` - (Optional) Your own HTML page, served instead of the default one when no backend can answer (HTTP 502, 503 and 504). At most 7 KiB (UTF-8 bytes) once leading and trailing whitespace is trimmed — inline the styles and host images elsewhere. Updated in place; **removing the attribute restores the default page**. Leading/trailing whitespace (e.g. the final newline of `file()`) does not cause a diff.
+
+  ```hcl
+  custom_error_page_html = file("${path.module}/maintenance.html")
+  ```
 
 ## Attributes Reference
 
@@ -102,6 +107,9 @@ In addition to all arguments above, the following attributes are exported:
 - `id` - UUID of the gateway.
 - `status` - Current status. One of: `creating`, `active`, `error`, `deleting`. PATCH operations apply in place and the row stays `active` throughout — there is no `updating` state in v1.
 - `vip_address` - Private virtual IP address within the VNet.
+- `vpc_name` - Name of the VPC the gateway is attached to.
+- `vnet_name` - Name of the VNet the gateway is attached to.
+- `vnet_cidr` - Address range (CIDR) of that VNet.
 - `public_ip_address` - Public IPv4 address currently bound to the gateway, mirrored from the attached `ccp_public_ip`. Null while no IP is attached.
 - `public_ip_status` - Lifecycle of the public IP attachment. One of: `allocated`, `attaching`, `attached`, `detaching`, `error`. Null when no IP is attached. The provider polls this field after an attach / detach so `terraform apply` exits only once the asynchronous IPaaS pipeline has converged.
 - `error_message` - Last error message reported by the provisioner. Empty unless `status = error`.

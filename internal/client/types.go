@@ -1,6 +1,9 @@
 package client
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // SSHKey represents an SSH key resource (synchronous).
 //
@@ -411,6 +414,10 @@ type LoadBalancer struct {
 	Region          string       `json:"region"`
 	Plan            string       `json:"plan"`
 	VnetID          string       `json:"vnet_id"`
+	VpcID           *string      `json:"vpc_id,omitempty"`
+	VpcName         *string      `json:"vpc_name,omitempty"`
+	VnetName        *string      `json:"vnet_name,omitempty"`
+	VnetCIDR        *string      `json:"vnet_cidr,omitempty"`
 	VIPAddress      *string      `json:"vip_address,omitempty"`
 	PublicIPAddress *string      `json:"public_ip_address,omitempty"`
 	PublicIPID      *string      `json:"public_ip_id,omitempty"`
@@ -418,8 +425,10 @@ type LoadBalancer struct {
 	ErrorMessage    *string      `json:"error_message,omitempty"`
 	Tags            []string     `json:"tags"`
 	Listeners       []LBListener `json:"listeners"`
-	CreatedAt       string       `json:"created_at"`
-	UpdatedAt       string       `json:"updated_at"`
+	// Page d'indisponibilité du client (#1579) — nil = page standard.
+	CustomErrorPageHTML *string `json:"custom_error_page_html,omitempty"`
+	CreatedAt           string  `json:"created_at"`
+	UpdatedAt           string  `json:"updated_at"`
 }
 
 type LBListener struct {
@@ -438,14 +447,22 @@ type LBListener struct {
 	AcmeDNSProvider *string `json:"acme_dns_provider,omitempty"`
 	AcmeIssuedAt    *string `json:"acme_issued_at,omitempty"`
 	AcmeRenewAfter  *string `json:"acme_renew_after,omitempty"`
+	// Certificat fourni par le client (#1579) — métadonnées seulement, le
+	// certificat et la clé ne sont jamais renvoyés.
+	TLSCertNotAfter *string `json:"tls_cert_not_after,omitempty"`
+	TLSCertNames    *string `json:"tls_cert_names,omitempty"`
+	TLSCertIssuer   *string `json:"tls_cert_issuer,omitempty"`
 }
 
 type LBBackend struct {
 	ID          string  `json:"id"`
 	ContainerID *string `json:"container_id,omitempty"`
 	VMID        *string `json:"vm_instance_id,omitempty"`
-	Port        int     `json:"port"`
-	Weight      int     `json:"weight"`
+	// Cibles dynamiques (#1579) : toutes les instances en service du scale set.
+	ContainerScaleSetID *string `json:"container_scale_set_id,omitempty"`
+	VMScaleSetID        *string `json:"vm_scale_set_id,omitempty"`
+	Port                int     `json:"port"`
+	Weight              int     `json:"weight"`
 }
 
 type LBListenerCreateRequest struct {
@@ -459,13 +476,41 @@ type LBListenerCreateRequest struct {
 	AcmeChallenge      *string                  `json:"acme_challenge,omitempty"`
 	AcmeDNSProvider    *string                  `json:"acme_dns_provider,omitempty"`
 	AcmeDNSCredentials map[string]string        `json:"acme_dns_credentials,omitempty"`
+	// Avec acme_challenge = "custom" (#1579).
+	TLSCertificatePEM *string `json:"tls_certificate_pem,omitempty"`
+	TLSPrivateKeyPEM  *string `json:"tls_private_key_pem,omitempty"`
 }
 
 type LBBackendCreateRequest struct {
-	ContainerID *string `json:"container_id,omitempty"`
-	VMID        *string `json:"vm_instance_id,omitempty"`
-	Port        int     `json:"port"`
-	Weight      int     `json:"weight,omitempty"`
+	ContainerID         *string `json:"container_id,omitempty"`
+	VMID                *string `json:"vm_instance_id,omitempty"`
+	ContainerScaleSetID *string `json:"container_scale_set_id,omitempty"`
+	VMScaleSetID        *string `json:"vm_scale_set_id,omitempty"`
+	Port                int     `json:"port"`
+	Weight              int     `json:"weight,omitempty"`
+}
+
+// ListenerCertificateUpload est le corps des routes de renouvellement
+// (#1579) : il remplace le certificat client d'un listener HTTPS.
+type ListenerCertificateUpload struct {
+	TLSCertificatePEM string `json:"tls_certificate_pem"`
+	TLSPrivateKeyPEM  string `json:"tls_private_key_pem"`
+}
+
+// NullableString sérialise TOUJOURS sa clé quand le pointeur qui la porte est
+// non nil : `null` si Value est nil, la chaîne sinon. Sert aux PATCH où la
+// PRÉSENCE de la clé vaut écriture et où `null` efface (#1579 :
+// custom_error_page_html) — un `*string` en `omitempty` ne sait pas envoyer
+// `null`, et retirer l'attribut du HCL ne convergerait jamais.
+type NullableString struct {
+	Value *string
+}
+
+func (n NullableString) MarshalJSON() ([]byte, error) {
+	if n.Value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(*n.Value)
 }
 
 type LBBackendUpdateRequest struct {
@@ -493,6 +538,8 @@ type AcmeDNSProvider struct {
 type LoadBalancerUpdateRequest struct {
 	Name *string  `json:"name,omitempty"`
 	Tags []string `json:"tags,omitempty"`
+	// nil = clé absente (inchangée) ; &NullableString{nil} = `null` (page standard).
+	CustomErrorPageHTML *NullableString `json:"custom_error_page_html,omitempty"`
 }
 
 type LoadBalancerAttachIPRequest struct {

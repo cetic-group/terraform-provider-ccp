@@ -20,7 +20,7 @@ data "ccp_load_balancer" "main" {
 
 ## Attributes Reference
 
-- `id`, `name`, `region`, `plan`, `vnet_id`
+- `id`, `name`, `region`, `plan`, `vnet_id`, `vpc_id`, `vpc_name`, `vnet_name`, `vnet_cidr`
 - `vip_address`, `public_ip_address`, `public_ip_id` (nullable)
 - `status`, `error_message` (nullable)
 - `tags`, `created_at`, `updated_at`

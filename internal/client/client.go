@@ -899,6 +899,16 @@ func (c *Client) UpdateLBBackend(ctx context.Context, lbID, listenerID, backendI
 	return &out, nil
 }
 
+// RotateLBListenerCert pose un nouveau certificat client sur un listener HTTPS
+// existant (#1579) — rotation en place : recréer le listener couperait le trafic.
+func (c *Client) RotateLBListenerCert(ctx context.Context, lbID, listenerID string, body ListenerCertificateUpload) (*LoadBalancer, error) {
+	var out LoadBalancer
+	if err := c.do(ctx, http.MethodPost, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/acme/retry", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) RemoveLBBackend(ctx context.Context, lbID, listenerID, backendID string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/load-balancers/"+lbID+"/listeners/"+listenerID+"/backends/"+backendID, nil, nil)
 }

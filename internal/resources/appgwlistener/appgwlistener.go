@@ -2,9 +2,11 @@
 // resource — a hostname served by an Application Gateway with its
 // optional Let's Encrypt certificate.
 //
-// Listeners are immutable: every user-facing attribute carries a
-// RequiresReplace plan modifier. To change a hostname or its ACME
-// configuration, destroy and recreate the listener.
+// Listeners are immutable except for the client-provided certificate
+// (#1579): every other user-facing attribute carries a RequiresReplace plan
+// modifier. Changing `tls_certificate_pem` / `tls_private_key_pem` rotates
+// the certificate IN PLACE (POST .../renew-cert with the new PEMs) —
+// recreating the listener would cut the traffic for its hostname.
 package appgwlistener
 
 import (
@@ -14,6 +16,7 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -22,7 +25,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
 var (
@@ -49,6 +51,11 @@ type listenerResourceModel struct {
 	AcmeRenewAfter     types.String `tfsdk:"acme_renew_after"`
 	AcmeLastError      types.String `tfsdk:"acme_last_error"`
 	CertPath           types.String `tfsdk:"cert_path"`
+	TLSCertificatePEM  types.String `tfsdk:"tls_certificate_pem"`
+	TLSPrivateKeyPEM   types.String `tfsdk:"tls_private_key_pem"`
+	TLSCertNotAfter    types.String `tfsdk:"tls_cert_not_after"`
+	TLSCertNames       types.String `tfsdk:"tls_cert_names"`
+	TLSCertIssuer      types.String `tfsdk:"tls_cert_issuer"`
 	CreatedAt          types.String `tfsdk:"created_at"`
 }
 
@@ -62,7 +69,9 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"optional automatically-issued TLS certificate via Let's Encrypt/ACME). When `acme_challenge` " +
 			"is set, the certificate is requested automatically and served over SNI when a client connects " +
 			"with this hostname.\n\n" +
-			"~> **All attributes are immutable.** Any change forces a destroy + create.",
+			"~> **All attributes except the client certificate are immutable.** Any other change forces a " +
+			"destroy + create. A change of `tls_certificate_pem` / `tls_private_key_pem` rotates the " +
+			"certificate in place.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the listener.",
@@ -85,13 +94,14 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"acme_challenge": schema.StringAttribute{
-				MarkdownDescription: "ACME (Let's Encrypt) challenge type used to issue the listener's TLS " +
-					"certificate: `http01` or `dns01`. `dns01` additionally requires `acme_dns_provider` and " +
-					"`acme_dns_credentials`. **Without this attribute, no TLS certificate is ever issued for " +
-					"the listener.** **Immutable**.",
+				MarkdownDescription: "How the listener's TLS certificate is obtained: `http01` or `dns01` " +
+					"(Let's Encrypt; `dns01` additionally requires `acme_dns_provider` and " +
+					"`acme_dns_credentials`), or `custom` (your own certificate, provided in " +
+					"`tls_certificate_pem` + `tls_private_key_pem`). **Without this attribute, no TLS " +
+					"certificate is ever issued for the listener.** **Immutable**.",
 				Optional: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("http01", "dns01"),
+					stringvalidator.OneOf("http01", "dns01", "custom"),
 				},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -133,6 +143,33 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "Last ACME error message, if certificate issuance or renewal failed.",
 				Computed:            true,
 			},
+			"tls_certificate_pem": schema.StringAttribute{
+				MarkdownDescription: "With `acme_challenge = \"custom\"`: your certificate followed by its chain, " +
+					"PEM-encoded. It must cover `hostname`; checked at submission (matching key, validity). " +
+					"Changing it (or the key) **rotates the certificate in place**, without recreating the " +
+					"listener. Never returned by the API.",
+				Optional:  true,
+				Sensitive: true,
+			},
+			"tls_private_key_pem": schema.StringAttribute{
+				MarkdownDescription: "With `acme_challenge = \"custom\"`: the certificate's private key, " +
+					"PEM-encoded and **not** protected by a passphrase. Write-only — never returned by the " +
+					"API; the value you provide is kept in state.",
+				Optional:  true,
+				Sensitive: true,
+			},
+			"tls_cert_not_after": schema.StringAttribute{
+				MarkdownDescription: "Expiry date of your certificate (`acme_challenge = \"custom\"`).",
+				Computed:            true,
+			},
+			"tls_cert_names": schema.StringAttribute{
+				MarkdownDescription: "Names covered by your certificate (`acme_challenge = \"custom\"`).",
+				Computed:            true,
+			},
+			"tls_cert_issuer": schema.StringAttribute{
+				MarkdownDescription: "Issuer of your certificate (`acme_challenge = \"custom\"`).",
+				Computed:            true,
+			},
 			"cert_path": schema.StringAttribute{
 				MarkdownDescription: "Server-side filesystem path of the live certificate. Informational.",
 				Computed:            true,
@@ -168,6 +205,7 @@ func (r *listenerResource) ValidateConfig(ctx context.Context, req resource.Vali
 		return
 	}
 	resp.Diagnostics.Append(validateDNS01(cfg)...)
+	resp.Diagnostics.Append(validateCustomCert(cfg)...)
 }
 
 func (r *listenerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -195,6 +233,12 @@ func (r *listenerResource) Create(ctx context.Context, req resource.CreateReques
 		if len(creds) > 0 {
 			createReq.AcmeDNSCredentials = creds
 		}
+	}
+	if v, ok := strVal(plan.TLSCertificatePEM); ok {
+		createReq.TLSCertificatePEM = &v
+	}
+	if v, ok := strVal(plan.TLSPrivateKeyPEM); ok {
+		createReq.TLSPrivateKeyPEM = &v
 	}
 
 	created, err := r.client.CreateAppGWListener(ctx, plan.AppGWID.ValueString(), createReq)
@@ -227,15 +271,37 @@ func (r *listenerResource) Read(ctx context.Context, req resource.ReadRequest, r
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update is a no-op: every field is either Computed or carries a
-// RequiresReplace plan modifier. The framework will route any user-facing
-// diff through destroy + create rather than here.
+// Update n'est atteint que par la rotation du certificat client : tout autre
+// attribut porte RequiresReplace. Le nouveau certificat part sur la route de
+// renouvellement, en place — recréer le listener couperait le trafic.
 func (r *listenerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan listenerResourceModel
+	var plan, state listenerResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	appgwID, id := state.AppGWID.ValueString(), state.ID.ValueString()
+
+	var got *client.AppGWListener
+	var err error
+	if certRotationNeeded(plan, state) {
+		got, err = r.client.RotateAppGWListenerCert(ctx, appgwID, id, client.ListenerCertificateUpload{
+			TLSCertificatePEM: plan.TLSCertificatePEM.ValueString(),
+			TLSPrivateKeyPEM:  plan.TLSPrivateKeyPEM.ValueString(),
+		})
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to rotate the listener certificate", err.Error())
+			return
+		}
+	} else {
+		// Rien à envoyer : on relit pour que les champs calculés soient connus.
+		if got, err = r.client.GetAppGWListener(ctx, appgwID, id); err != nil {
+			resp.Diagnostics.AddError("Failed to read AppGW listener", err.Error())
+			return
+		}
+	}
+	applyToModel(got, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

@@ -52,6 +52,9 @@ type appgwDSModel struct {
 	Region                types.String       `tfsdk:"region"`
 	Plan                  types.String       `tfsdk:"plan"`
 	VpcID                 types.String       `tfsdk:"vpc_id"`
+	VpcName               types.String       `tfsdk:"vpc_name"`
+	VnetName              types.String       `tfsdk:"vnet_name"`
+	VnetCIDR              types.String       `tfsdk:"vnet_cidr"`
 	VnetID                types.String       `tfsdk:"vnet_id"`
 	PublicIPID            types.String       `tfsdk:"public_ip_id"`
 	PublicIPAddress       types.String       `tfsdk:"public_ip_address"`
@@ -92,25 +95,28 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Optional:            true,
 				Computed:            true,
 			},
-			"region":                   schema.StringAttribute{Optional: true, Computed: true},
-			"plan":                     schema.StringAttribute{Computed: true},
-			"vpc_id":                   schema.StringAttribute{Computed: true},
-			"vnet_id":                  schema.StringAttribute{Computed: true},
-			"public_ip_id":             schema.StringAttribute{Computed: true},
-			"public_ip_address":        schema.StringAttribute{Computed: true},
-			"public_ip_status":         schema.StringAttribute{Computed: true},
-			"vip_address":              schema.StringAttribute{Computed: true},
-			"status":                   schema.StringAttribute{Computed: true},
-			"error_message":            schema.StringAttribute{Computed: true},
-			"force_https":              schema.BoolAttribute{Computed: true},
-			"hsts_enabled":             schema.BoolAttribute{Computed: true},
-			"hsts_max_age":             schema.Int64Attribute{Computed: true},
+			"region":                    schema.StringAttribute{Optional: true, Computed: true},
+			"plan":                      schema.StringAttribute{Computed: true},
+			"vpc_id":                    schema.StringAttribute{Computed: true},
+			"vpc_name":                  schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the VPC."},
+			"vnet_name":                 schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the VNet."},
+			"vnet_cidr":                 schema.StringAttribute{Computed: true, MarkdownDescription: "Address range (CIDR) of the VNet."},
+			"vnet_id":                   schema.StringAttribute{Computed: true},
+			"public_ip_id":              schema.StringAttribute{Computed: true},
+			"public_ip_address":         schema.StringAttribute{Computed: true},
+			"public_ip_status":          schema.StringAttribute{Computed: true},
+			"vip_address":               schema.StringAttribute{Computed: true},
+			"status":                    schema.StringAttribute{Computed: true},
+			"error_message":             schema.StringAttribute{Computed: true},
+			"force_https":               schema.BoolAttribute{Computed: true},
+			"hsts_enabled":              schema.BoolAttribute{Computed: true},
+			"hsts_max_age":              schema.Int64Attribute{Computed: true},
 			"global_rate_limit_per_sec": schema.Int64Attribute{Computed: true},
-			"global_allow_cidrs":       schema.ListAttribute{ElementType: types.StringType, Computed: true},
-			"global_deny_cidrs":        schema.ListAttribute{ElementType: types.StringType, Computed: true},
-			"trust_proxy_headers":      schema.BoolAttribute{Computed: true},
-			"tags":                     schema.ListAttribute{ElementType: types.StringType, Computed: true},
-			"created_at":               schema.StringAttribute{Computed: true},
+			"global_allow_cidrs":        schema.ListAttribute{ElementType: types.StringType, Computed: true},
+			"global_deny_cidrs":         schema.ListAttribute{ElementType: types.StringType, Computed: true},
+			"trust_proxy_headers":       schema.BoolAttribute{Computed: true},
+			"tags":                      schema.ListAttribute{ElementType: types.StringType, Computed: true},
+			"created_at":                schema.StringAttribute{Computed: true},
 			"listeners": schema.ListNestedAttribute{
 				MarkdownDescription: "Listeners (hostnames + ACME state) attached to the gateway.",
 				Computed:            true,
@@ -233,6 +239,9 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		HSTSMaxAge:        types.Int64Value(found.HSTSMaxAge),
 		TrustProxyHeaders: types.BoolValue(found.TrustProxyHeaders),
 		CreatedAt:         types.StringValue(found.CreatedAt),
+		VpcName:           nullableStr(found.VpcName),
+		VnetName:          nullableStr(found.VnetName),
+		VnetCIDR:          nullableStr(found.VnetCIDR),
 	}
 	if found.PublicIPID != nil {
 		state.PublicIPID = types.StringValue(*found.PublicIPID)
@@ -319,4 +328,11 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func nullableStr(p *string) types.String {
+	if p == nil {
+		return types.StringNull()
+	}
+	return types.StringValue(*p)
 }

@@ -22,6 +22,33 @@ détruites puis réallouées — d'où `RequiresReplaceIfConfigured`, figé par
 
 Nécessite l'API #1612 ; contre une API plus ancienne, `type` reste null.
 
+### Added — load balancer et application gateway : alignement #1579 (#87)
+
+- **Page d'indisponibilité** : `custom_error_page_html` (Optional) sur
+  `ccp_load_balancer` et `ccp_application_gateway`, servie à la place de la
+  page standard sur 502/503/504. Validée au plan (non vide, sans NUL, 7 Kio
+  UTF-8 max). Retirer l'attribut du HCL envoie `custom_error_page_html: null`
+  EXPLICITEMENT — une clé absente serait lue « inchangée » par l'API et le
+  diff ne convergerait jamais. Les espaces de bord retirés par le serveur
+  (saut de ligne final d'un heredoc ou de `file()`) ne créent pas de diff.
+- **Certificat client** : `acme_challenge = "custom"` + `tls_certificate_pem`
+  / `tls_private_key_pem` (Sensitive, write-only) sur les listeners de
+  `ccp_load_balancer` (https) et sur `ccp_appgw_listener`. Lecture seule :
+  `tls_cert_not_after`, `tls_cert_names`, `tls_cert_issuer`. Changer le
+  certificat ou la clé fait une **rotation en place** (`.../acme/retry`
+  côté LB, `.../renew-cert` côté AppGW) : ni le listener ni le load balancer
+  ne sont recréés. Cohérence vérifiée au plan.
+- **Cibles scale set dynamiques** : `container_scale_set_id` /
+  `vm_scale_set_id` sur les `backend` de `ccp_load_balancer` et sur
+  `ccp_appgw_target_group_member`. Une seule cible envoyée, jamais développée
+  en instances : les instances ajoutées plus tard reçoivent le trafic sans
+  nouvel apply. Exactement une cible exigée au plan (4 pour un backend LB, 5
+  pour un membre AppGW — l'API n'accepte pas `target_ip` sur un backend LB).
+- **Réseau** (Computed) : `vpc_id`, `vpc_name`, `vnet_name`, `vnet_cidr` sur
+  `ccp_load_balancer` (ressource et data source) ; `vpc_name`, `vnet_name`,
+  `vnet_cidr` sur `ccp_application_gateway` (ressource et data source),
+  `vpc_id` y existant déjà.
+
 ## v6.6.4 (2026-09-06)
 
 ### Fixed — le delai de provisionnement des bases suit la taille du cluster (#85)

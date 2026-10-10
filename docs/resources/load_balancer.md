@@ -11,7 +11,7 @@ Manages a CETIC Cloud Load Balancer. Listeners (TCP/HTTP/HTTPS) with weighted ba
 
 ~> **Note:** Load balancer provisioning is asynchronous. The provider polls until the load balancer reaches `active` status (up to 5 minutes).
 
-~> **Listeners are immutable.** Any change to a listener attribute other than its backends (e.g. protocol, port, algorithm, domain, ACME settings) forces replacement of the entire load balancer. Backends can be added, removed or updated in place.
+~> **Listeners are immutable.** Any change to a listener attribute other than its backends and its own certificate (e.g. protocol, port, algorithm, domain, ACME settings) forces replacement of the entire load balancer. Backends can be added, removed or updated in place, and a certificate you provide (`acme_challenge = "custom"`) is rotated in place.
 
 ## Example Usage
 
@@ -160,6 +160,53 @@ resource "ccp_load_balancer" "api_ionos" {
 }
 ```
 
+### Your own certificate, a custom error page and a scale set backend
+
+```hcl
+resource "ccp_container_scale_set" "api" {
+  name              = "api"
+  region            = "RNN"
+  plan              = "small"
+  template          = "ubuntu-24.04"
+  vnet_id           = ccp_vnet.front.id
+  min_instances     = 2
+  desired_instances = 3
+  max_instances     = 6
+  root_password     = var.root_password
+}
+
+resource "ccp_load_balancer" "shop" {
+  name    = "shop-lb"
+  region  = "RNN"
+  vnet_id = ccp_vnet.front.id
+
+  # Served instead of the default page when no backend answers (502/503/504).
+  custom_error_page_html = file("${path.module}/maintenance.html")
+
+  listener {
+    protocol    = "https"
+    listen_port = 443
+    domain      = "shop.example.com"
+
+    # Your own certificate. Changing either file rotates it in place.
+    acme_challenge      = "custom"
+    tls_certificate_pem = file("${path.module}/fullchain.pem")
+    tls_private_key_pem = file("${path.module}/privkey.pem")
+
+    # Dynamic target: every running instance of the scale set, including
+    # instances added later, receives traffic without a new apply.
+    backend {
+      container_scale_set_id = ccp_container_scale_set.api.id
+      port                   = 8080
+    }
+  }
+}
+
+output "shop_cert_expiry" {
+  value = ccp_load_balancer.shop.listener[0].tls_cert_not_after
+}
+```
+
 ## Argument Reference
 
 ### Required
@@ -173,6 +220,7 @@ resource "ccp_load_balancer" "api_ionos" {
 - `plan` - (Optional, Forces new resource) Capacity plan key, e.g. `small` (default), `medium`, `large`. Resolved server-side against the live plan catalog (`compute_plans`, key `lb-<plan>`, kind `lb`) — no hardcoded list, so plans added to the catalogue are usable without a provider release. Changing the plan forces replacement.
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Remove to detach.
 - `tags` - (Optional) Free-form tags (max 60 tags, max 50 chars each).
+- `custom_error_page_html` - (Optional) Your own HTML page, served instead of the default one when no backend can answer (HTTP 502, 503 and 504). At most 7 KiB (UTF-8 bytes) once leading and trailing whitespace is trimmed — inline the styles and host images elsewhere. Updated in place; **removing the attribute restores the default page**. Leading/trailing whitespace (e.g. the final newline of a heredoc or `file()`) does not cause a diff.
 - `listener` - (Optional) One or more `listener` blocks. See [Listener Reference](#listener-reference) below.
 
 ## Listener Reference
@@ -190,7 +238,9 @@ Each `listener` block supports:
 - `health_check_enabled` - (Optional, Immutable) Enable backend health checks. Defaults to `true`.
 - `health_check_path` - (Optional, Immutable) HTTP path used for health checks (for `http`/`https` listeners).
 - `domain` - (Optional, Immutable) Fully-qualified domain name served by an `https` listener. Required when `acme_challenge` is set. Must be lowercase.
-- `acme_challenge` - (Optional, Immutable) ACME (Let's Encrypt) challenge type: `http01` or `dns01`. Requires `protocol = "https"` and `domain`. `dns01` additionally requires `acme_dns_provider` and `acme_dns_credentials`.
+- `acme_challenge` - (Optional, Immutable) How the certificate of an `https` listener is obtained: `http01` or `dns01` (Let's Encrypt; requires `domain`, and `dns01` additionally requires `acme_dns_provider` and `acme_dns_credentials`), or `custom` (your own certificate, see below).
+- `tls_certificate_pem` - (Optional, Sensitive) With `acme_challenge = "custom"`: your certificate followed by its chain, PEM-encoded. Checked at submission: matching key, validity, and — when `domain` is set — that the certificate covers it (without `domain`, no name check is made). **Changing it rotates the certificate in place**, without replacing the listener or the load balancer. Never returned by the API.
+- `tls_private_key_pem` - (Optional, Sensitive) With `acme_challenge = "custom"`: the private key, PEM-encoded and **not** protected by a passphrase. Write-only: the value you provide is kept in state, it is never read back. Changing it rotates the certificate in place.
 - `acme_dns_provider` - (Optional, Immutable) DNS provider key for `dns01` (e.g. `cloudflare`, `route53`, `ionos`). See the [`ccp_acme_dns_providers`](../data-sources/acme_dns_providers.md) data source for the supported catalog.
 - `acme_dns_credentials` - (Optional, Sensitive, Immutable) DNS provider credentials for `dns01` (write-only — never returned by the API). Keys depend on the provider (see `ccp_acme_dns_providers`).
 - `backend` - (Optional) One or more `backend` blocks. Backends can be added, removed or updated in place without replacing the load balancer. See [Backend Reference](#backend-reference) below.
@@ -200,12 +250,16 @@ Each `listener` block supports:
 - `id` - The UUID of the listener.
 - `acme_status` - ACME certificate status: `pending` | `issuing` | `issued` | `renewing` | `error`.
 - `acme_last_error` - Last certificate issuance error, if any. Cleared when issuance succeeds.
+- `tls_cert_not_after` - Expiry date of your certificate (`acme_challenge = "custom"`). A certificate you provide is **not** renewed automatically: rotate it before this date.
+- `tls_cert_names` - Names covered by your certificate.
+- `tls_cert_issuer` - Issuer of your certificate.
 
 ### Important semantics
 
 - **Listeners are sent in the initial create request.** The API does not support adding or modifying listeners after creation. Any change to an immutable listener field forces replacement of the whole load balancer.
 - **Backends are reconciled in place.** Adding, removing, or changing `weight` on a backend does not replace the load balancer.
 - **ACME requires** `protocol = "https"` and `domain`. For `dns01`, `acme_dns_provider` and `acme_dns_credentials` are also required.
+- **`acme_challenge = "custom"`** requires `protocol = "https"`, `tls_certificate_pem` and `tls_private_key_pem` (checked at plan time). Switching between `custom` and Let's Encrypt changes `acme_challenge`, which is immutable and replaces the load balancer.
 - `acme_status` and `acme_last_error` are read-only and reflect certificate issuance progress. A freshly created listener starts in `pending` and transitions to `issued` once the certificate is obtained.
 
 ## Backend Reference
@@ -216,6 +270,10 @@ Each `backend` block inside a `listener` supports:
 
 - `container_id` - (Optional) UUID of a container instance to route traffic to.
 - `vm_instance_id` - (Optional) UUID of a VM instance to route traffic to.
+- `container_scale_set_id` - (Optional) UUID of a container scale set. **Dynamic target**: every running instance receives traffic, including instances added later — no new apply needed after a scale-up.
+- `vm_scale_set_id` - (Optional) UUID of a VM scale set. Dynamic target, like `container_scale_set_id`.
+
+Exactly one of the four must be set (checked at plan time).
 
 ### Required
 
@@ -237,6 +295,10 @@ In addition to all arguments above, the following attributes are exported:
 - `status` - Current status: `provisioning`, `active`, `updating`, or `error`.
 - `vip_address` - Private virtual IP address within the VNet.
 - `public_ip_address` - Public IP address if one is attached, otherwise empty.
+- `vpc_id` - UUID of the VPC that contains `vnet_id`.
+- `vpc_name` - Name of that VPC.
+- `vnet_name` - Name of the VNet the load balancer is attached to.
+- `vnet_cidr` - Address range (CIDR) of that VNet.
 - `created_at` - RFC 3339 creation timestamp.
 
 ## Import

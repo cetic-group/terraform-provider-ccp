@@ -107,6 +107,16 @@ func (c *Client) DeleteAppGWListener(ctx context.Context, appgwID, listenerID st
 	return c.do(ctx, http.MethodDelete, "/v1/app-gateways/"+appgwID+"/listeners/"+listenerID, nil, nil)
 }
 
+// RotateAppGWListenerCert pose un nouveau certificat client sur un listener
+// existant (#1579) — rotation en place, sans recréer le listener.
+func (c *Client) RotateAppGWListenerCert(ctx context.Context, appgwID, listenerID string, body ListenerCertificateUpload) (*AppGWListener, error) {
+	var out AppGWListener
+	if err := c.do(ctx, http.MethodPost, "/v1/app-gateways/"+appgwID+"/listeners/"+listenerID+"/renew-cert", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) RenewAppGWListenerCert(ctx context.Context, appgwID, listenerID string) (*AppGWListener, error) {
 	var out AppGWListener
 	if err := c.do(ctx, http.MethodPost, "/v1/app-gateways/"+appgwID+"/listeners/"+listenerID+"/renew-cert", nil, &out); err != nil {
