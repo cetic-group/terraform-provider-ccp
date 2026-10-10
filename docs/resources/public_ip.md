@@ -55,7 +55,7 @@ resource "ccp_public_ip" "api" {
   - `firewall` — published by the platform firewall; for VMs and containers.
   - `nat` — 1:1 translation; the resource keeps its private address.
 
-  Which types are offered depends on the platform: `cetic ip types --region <R>` lists them, and an unavailable type is rejected at creation. If omitted, the region's default type is used and exported here. Setting a **different** value forces a new resource; leaving it unset never does — existing IPs are not replaced when upgrading the provider.
+  Which types are offered depends on the platform: `cetic ip types --region <R>` lists them, and an unavailable type is rejected at creation. If omitted, the first offered type that still has free IPs in the region is used and exported here. Changing a configured type forces a new resource; leaving it unset, or adding it to an IP created before the attribute existed, never does — existing IPs are not replaced when upgrading the provider. On a platform that does not offer types yet, creating an IP with `type` is refused before anything is allocated.
 - `pool_id` - (Optional, Forces new resource) UUID of the IP pool to allocate from. If omitted, the API picks the first available pool of the requested (or default) type in the region.
 - `label` - (Optional) Display name for the IP (e.g. `passerelle-prod`, `ip-fixe-api`). Max 100 characters. Mutable in-place — changing it does not detach or recreate the IP. To remove a label, omit the attribute from the configuration.
 - `description` - (Optional) Free-form description of what this IP is used for. Mutable in-place.

@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 var (
@@ -393,12 +394,109 @@ func (r *lbResource) Configure(_ context.Context, req resource.ConfigureRequest,
 // cohérence du certificat client de chaque listener et l'unicité de la cible
 // de chaque backend.
 func (r *lbResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var cfg lbResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	// Pas de `req.Config.Get` dans lbResourceModel : ses blocs sont des slices
+	// Go, qui ne savent pas porter un bloc encore inconnu (`dynamic` sur une
+	// variable au validate, ou sur des ressources créées dans le même apply).
+	var raw types.List
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("listener"), &raw)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(validateListeners(cfg.Listeners)...)
+	listeners, d := knownListeners(ctx, raw)
+	resp.Diagnostics.Append(d...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(validateListeners(listeners)...)
+}
+
+// knownListeners décode les blocs `listener` en tolérant les valeurs encore
+// inconnues : une liste de listeners inconnue rend nil, un listener inconnu est
+// rendu vide (aucun contrôle ne s'y déclenche), une liste de backends inconnue
+// — ou contenant un backend inconnu — laisse `Backends` vide. Les index sont
+// préservés pour que les diagnostics visent le bon bloc.
+func knownListeners(ctx context.Context, raw types.List) ([]lbListenerModel, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if raw.IsNull() || raw.IsUnknown() {
+		return nil, diags
+	}
+	out := make([]lbListenerModel, 0, len(raw.Elements()))
+	for _, el := range raw.Elements() {
+		obj, ok := el.(types.Object)
+		if !ok || obj.IsNull() || obj.IsUnknown() {
+			out = append(out, unknownListener())
+			continue
+		}
+		a := obj.Attributes()
+		str := func(k string) types.String {
+			if v, ok := a[k].(types.String); ok {
+				return v
+			}
+			return types.StringUnknown()
+		}
+		i64 := func(k string) types.Int64 {
+			if v, ok := a[k].(types.Int64); ok {
+				return v
+			}
+			return types.Int64Unknown()
+		}
+		b := func(k string) types.Bool {
+			if v, ok := a[k].(types.Bool); ok {
+				return v
+			}
+			return types.BoolUnknown()
+		}
+		l := lbListenerModel{
+			Protocol:           str("protocol"),
+			ListenPort:         i64("listen_port"),
+			Algorithm:          str("algorithm"),
+			HealthCheckEnabled: b("health_check_enabled"),
+			HealthCheckPath:    str("health_check_path"),
+			Domain:             str("domain"),
+			AcmeChallenge:      str("acme_challenge"),
+			AcmeDNSProvider:    str("acme_dns_provider"),
+			TLSCertificatePEM:  str("tls_certificate_pem"),
+			TLSPrivateKeyPEM:   str("tls_private_key_pem"),
+		}
+		if bl, ok := a["backend"].(types.List); ok && !bl.IsNull() && !bl.IsUnknown() {
+			backends := make([]lbBackendModel, 0, len(bl.Elements()))
+			for _, be := range bl.Elements() {
+				bo, ok := be.(types.Object)
+				if !ok || bo.IsNull() || bo.IsUnknown() {
+					backends = nil
+					break
+				}
+				var b lbBackendModel
+				diags.Append(bo.As(ctx, &b, basetypes.ObjectAsOptions{})...)
+				backends = append(backends, b)
+			}
+			l.Backends = backends
+		}
+		out = append(out, l)
+	}
+	return out, diags
+}
+
+// listenerBlocksKnown — la liste et chacun de ses blocs sont connus.
+func listenerBlocksKnown(raw types.List) bool {
+	if raw.IsUnknown() {
+		return false
+	}
+	for _, el := range raw.Elements() {
+		if el.IsUnknown() {
+			return false
+		}
+	}
+	return true
+}
+
+// unknownListener — listener dont aucun champ n'est connu : validateCustomCert
+// sort d'emblée et il n'a aucun backend à contrôler.
+func unknownListener() lbListenerModel {
+	return lbListenerModel{
+		Protocol: types.StringUnknown(), AcmeChallenge: types.StringUnknown(),
+		TLSCertificatePEM: types.StringUnknown(), TLSPrivateKeyPEM: types.StringUnknown(),
+	}
 }
 
 // validateListeners — fonction pure, testée sans framework. Les valeurs encore
@@ -473,13 +571,24 @@ func (r *lbResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequ
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
 		return
 	}
-	var plan, state lbResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	// Même décodage tolérant que ValidateConfig : un `dynamic "backend"` sur
+	// des ressources créées dans le même apply laisse les backends inconnus au
+	// plan, et `req.Plan.Get` dans des slices échouait. Les backends ne comptent
+	// pas ici ; un bloc listener inconnu, si : on ne tranche pas sans lui.
+	var rawPlan, rawState types.List
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("listener"), &rawPlan)...)
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("listener"), &rawState)...)
+	if resp.Diagnostics.HasError() || !listenerBlocksKnown(rawPlan) {
+		return
+	}
+	plan, d := knownListeners(ctx, rawPlan)
+	resp.Diagnostics.Append(d...)
+	state, d := knownListeners(ctx, rawState)
+	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if listenersRequireReplace(plan.Listeners, state.Listeners) {
+	if listenersRequireReplace(plan, state) {
 		resp.RequiresReplace = append(resp.RequiresReplace, path.Root("listener"))
 	}
 }

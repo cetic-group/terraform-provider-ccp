@@ -4,23 +4,27 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v6.7.0 (2026-10-10)
 
 ### Added — `type` sur `ccp_public_ip` (cetic-cloud-platform#1612)
 
 `ccp_public_ip.type` (Optional + Computed) choisit comment l'IP publique arrive
 jusqu'à la ressource : `edge`, `firewall` ou `nat`. Les types proposés dépendent
 de la plateforme ; un type non proposé est refusé à la création. Sans `type`, le
-type par défaut de la région est pris et relu dans l'état. La data source
+premier type proposé qui a encore des IP libres dans la région est pris et
+relu dans l'état. La data source
 `ccp_public_ip` expose aussi `type`.
 
-Changer un `type` **configuré** force le remplacement. Le laisser non configuré
-ne le force jamais : à la montée de version, les IP déjà allouées n'ont pas de
-`type` dans leur état, et un simple `RequiresReplace` les aurait toutes
-détruites puis réallouées — d'où `RequiresReplaceIfConfigured`, figé par
+Changer un `type` **configuré** force le remplacement, mais seulement quand
+l'état en connaît déjà un. À la montée de version, les IP déjà allouées n'ont
+pas de `type` dans leur état : un `RequiresReplace` les aurait toutes
+détruites puis réallouées, et `RequiresReplaceIfConfigured` celle sur laquelle
+on ajoute `type` — l'adresse aurait été perdue dans les deux cas. Figé par
 `TestTypeChangeReplacesOnlyWhenConfigured`.
 
-Nécessite l'API #1612 ; contre une API plus ancienne, `type` reste null.
+Nécessite l'API #1612. Contre une API plus ancienne, une **création** avec
+`type` est refusée AVANT toute allocation (l'API ignorerait le champ et
+allouerait, facturée, une IP d'un autre type) ; sans `type`, rien ne change.
 
 ### Added — load balancer et application gateway : alignement #1579 (#87)
 
@@ -48,6 +52,25 @@ Nécessite l'API #1612 ; contre une API plus ancienne, `type` reste null.
   `ccp_load_balancer` (ressource et data source) ; `vpc_name`, `vnet_name`,
   `vnet_cidr` sur `ccp_application_gateway` (ressource et data source),
   `vpc_id` y existant déjà.
+
+### Fixed — `ccp_load_balancer` : blocs `dynamic` encore inconnus
+
+La validation du certificat et des cibles décodait la configuration dans des
+listes Go, qui ne savent pas porter un bloc inconnu : un `dynamic "backend"`
+sur une variable (`terraform validate`) ou sur des ressources créées dans le
+même apply échouait avec « Received unknown value ». Le décodage tolère
+désormais ces valeurs (validation et plan). `ModifyPlan` avait déjà le même
+défaut en mise à jour ; il est corrigé aussi.
+
+### À savoir en montant de version
+
+- `custom_error_page_html` est `Optional` : la configuration fait foi. Une
+  page posée depuis la console sur un load balancer ou une application gateway
+  dont le HCL ne porte pas l'attribut sera **retirée** au prochain apply.
+  Ajoutez-la au HCL pour la garder.
+- Après un `terraform import`, le premier apply d'un listener `custom` refait
+  une rotation du certificat : le PEM n'est jamais rendu par l'API, il n'est
+  donc pas dans l'état importé.
 
 ## v6.6.4 (2026-09-06)
 

@@ -627,6 +627,27 @@ func (c *Client) GetPublicIP(ctx context.Context, id string) (*PublicIP, error) 
 	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: "/v1/public-ips/" + id, Detail: "public ip not found"}
 }
 
+// PlatformKnowsPublicIPTypes dit si l'API connaît les types d'IP publique
+// (cetic-cloud-platform#1612). Une API plus ancienne ignore le champ `type` à
+// l'allocation et servirait une IP d'un autre type sans erreur : ses pools ne
+// portent pas la clé `type`. Une région sans pool ne permet pas de trancher —
+// l'allocation échouera de toute façon.
+func (c *Client) PlatformKnowsPublicIPTypes(ctx context.Context, region string) (bool, error) {
+	var pools []map[string]any
+	if err := c.do(ctx, http.MethodGet, "/v1/public-ips/pools?region="+url.QueryEscape(region), nil, &pools); err != nil {
+		return false, err
+	}
+	if len(pools) == 0 {
+		return true, nil
+	}
+	for _, p := range pools {
+		if _, ok := p["type"]; ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (c *Client) AllocatePublicIP(ctx context.Context, req PublicIPAllocateRequest) (*PublicIP, error) {
 	var out PublicIP
 	if err := c.do(ctx, http.MethodPost, "/v1/public-ips", req, &out); err != nil {

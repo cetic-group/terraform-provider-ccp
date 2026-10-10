@@ -2,9 +2,11 @@ package publicip
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -76,6 +78,9 @@ func TestTypeChangeReplacesOnlyWhenConfigured(t *testing.T) {
 	if run(types.StringValue("edge"), types.StringValue("edge"), types.StringNull()) {
 		t.Error("type inchangé : aucun remplacement attendu")
 	}
+	if run(types.StringNull(), types.StringValue("edge"), types.StringValue("edge")) {
+		t.Error("type ajouté sur une IP existante (état null) : aucun remplacement attendu")
+	}
 	if !run(types.StringValue("edge"), types.StringValue("firewall"), types.StringValue("firewall")) {
 		t.Error("type configuré différent : remplacement attendu")
 	}
@@ -90,4 +95,81 @@ func nonNullObject(objType tftypes.Type) tftypes.Value {
 		vals[k] = tftypes.NewValue(t, nil)
 	}
 	return tftypes.NewValue(objType, vals)
+}
+
+// runCreate exécute le vrai Create avec un plan `region` + `type`.
+func runCreate(t *testing.T, srv *testutil.Server, ipType string) *resource.CreateResponse {
+	t.Helper()
+	ctx := context.Background()
+	r := &publicIPResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	var sch resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &sch)
+
+	plan := publicIPResourceModel{
+		ID: types.StringUnknown(), Region: types.StringValue("RNN"), Type: types.StringValue(ipType),
+		PoolID: types.StringUnknown(), AttachedToID: types.StringNull(), AttachedToType: types.StringNull(),
+		IPAddress: types.StringUnknown(), Status: types.StringUnknown(), ContainerID: types.StringUnknown(),
+		VMInstanceID: types.StringUnknown(), LoadBalancerID: types.StringUnknown(),
+		LoadBalancerName: types.StringUnknown(), Label: types.StringNull(), Description: types.StringNull(),
+		CreatedAt: types.StringUnknown(),
+	}
+	pl := tfsdk.State{Schema: sch.Schema}
+	if d := pl.Set(ctx, &plan); d.HasError() {
+		t.Fatalf("plan: %v", d)
+	}
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: sch.Schema}}
+	r.Create(ctx, resource.CreateRequest{Plan: tfsdk.Plan{Raw: pl.Raw, Schema: sch.Schema}}, resp)
+	return resp
+}
+
+// API antérieure à #1612 : elle ignorerait `type` et allouerait (et
+// facturerait) une IP d'un autre type. Le provider refuse AVANT d'allouer.
+func TestCreateWithTypeRefusedBeforeAllocatingOnOlderAPI(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/public-ips/pools", Status: 200, Body: []map[string]any{
+			{"id": "pool-1", "region": "RNN", "available_ips": 3},
+		}},
+	})
+	defer srv.Close()
+
+	resp := runCreate(t, srv, "firewall")
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("erreur attendue : la plateforme ne connaît pas les types")
+	}
+	for _, c := range srv.Calls() {
+		if c.Method == "POST" {
+			t.Fatalf("aucune allocation attendue, reçu %s %s", c.Method, c.Path)
+		}
+	}
+}
+
+func TestCreateWithTypeSendsItWhenAPIKnowsTypes(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/public-ips/pools", Status: 200, Body: []map[string]any{
+			{"id": "pool-1", "region": "RNN", "available_ips": 3, "type": "firewall"},
+		}},
+		{Method: "POST", Path: "/v1/public-ips", Status: 201, Body: map[string]any{
+			"id": "pip-1", "pool_id": "pool-1", "region": "RNN", "type": "firewall",
+			"ip_address": "203.0.113.10", "status": "allocated", "created_at": "2026-10-10T00:00:00Z",
+		}},
+		{Method: "GET", Path: "/v1/public-ips", Status: 200, Body: []map[string]any{{
+			"id": "pip-1", "pool_id": "pool-1", "region": "RNN", "type": "firewall",
+			"ip_address": "203.0.113.10", "status": "allocated", "created_at": "2026-10-10T00:00:00Z",
+		}}},
+	})
+	defer srv.Close()
+
+	resp := runCreate(t, srv, "firewall")
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("create: %v", resp.Diagnostics)
+	}
+	var body []byte
+	for _, c := range srv.Calls() {
+		if c.Method == "POST" {
+			body = c.Body
+		}
+	}
+	if !strings.Contains(string(body), `"type":"firewall"`) {
+		t.Fatalf("type non envoyé : %s", body)
+	}
 }

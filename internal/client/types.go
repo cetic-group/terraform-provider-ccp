@@ -234,7 +234,7 @@ type PublicIP struct {
 
 type PublicIPAllocateRequest struct {
 	Region      string  `json:"region"`
-	Type        *string `json:"type,omitempty"` // nil = type par défaut de la région
+	Type        *string `json:"type,omitempty"` // nil = premier type proposé qui a des IP libres
 	PoolID      *string `json:"pool_id,omitempty"`
 	Label       *string `json:"label,omitempty"`
 	Description *string `json:"description,omitempty"`
