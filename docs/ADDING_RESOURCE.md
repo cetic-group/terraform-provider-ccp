@@ -334,9 +334,8 @@ func (r *myResourceResource) ImportState(ctx context.Context, req resource.Impor
 | Basse | `ccp_api_key` | `/v1/api-keys` | Token retourné une seule fois — gérer côté state |
 | Basse | `ccp_org_member` | `/v1/members` | |
 | Basse | `ccp_support_ticket` | `/v1/support/tickets` | Pas vraiment IaC use-case |
-| Basse | `ccp_ipaas_pool` | admin only | |
 | Basse | `ccp_quota_request` | `/v1/quotas/requests` | One-shot |
 | Basse | `ccp_tag` | `/v1/tags` | Existe déjà comme attribut sur les autres resources |
-| ✅ Implémenté (v0.10.0) | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` | `/v1/registries/*` | CCR — Phase 6. `admin_password` + user `password` retournés une seule fois (pattern `apikey`). Polling 20 min (DNS-01 IONOS). Datasource `ccp_registry` lookup by id / (name+region). |
+| ✅ Implémenté (v0.10.0) | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` | `/v1/registries/*` | CCR — Phase 6. `admin_password` + user `password` retournés une seule fois (pattern `apikey`). Polling 20 min (DNS-01). Datasource `ccp_registry` lookup by id / (name+region). |
 
 Estimation : ~2-4h par resource. Total ~30-50h pour les 14.

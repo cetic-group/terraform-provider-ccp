@@ -1,7 +1,6 @@
 // Package applicationgateway implements the ccp_application_gateway
-// Terraform resource — the L7 Application Gateway (ccp-appgw) which
-// provisions an HA pair of LXC containers running HAProxy with TLS
-// termination, SNI multi-cert, rate limiting and WAF presets.
+// Terraform resource — the L7 Application Gateway, a highly available
+// reverse proxy with TLS termination, SNI multi-cert, rate limiting and WAF presets.
 //
 // Listeners, target groups, target group members and routes are managed
 // as SEPARATE resources (ccp_appgw_listener, ccp_appgw_target_group,

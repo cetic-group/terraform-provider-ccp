@@ -1,6 +1,6 @@
 // Package containerscaleset implements the ccp_container_scale_set Terraform resource.
 //
-// Le scale set fait grandir/réduire un pool de containers LXC identiques selon
+// Le scale set fait grandir/réduire un pool de containers identiques selon
 // `desired_instances` (entre min et max). Les containers individuels sont
 // gérés par CL en interne — pas exposés en TF state pour éviter les drifts
 // avec l'auto-repair / auto-scale.
@@ -69,7 +69,7 @@ func (r *cssResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud Container Scale Set — a pool of identical LXC containers " +
+		MarkdownDescription: "Manages a CETIC Cloud Container Scale Set — a pool of identical containers " +
 			"with min/max bounds and `desired_instances` for hot scaling. Auto-repair re-creates failed containers " +
 			"when enabled.",
 		Attributes: map[string]schema.Attribute{
@@ -93,7 +93,7 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"template": schema.StringAttribute{
-				MarkdownDescription: "LXC template key (default: `ubuntu-24.04`). Forces replacement.",
+				MarkdownDescription: "Container template key (default: `ubuntu-24.04`). Forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("ubuntu-24.04"),

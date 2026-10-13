@@ -1,12 +1,10 @@
 // Package publicip implements the ccp_public_ip Terraform resource.
 //
-// A public IP in CETIC Cloud is allocated from a per-region pool (either a
-// classic OPNsense/Orange pool or an `ipaas_routed` pool that announces a
-// BYOIP prefix via FRR/BGP from a Scaleway edge). Allocation and release are
-// synchronous — the API returns 201 with the full PublicIP record and 204 on
-// release. Attach/detach are synchronous for demo pools but dispatch a Celery
-// task for IPaaS pools, so the provider polls GetPublicIP after every
-// attach/detach until the IP reaches a quiescent status.
+// A public IP in CETIC Cloud is allocated from a regional pool. Allocation and
+// release are synchronous — the API returns 201 with the full PublicIP record
+// and 204 on release. Attach/detach may complete asynchronously, so the
+// provider polls GetPublicIP after every attach/detach until the IP reaches a
+// quiescent status.
 //
 // User intent for attachment is expressed via `attached_to_id` +
 // `attached_to_type`. Both nil → IP should be `allocated` (not attached). Both
@@ -84,11 +82,9 @@ var noEdgeWhitespace = regexp.MustCompile(`^\S(.*\S)?$`)
 // Polling parameters.
 //
 //   - attachPollTimeout: time we wait for `allocated` → `attached` (or vice
-//     versa on detach). IPaaS attaches dispatch a Celery task that converges
-//     end-to-end (DNAT entry on the edge + route + prefix-list refresh +
-//     secondary IP injection on the target). 60s was too tight under load —
-//     BGP/WireGuard convergence + a busy Celery queue can push it past a
-//     minute, surfacing as a spurious timeout even though the attach succeeds.
+//     versa on detach). Attaches converge asynchronously on the platform side.
+//     60s was too tight under load — convergence can take more than a minute,
+//     surfacing as a spurious timeout even though the attach succeeds.
 const (
 	pollInterval      = 5 * time.Second
 	attachPollTimeout = 5 * time.Minute
@@ -101,8 +97,7 @@ func (r *publicIPResource) Metadata(_ context.Context, req resource.MetadataRequ
 func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud public IP address. The IP is " +
-			"allocated from a region pool (classic Orange/OPNsense pool or an " +
-			"`ipaas_routed` BYOIP pool), and can be attached to a container or " +
+			"allocated from a regional pool, and can be attached to a container or " +
 			"VM instance via `attached_to_id` + `attached_to_type`. Load-balancer " +
 			"attachment is handled by `ccp_load_balancer` and is surfaced " +
 			"here read-only.",
@@ -580,7 +575,7 @@ func (r *publicIPResource) ImportState(ctx context.Context, req resource.ImportS
 }
 
 // attachAndPoll performs an attach call followed by a poll until the IP
-// reaches `attached`. IPaaS pools dispatch a Celery task and stay in
+// reaches `attached`. Routed public IPs converge asynchronously and stay in
 // `allocated` until it completes; demo pools transition synchronously.
 // Returns nil diagnostics on success, otherwise a slice suitable for
 // resp.Diagnostics.Append.
@@ -602,8 +597,8 @@ func (r *publicIPResource) attachAndPoll(ctx context.Context, id, resourceID, re
 		}
 		diags.AddError(
 			"Failed to attach public IP",
-			fmt.Sprintf("CETIC Cloud API error for id %s: %s. Note that IPaaS-routed "+
-				"pools require the target VNet to have `snat=false` (a 422 here "+
+			fmt.Sprintf("CETIC Cloud API error for id %s: %s. Note that routed public "+
+				"IPs require the target VNet to have `snat=false` (a 422 here "+
 				"surfaces that mismatch).", id, err.Error()),
 		)
 		return diags
@@ -651,7 +646,7 @@ func (r *publicIPResource) detachAndPoll(ctx context.Context, id string) diag.Di
 
 // classifyAttachPoll maps a polled IP status to a (done, err) decision while
 // waiting for `attached`. `allocated` (task not picked up yet) and `attaching`
-// (IPaaS Celery task running) are transitional → keep polling. Only `error`
+// (platform task running) are transitional → keep polling. Only `error`
 // (or an unknown state) is a hard failure. Pure function → unit-testable.
 func classifyAttachPoll(id, status string) (bool, error) {
 	switch status {
@@ -681,7 +676,7 @@ func pollForAttached(ctx context.Context, c *client.Client, id string) error {
 
 // classifyDetachPoll maps a polled IP status to a (done, err) decision while
 // waiting for `allocated` (i.e. detached). `attached` (task not picked up yet)
-// and `detaching` (Celery task tearing down DNAT/route) are transitional → keep
+// and `detaching` (platform task tearing down the routing) are transitional → keep
 // polling. Only `error` (or an unknown state) is a hard failure.
 func classifyDetachPoll(id, status string) (bool, error) {
 	switch status {

@@ -1,6 +1,6 @@
 // Package objectstoragekey implements the ccp_object_storage_key resource.
 //
-// Clé S3 scopée (subuser RGW) pour un tenant CETIC Cloud.
+// Clé S3 scopée pour un tenant CETIC Cloud.
 // Les credentials (access_key, secret_key) sont retournés UNIQUEMENT à la
 // création — ils sont stockés sensibles dans l'état Terraform.
 // Immutable : toute modification force la recréation.
@@ -46,7 +46,7 @@ func (r *keyResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (r *keyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Clé S3 scopée (subuser RGW Ceph) pour un tenant CETIC Cloud. " +
+		MarkdownDescription: "Clé S3 scopée pour un tenant CETIC Cloud. " +
 			"Les credentials ne sont disponibles qu'à la création — les stocker dans Vault ou autre KMS.\n\n" +
 			"Immutable — toute modification force la recréation.",
 		Attributes: map[string]schema.Attribute{

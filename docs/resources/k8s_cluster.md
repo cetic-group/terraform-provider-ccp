@@ -171,7 +171,7 @@ resource "ccp_k8s_cluster" "prod" {
 The apiserver always has a private endpoint (auto-allocated from the VNet CIDR or pinned via `apiserver_internal_ip`). It can additionally be exposed publicly via `apiserver_public_ip_id`.
 
 - `apiserver_internal_ip` - (Forces new resource) Pinned private IP for the apiserver. Defaults to auto-allocated within the VNet.
-- `apiserver_public_ip_id` - UUID of a public IP attached to the apiserver (public kubeconfig). **Mutable** — set the UUID to attach, remove it (`null`) to detach, change it to rotate, all **without recreating the cluster**. Works both at create time and later. The IP must be in the same region as the cluster and come from a routed BYOIP pool. **Not available in an isolated subnet**: the platform refuses to attach a public address in a subnet whose `snat` is `false`.
+- `apiserver_public_ip_id` - UUID of a public IP attached to the apiserver (public kubeconfig). **Mutable** — set the UUID to attach, remove it (`null`) to detach, change it to rotate, all **without recreating the cluster**. Works both at create time and later. The IP must be in the same region as the cluster and be a routed public IP. **Not available in an isolated subnet**: the platform refuses to attach a public address in a subnet whose `snat` is `false`.
 
 > **Migration (provider v3.0.0)**: the former separate `public_ip_id` attribute is removed — `apiserver_public_ip_id` is now the single, mutable knob for the apiserver public IP. If you used `public_ip_id`, rename it to `apiserver_public_ip_id`.
 
@@ -230,10 +230,8 @@ In addition to all arguments above, the following attributes are exported.
 
 ### Apiserver frontend HA (tier = "prod")
 
-These attributes are populated when `tier = "prod"` and exist for observability of the redundant frontend behind the apiserver. They are `null` when `tier = "dev"`.
+This attribute is populated when `tier = "prod"` and is `null` when `tier = "dev"`.
 
-- `proxy_secondary_vmid` - Internal identifier of the secondary apiserver frontend. Read-only.
-- `proxy_secondary_node` - Internal placement of the secondary apiserver frontend. Read-only.
 - `proxy_vip_vnet` - Floating address on the VNet shared between the two apiserver frontends — this is the IP the kubeconfig points at when HA is active.
 
 ## Import

@@ -11,7 +11,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 6.7"
+      version = "~> 7.0"
     }
   }
 }
@@ -88,7 +88,7 @@ resource "ccp_public_ip" "web" {
 }
 
 # ---------------------------------------------------------------------------
-# Container instance — LXC, attached to the web VNet
+# Container instance — attached to the web VNet
 # ---------------------------------------------------------------------------
 
 resource "ccp_container_instance" "web" {
@@ -114,7 +114,7 @@ resource "ccp_container_instance" "web" {
 }
 
 # ---------------------------------------------------------------------------
-# Block volume — Ceph RBD, attached to the container, 20 GB
+# Block volume — attached to the container, 20 GB
 # ---------------------------------------------------------------------------
 
 resource "ccp_block_volume" "data" {

@@ -44,7 +44,7 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `name` — Name of the VPC.
 - `region` — Region code.
 - `cidr` — Private address block of the VPC (RFC1918, e.g. `10.1.0.0/16`; `null` on legacy VPCs predating the field).
-- `vlan_id` — VLAN ID assigned by Proxmox SDN.
+- `vlan_id` — VLAN ID assigned by the platform.
 - `sdn_type` — SDN driver type (e.g. `evpn`).
 - `status` — `active`, `deleting`, or `error`.
 - `tags` — Free-form tags.

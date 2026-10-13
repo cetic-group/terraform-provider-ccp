@@ -1,6 +1,6 @@
 // Package vminstance implements the ccp_vm_instance Terraform resource.
 //
-// A VM instance in CETIC Cloud is a Proxmox QEMU virtual machine cloned from a
+// A VM instance in CETIC Cloud is a virtual machine cloned from a
 // pre-existing template (Ubuntu/Debian cloud images) and configured at first
 // boot via cloud-init (sshkeys, user_data, root password). The CETIC Cloud API
 // supports an in-place PATCH that mutates only `name` and `tags`; every other
@@ -9,7 +9,7 @@
 // replacement on change.
 //
 // Provisioning is asynchronous: POST /v1/vm-instances returns 201 with
-// `status=provisioning` and a Celery worker performs the `qm clone`, disk
+// `status=provisioning` and a platform task performs the clone, disk
 // resize, cloud-init drive build, and first boot. We poll GetVMInstance for
 // up to 10 minutes (VMs are slower than containers because of cloud-init +
 // apt + qemu-guest-agent) until the VM reaches `running` with a resolved IP

@@ -1,6 +1,6 @@
 // Package vpc implements the ccp_vpc Terraform resource.
 //
-// A VPC in CETIC Cloud is a Proxmox SDN zone (vxlan, with a per-VPC NAT GW LXC
+// A VPC in CETIC Cloud is an isolated private network (its gateway is
 // provisioned lazily on first VNet creation). The API exposes no PATCH
 // endpoint, so every user-settable attribute (`name`, `region`, `tags`) forces
 // replacement on change.
@@ -244,7 +244,7 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		Tags:   tags,
 	})
 	if err != nil {
-		// 409 (e.g. name collision) and 503 (no active Proxmox node in the
+		// 409 (e.g. name collision) and 503 (no capacity available in the
 		// region) both arrive with a detail message we want to surface
 		// verbatim — the API speaks French and the messages are user-facing.
 		if client.IsConflict(err) {

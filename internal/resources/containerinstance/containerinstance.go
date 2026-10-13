@@ -1,14 +1,14 @@
 // Package containerinstance implements the ccp_container_instance
 // Terraform resource.
 //
-// A container instance in CETIC Cloud is a Proxmox LXC container provisioned
+// A container instance in CETIC Cloud is a system container provisioned
 // from a template (Ubuntu/Debian/...). The API exposes no PATCH endpoint, so
 // every user-settable attribute (`name`, `region`, `plan`, `template`,
 // `vnet_id`, `ssh_key_ids`, `user_data`, `public_ip_id`, `root_password`,
 // `tags`) forces replacement on change.
 //
 // Provisioning is asynchronous: POST /v1/containers returns 201 with
-// `status=provisioning` and a Celery worker performs the actual `pct create`
+// `status=provisioning` and a platform task performs the actual creation
 // + cloud-init wait + IPAM allocation. We poll GetContainer for up to 5
 // minutes until the container reaches `running` with a resolved IP address.
 // If the container reports `error`, we fail with the API-side error_message.
@@ -17,7 +17,7 @@
 // refresh pick up the IP.
 //
 // Deletion is also asynchronous: the container enters `deleting` and
-// disappears from the API once the LXC teardown + IPAM release completes.
+// disappears from the API once the teardown + IPAM release completes.
 // We poll for 404 up to 180 s and surface a warning rather than an error if
 // the timeout elapses, since the resource will still be removed from
 // Terraform state and the API is converging on its own.
@@ -119,7 +119,7 @@ func (r *containerInstanceResource) Metadata(_ context.Context, req resource.Met
 
 func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud container instance (LXC). The API has no " +
+		MarkdownDescription: "Manages a CETIC Cloud container instance. The API has no " +
 			"in-place update endpoint, so every user-settable attribute forces replacement. " +
 			"Creation is asynchronous: the provider polls until the container reaches the " +
 			"`running` state with a resolved IP address (or up to 5 minutes).",

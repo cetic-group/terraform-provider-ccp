@@ -2,3 +2,6 @@
 /terraform-provider-cetic-cloud-platform_*
 /terraform-provider-ccp
 /terraform-provider-ccp_*
+
+# Notes internes (ne pas publier)
+/CLAUDE.md

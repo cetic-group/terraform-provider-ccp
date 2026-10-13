@@ -717,7 +717,7 @@ func (c *Client) FindPublicIPByResource(ctx context.Context, resourceType, resou
 	return nil, nil
 }
 
-// ─── Object Buckets (Ceph RGW) ───────────────────────────────────────────────
+// ─── Object Buckets ────────────────────────────────────────────────────────────
 
 func (c *Client) ListObjectBuckets(ctx context.Context, region string) ([]ObjectBucket, error) {
 	path := "/v1/buckets"
@@ -1429,36 +1429,6 @@ func (c *Client) DeleteObjectStorageKey(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/object-storage/keys/"+id, nil, nil)
 }
 
-// ─── IPaaS Pool (admin) ────────────────────────────────────────────────────
-
-func (c *Client) GetIpaasPool(ctx context.Context, id string) (*IpaasPool, error) {
-	var out IpaasPool
-	if err := c.do(ctx, http.MethodGet, "/v1/admin/ipaas/pools/"+id, nil, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) CreateIpaasPool(ctx context.Context, req IpaasPoolCreateRequest) (*IpaasPool, error) {
-	var out IpaasPool
-	if err := c.do(ctx, http.MethodPost, "/v1/admin/ipaas/pools", req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) UpdateIpaasPool(ctx context.Context, id string, req IpaasPoolUpdateRequest) (*IpaasPool, error) {
-	var out IpaasPool
-	if err := c.do(ctx, http.MethodPatch, "/v1/admin/ipaas/pools/"+id, req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) DeleteIpaasPool(ctx context.Context, id string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/admin/ipaas/pools/"+id, nil, nil)
-}
-
 // ─── Quota Request ─────────────────────────────────────────────────────────
 
 func (c *Client) GetQuotaRequest(ctx context.Context, id string) (*QuotaRequest, error) {
@@ -1651,7 +1621,7 @@ func Poll(ctx context.Context, interval, timeout time.Duration, fn PollFunc) err
 	}
 }
 
-// ListLxcTemplates returns the LXC template catalog (active templates only).
+// ListLxcTemplates returns the container template catalog (active templates only).
 // GET /v1/templates — no auth required (public catalog).
 func (c *Client) ListLxcTemplates(ctx context.Context) ([]LxcTemplate, error) {
 	var out []LxcTemplate

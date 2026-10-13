@@ -1,6 +1,6 @@
 // Package containersnapshot implements the ccp_container_snapshot resource.
 //
-// Snapshot d'un container LXC via pct snapshot (Ceph RBD). La création est
+// Snapshot d'un container. La création est
 // asynchrone — le resource bloque jusqu'à status=available.
 // Note TF : un snapshot est immutable (pas d'Update). Pour modifier sa
 // description ou le renommer, il faut supprimer + recréer.
@@ -47,7 +47,7 @@ func (r *snapResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *snapResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Snapshot d'un container LXC (Ceph RBD via `pct snapshot`). " +
+		MarkdownDescription: "Snapshot d'un container. " +
 			"Immutable — toute modification force la recréation.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

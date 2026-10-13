@@ -8,14 +8,14 @@ description: |-
 # ccp_registry (Resource)
 
 Manages a CETIC Container Registry (CCR) — a Distribution-based, OCI-compliant
-container/Helm/OCI artifact registry hosted in a per-tenant LXC container.
+container/Helm/OCI artifact registry hosted in a dedicated per-tenant instance.
 Each registry exposes a hostname under `<slug>.cloud.cetic-group.com` (custom
 domains are backlogged) and is reachable via standard `docker login` /
 `docker push` / `docker pull` workflows.
 
 ~> **Note:** Registry provisioning is asynchronous. The provider polls until
 the registry reaches `active` status, which typically takes 5 to 10 minutes
-(TLS issuance plus, for `private` exposure, DNS-01 propagation through IONOS).
+(TLS issuance plus, for `private` exposure, DNS-01 propagation).
 
 ~> **Important — `admin_password`:** The `admin_password` attribute is
 returned **only at creation** by the API. It is written to the Terraform
@@ -31,7 +31,7 @@ managed by the cluster-agent. You do **not** need to provision an
 
 ## Example Usage
 
-### Private registry (DNS-01 IONOS, reachable from peer VNets only)
+### Private registry (DNS-01, reachable from peer VNets only)
 
 ```hcl
 resource "ccp_vpc" "main" {
@@ -87,7 +87,7 @@ resource "ccp_registry" "public" {
 - `expose_public` - (Optional) When `true`, the registry is reachable from the
   internet via the public gateway (Let's Encrypt cert via HTTP-01). Defaults to `false`.
 - `expose_private` - (Optional) When `true`, the registry is reachable from peer
-  VNets / VPN clients via the private gateway (cert via DNS-01 IONOS). Defaults to
+  VNets / VPN clients via the private gateway (cert via DNS-01). Defaults to
   `false`. At least one of `expose_public` / `expose_private` should be `true`.
 - `image_tag` - (Optional, Computed) Tag of the upstream `registry` image to
   deploy. Defaults to the platform-managed default (currently `2.8`). Pin to

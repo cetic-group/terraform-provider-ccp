@@ -1,6 +1,6 @@
 // Package vmsnapshot implements the ccp_vm_snapshot resource.
 //
-// Snapshot d'une VM QEMU via qm snapshot (Ceph RBD). La création est
+// Snapshot d'une VM. La création est
 // asynchrone — le resource bloque jusqu'à status=available.
 // Note TF : un snapshot est immutable (pas d'Update). Pour modifier sa
 // description ou le renommer, il faut supprimer + recréer.
@@ -47,7 +47,7 @@ func (r *snapResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *snapResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Snapshot d'une VM QEMU (Ceph RBD via `qm snapshot`). " +
+		MarkdownDescription: "Snapshot d'une VM. " +
 			"Immutable — toute modification force la recréation.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

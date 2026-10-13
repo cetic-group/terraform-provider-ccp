@@ -1,13 +1,12 @@
 // Package vnet implements the ccp_vnet Terraform resource.
 //
-// A VNet in CETIC Cloud is a Proxmox SDN VXLAN VNet nested under a VPC, with
-// IPAM allocations served by the per-VPC NAT gateway. Most fields are
+// A VNet in CETIC Cloud is a private subnet nested under a VPC, with IPAM
+// allocations served by the platform. Most fields are
 // immutable post-create (CIDR, DHCP range, parent VPC) and force replacement
 // on change. Only `name` and `snat` are mutable via the PATCH endpoint.
 //
 // Provisioning is asynchronous: POST /v1/vpcs/{vpc_id}/vnets returns 201
-// immediately while the NAT GW NIC attach + iptables MASQUERADE sync runs in
-// the Celery worker. We poll GetVNet (list-and-filter under the parent VPC)
+// immediately while the network setup runs asynchronously on the platform. We poll GetVNet (list-and-filter under the parent VPC)
 // every 5 s up to 90 s until the VNet reaches `active` (or `error`).
 //
 // Deletion is asynchronous as well — the VNet enters `deleting` until the NAT

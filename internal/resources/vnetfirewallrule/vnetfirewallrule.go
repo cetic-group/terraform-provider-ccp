@@ -1,6 +1,6 @@
 // Package vnetfirewallrule implements the ccp_vnet_firewall_rule resource.
 //
-// Règle de firewall pour un VNet CETIC Cloud (isolation per-VM Proxmox).
+// Règle de firewall pour un VNet CETIC Cloud (isolation par instance).
 // Modifiable : enabled, position. Les autres champs (direction, action,
 // proto, CIDRs, dport) requièrent une recréation.
 package vnetfirewallrule

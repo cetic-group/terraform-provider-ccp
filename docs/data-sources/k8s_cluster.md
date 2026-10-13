@@ -69,8 +69,6 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `tier` — Topology of the apiserver frontend:
     * `dev` — single frontend (SPOF acceptable in dev/staging).
     * `prod` — redundant frontend (primary + secondary) with automatic failover on a floating address, providing HA at the apiserver layer.
-- `proxy_secondary_vmid` — Internal identifier of the secondary apiserver frontend. Null when `tier = "dev"`.
-- `proxy_secondary_node` — Internal placement of the secondary apiserver frontend. Null when `tier = "dev"`.
 - `proxy_vip_vnet` — Floating address on the VNet shared between the two apiserver frontends — the address the kubeconfig points at when HA is active. Null when `tier = "dev"`.
 - `status` — `creating`, `provisioning`, `active`, `updating`, `error`, or `deleting`.
 - `error_message` — Last error message reported by the provisioning workflow (nullable).

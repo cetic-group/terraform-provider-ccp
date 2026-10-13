@@ -3,8 +3,7 @@
 // unique `(name, region)` pair.
 //
 // All Computed fields of the resource counterpart are exposed, including
-// the `tier` HA topology selector and the read-only `proxy_secondary_*` /
-// `proxy_vip_vnet` fields added in provider v0.21.0.
+// the `tier` HA topology selector and the read-only `proxy_vip_vnet` field.
 package k8scluster
 
 import (
@@ -52,10 +51,8 @@ type k8sClusterDSModel struct {
 	IngressPublicIPAddress   types.String `tfsdk:"ingress_public_ip_address"`
 	IngressInternalIP        types.String `tfsdk:"ingress_internal_ip"`
 	// Tier (HA topology)
-	Tier               types.String `tfsdk:"tier"`
-	ProxySecondaryVmid types.Int64  `tfsdk:"proxy_secondary_vmid"`
-	ProxySecondaryNode types.String `tfsdk:"proxy_secondary_node"`
-	ProxyVipVnet       types.String `tfsdk:"proxy_vip_vnet"`
+	Tier         types.String `tfsdk:"tier"`
+	ProxyVipVnet types.String `tfsdk:"proxy_vip_vnet"`
 	// Lifecycle
 	Status       types.String `tfsdk:"status"`
 	ErrorMessage types.String `tfsdk:"error_message"`
@@ -107,20 +104,12 @@ func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 			"ingress_public_ip_address":             schema.StringAttribute{Computed: true},
 			"ingress_internal_ip":                   schema.StringAttribute{Computed: true},
 			"tier": schema.StringAttribute{
-				MarkdownDescription: "Topology of the LXC proxy fronting the apiserver. `dev` = single proxy, " +
-					"`prod` = 2 proxies with Keepalived VRRP + floating VIP (HA).",
+				MarkdownDescription: "Topology of the apiserver frontend. `dev` = single frontend, " +
+					"`prod` = two frontends with a floating address (HA).",
 				Computed: true,
 			},
-			"proxy_secondary_vmid": schema.Int64Attribute{
-				MarkdownDescription: "Proxmox VMID of the secondary LXC proxy (tier `prod` only).",
-				Computed:            true,
-			},
-			"proxy_secondary_node": schema.StringAttribute{
-				MarkdownDescription: "Proxmox node hosting the secondary LXC proxy (tier `prod` only).",
-				Computed:            true,
-			},
 			"proxy_vip_vnet": schema.StringAttribute{
-				MarkdownDescription: "Keepalived VRRP floating VIP shared between the LXC proxies (tier `prod` only).",
+				MarkdownDescription: "Floating private address shared by the two apiserver frontends (tier `prod` only) — the address the kubeconfig points at in HA mode.",
 				Computed:            true,
 			},
 			"status":        schema.StringAttribute{Computed: true},
@@ -267,16 +256,6 @@ func (d *k8sClusterDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		state.IngressInternalIP = types.StringValue(*found.IngressInternalIP)
 	} else {
 		state.IngressInternalIP = types.StringNull()
-	}
-	if found.ProxySecondaryVmid != nil {
-		state.ProxySecondaryVmid = types.Int64Value(*found.ProxySecondaryVmid)
-	} else {
-		state.ProxySecondaryVmid = types.Int64Null()
-	}
-	if found.ProxySecondaryNode != nil {
-		state.ProxySecondaryNode = types.StringValue(*found.ProxySecondaryNode)
-	} else {
-		state.ProxySecondaryNode = types.StringNull()
 	}
 	if found.ProxyVipVnet != nil {
 		state.ProxyVipVnet = types.StringValue(*found.ProxyVipVnet)

@@ -30,8 +30,6 @@ type bvDSModel struct {
 	AttachedToID   types.String `tfsdk:"attached_to_id"`
 	AttachedToType types.String `tfsdk:"attached_to_type"`
 	AttachedToName types.String `tfsdk:"attached_to_name"`
-	RBDPool        types.String `tfsdk:"rbd_pool"`
-	RBDImage       types.String `tfsdk:"rbd_image"`
 	ErrorMessage   types.String `tfsdk:"error_message"`
 	Tags           types.List   `tfsdk:"tags"`
 	CreatedAt      types.String `tfsdk:"created_at"`
@@ -44,7 +42,7 @@ func (d *bvDataSource) Metadata(_ context.Context, req datasource.MetadataReques
 
 func (d *bvDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Block Volume (Ceph RBD) by `id` or `(name, region)`.",
+		MarkdownDescription: "Look up a Block Volume by `id` or `(name, region)`.",
 		Attributes: map[string]schema.Attribute{
 			"id":               schema.StringAttribute{Optional: true, Computed: true},
 			"name":             schema.StringAttribute{Optional: true, Computed: true},
@@ -54,8 +52,6 @@ func (d *bvDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, res
 			"attached_to_id":   schema.StringAttribute{Computed: true},
 			"attached_to_type": schema.StringAttribute{Computed: true},
 			"attached_to_name": schema.StringAttribute{Computed: true},
-			"rbd_pool":         schema.StringAttribute{Computed: true},
-			"rbd_image":        schema.StringAttribute{Computed: true},
 			"error_message":    schema.StringAttribute{Computed: true},
 			"tags":             schema.ListAttribute{ElementType: types.StringType, Computed: true},
 			"created_at":       schema.StringAttribute{Computed: true},
@@ -142,8 +138,6 @@ func (d *bvDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	setStrPtr(&state.AttachedToID, found.AttachedToID)
 	setStrPtr(&state.AttachedToType, found.AttachedToType)
 	setStrPtr(&state.AttachedToName, found.AttachedToName)
-	setStrPtr(&state.RBDPool, found.RBDPool)
-	setStrPtr(&state.RBDImage, found.RBDImage)
 	setStrPtr(&state.ErrorMessage, found.ErrorMessage)
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags

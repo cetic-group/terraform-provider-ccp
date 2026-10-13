@@ -30,7 +30,6 @@ import (
 	dsemaildomains "github.com/cetic-group/terraform-provider-ccp/internal/datasources/emaildomains"
 	dsiampolicydocument "github.com/cetic-group/terraform-provider-ccp/internal/datasources/iampolicydocument"
 	dsiamrole "github.com/cetic-group/terraform-provider-ccp/internal/datasources/iamrole"
-	dsipaaspool "github.com/cetic-group/terraform-provider-ccp/internal/datasources/ipaaspool"
 	dsk8scluster "github.com/cetic-group/terraform-provider-ccp/internal/datasources/k8scluster"
 	dsk8snodepool "github.com/cetic-group/terraform-provider-ccp/internal/datasources/k8snodepool"
 	"github.com/cetic-group/terraform-provider-ccp/internal/datasources/k8stemplates"
@@ -85,7 +84,6 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/emaildomain"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/iamrole"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/iamroleassignment"
-	"github.com/cetic-group/terraform-provider-ccp/internal/resources/ipaaspool"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/k8scluster"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/k8snodepool"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/loadbalancer"
@@ -238,7 +236,6 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		vpcpeering.New,
 		supportticket.New,
 		supportsubscription.New,
-		ipaaspool.New,
 		quotarequest.New,
 		objectstoragekey.New,
 		bucketkey.New,
@@ -288,7 +285,6 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsvnetipresv.New,
 		dspublicip.New,
 		dsloadbalancer.New,
-		dsipaaspool.New,
 		dsapplicationgateway.New,
 		dsacmednsproviders.New,
 		dsdnszone.New,

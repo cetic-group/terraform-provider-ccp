@@ -102,7 +102,7 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"expose_public": schema.BoolAttribute{
 				MarkdownDescription: "Expose the registry on the public Internet. Resolves the hostname to the " +
-					"public Gateway IP via the IONOS DNS zone. At least one of `expose_public` / `expose_private` " +
+					"public Gateway IP via the platform DNS zone. At least one of `expose_public` / `expose_private` " +
 					"must be true.",
 				Optional: true,
 				Computed: true,

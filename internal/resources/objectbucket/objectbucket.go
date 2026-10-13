@@ -1,10 +1,10 @@
 // Package objectbucket implements the ccp_object_bucket Terraform
 // resource.
 //
-// An object bucket in CETIC Cloud is a Ceph RGW S3 bucket owned by a
-// per-tenant RGW user. Provisioning and deletion are asynchronous: the API
+// An object bucket in CETIC Cloud is an S3 bucket owned by a per-tenant
+// storage user. Provisioning and deletion are asynchronous: the API
 // returns 201/202 with a transient status (`creating`, `deleting`) and a
-// Celery worker performs the radosgw-admin / S3 operations. The provider
+// platform task performs the storage operations. The provider
 // therefore polls GetObjectBucket after creation until the bucket reaches a
 // quiescent state.
 //
@@ -101,8 +101,8 @@ func (r *objectBucketResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud object bucket (Ceph RGW S3). " +
-			"Buckets are owned by a per-tenant RGW user; their S3 master " +
+		MarkdownDescription: "Manages a CETIC Cloud S3 object bucket. " +
+			"Buckets are owned by a per-tenant storage user; their S3 master " +
 			"credentials are exposed as `access_key` and `secret_key` and are " +
 			"shared by every bucket of the same `(tenant, region)`. Bucket " +
 			"names must follow S3 DNS rules (lowercase, 3–63 chars). The " +
@@ -179,7 +179,7 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"size_bytes": schema.Int64Attribute{
 				MarkdownDescription: "Total size of the objects stored in the bucket, " +
-					"in bytes. Reported by RGW usage statistics.",
+					"in bytes, as reported by the storage usage statistics.",
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64UseStateForUnknown(),

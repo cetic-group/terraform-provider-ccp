@@ -49,7 +49,7 @@ func (d *containerDataSource) Metadata(_ context.Context, req datasource.Metadat
 
 func (d *containerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up an LXC container instance by `id`, or by `(name, region)`.",
+		MarkdownDescription: "Look up a container instance by `id`, or by `(name, region)`.",
 		Attributes: map[string]schema.Attribute{
 			"id":                schema.StringAttribute{Optional: true, Computed: true},
 			"name":              schema.StringAttribute{Optional: true, Computed: true},

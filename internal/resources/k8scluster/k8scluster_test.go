@@ -1,8 +1,7 @@
 // Tests for ccp_k8s_cluster — focuses on the v0.21 CCKS HA contract :
 // `tier` is Optional+Computed+Default("dev")+OneOf("dev","prod") with
-// RequiresReplace (immutable on the backend). The 3 sibling HA fields
-// (`proxy_secondary_vmid`, `proxy_secondary_node`, `proxy_vip_vnet`) are
-// Computed-only and only populated for tier=prod.
+// RequiresReplace (immutable on the backend). The sibling HA field
+// `proxy_vip_vnet` is Computed-only and only populated for tier=prod.
 //
 // These are unit tests against the typed client and the resource Schema()
 // builder. Full acceptance tests (TF_ACC=1) require a live CCP API and are
@@ -27,29 +26,27 @@ import (
 // plus all required base fields so json decode succeeds.
 func activeBody(id, name, tier string, withProxyHA bool) map[string]any {
 	body := map[string]any{
-		"id":                                  id,
-		"name":                                name,
-		"region":                              "RNN",
-		"k8s_version":                         "1.31",
-		"os_template_key":                     "ccks-capi-debian-13",
-		"vpc_id":                              "vpc-1",
-		"vnet_id":                             "vnet-1",
-		"pod_cidr":                            "10.244.0.0/16",
-		"service_cidr":                        "10.96.0.0/12",
+		"id":                                    id,
+		"name":                                  name,
+		"region":                                "RNN",
+		"k8s_version":                           "1.31",
+		"os_template_key":                       "ccks-capi-debian-13",
+		"vpc_id":                                "vpc-1",
+		"vnet_id":                               "vnet-1",
+		"pod_cidr":                              "10.244.0.0/16",
+		"service_cidr":                          "10.96.0.0/12",
 		"autoscaler_scale_down_delay_after_add": "10m",
 		"autoscaler_scale_down_unneeded_time":   "10m",
-		"ingress_controller_enabled":          true,
-		"ingress_controller_scope":            "internal",
-		"ingress_controller_class":            "incluster",
-		"tier":                                tier,
-		"status":                              "active",
-		"tags":                                []string{},
-		"created_at":                          "2026-05-25T10:00:00Z",
-		"updated_at":                          "2026-05-25T10:00:00Z",
+		"ingress_controller_enabled":            true,
+		"ingress_controller_scope":              "internal",
+		"ingress_controller_class":              "incluster",
+		"tier":                                  tier,
+		"status":                                "active",
+		"tags":                                  []string{},
+		"created_at":                            "2026-05-25T10:00:00Z",
+		"updated_at":                            "2026-05-25T10:00:00Z",
 	}
 	if withProxyHA {
-		body["proxy_secondary_vmid"] = 12345
-		body["proxy_secondary_node"] = "pmx-02"
 		body["proxy_vip_vnet"] = "10.1.0.250"
 	}
 	return body
@@ -81,9 +78,8 @@ func TestCreate_TierDev(t *testing.T) {
 	if got.Tier != "dev" {
 		t.Fatalf("expected tier=dev, got %q", got.Tier)
 	}
-	if got.ProxySecondaryVmid != nil || got.ProxySecondaryNode != nil || got.ProxyVipVnet != nil {
-		t.Errorf("dev tier should leave proxy_secondary_* and proxy_vip_vnet null, got vmid=%v node=%v vip=%v",
-			got.ProxySecondaryVmid, got.ProxySecondaryNode, got.ProxyVipVnet)
+	if got.ProxyVipVnet != nil {
+		t.Errorf("dev tier should leave proxy_vip_vnet null, got %v", got.ProxyVipVnet)
 	}
 
 	// When the caller leaves Tier empty, the JSON body must omit the field
@@ -124,12 +120,6 @@ func TestCreate_TierProd(t *testing.T) {
 	if got.Tier != "prod" {
 		t.Fatalf("expected tier=prod, got %q", got.Tier)
 	}
-	if got.ProxySecondaryVmid == nil || *got.ProxySecondaryVmid != 12345 {
-		t.Errorf("expected proxy_secondary_vmid=12345, got %v", got.ProxySecondaryVmid)
-	}
-	if got.ProxySecondaryNode == nil || *got.ProxySecondaryNode != "pmx-02" {
-		t.Errorf("expected proxy_secondary_node=pmx-02, got %v", got.ProxySecondaryNode)
-	}
 	if got.ProxyVipVnet == nil || *got.ProxyVipVnet != "10.1.0.250" {
 		t.Errorf("expected proxy_vip_vnet=10.1.0.250, got %v", got.ProxyVipVnet)
 	}
@@ -151,20 +141,20 @@ func TestCreate_TierProd(t *testing.T) {
 // collapses it to the default ("dev").
 func TestRead_LegacyClusterMissingTier(t *testing.T) {
 	body := map[string]any{
-		"id":                                  "cl-legacy",
-		"name":                                "old-cluster",
-		"region":                              "RNN",
-		"k8s_version":                         "1.30",
-		"os_template_key":                     "ccks-capi-debian-13",
-		"vpc_id":                              "vpc-1",
-		"vnet_id":                             "vnet-1",
-		"pod_cidr":                            "10.244.0.0/16",
-		"service_cidr":                        "10.96.0.0/12",
+		"id":                                    "cl-legacy",
+		"name":                                  "old-cluster",
+		"region":                                "RNN",
+		"k8s_version":                           "1.30",
+		"os_template_key":                       "ccks-capi-debian-13",
+		"vpc_id":                                "vpc-1",
+		"vnet_id":                               "vnet-1",
+		"pod_cidr":                              "10.244.0.0/16",
+		"service_cidr":                          "10.96.0.0/12",
 		"autoscaler_scale_down_delay_after_add": "10m",
 		"autoscaler_scale_down_unneeded_time":   "10m",
-		"ingress_controller_enabled":          true,
-		"ingress_controller_scope":            "internal",
-		"ingress_controller_class":            "incluster",
+		"ingress_controller_enabled":            true,
+		"ingress_controller_scope":              "internal",
+		"ingress_controller_class":              "incluster",
 		// no `tier`, no proxy_* fields
 		"status":     "active",
 		"tags":       []string{},
@@ -190,14 +180,14 @@ func TestRead_LegacyClusterMissingTier(t *testing.T) {
 	if state.Tier.ValueString() != "dev" {
 		t.Errorf("stateFromAPI should collapse missing tier to default \"dev\", got %q", state.Tier.ValueString())
 	}
-	if !state.ProxySecondaryVmid.IsNull() || !state.ProxySecondaryNode.IsNull() || !state.ProxyVipVnet.IsNull() {
+	if !state.ProxyVipVnet.IsNull() {
 		t.Errorf("legacy/dev tier should leave proxy_* state attrs null")
 	}
 }
 
 // TestSchema_TierForceNew asserts the `tier` attribute is Optional+Computed
 // with a Default and carries a RequiresReplace plan modifier — backend
-// cannot mutate the tier of an existing cluster (proxy LXC topology is
+// cannot mutate the tier of an existing cluster (frontend topology is
 // baked at provision time).
 func TestSchema_TierForceNew(t *testing.T) {
 	r := New().(*k8sResource)
@@ -234,24 +224,21 @@ func TestSchema_TierForceNew(t *testing.T) {
 	}
 }
 
-// TestSchema_ProxyHAFieldsComputed asserts the 3 HA proxy attributes are
-// Computed-only (not user-settable).
+// TestSchema_ProxyHAFieldsComputed asserts the HA proxy attribute is
+// Computed-only (not user-settable), and that the internal placement
+// attributes removed in v7.0.0 stay out of the public schema.
 func TestSchema_ProxyHAFieldsComputed(t *testing.T) {
 	r := New().(*k8sResource)
 	resp := &resource.SchemaResponse{}
 	r.Schema(context.Background(), resource.SchemaRequest{}, resp)
 
-	// proxy_secondary_vmid is Int64
-	vmid, ok := resp.Schema.Attributes["proxy_secondary_vmid"].(schema.Int64Attribute)
-	if !ok {
-		t.Fatalf("proxy_secondary_vmid missing or wrong type: %T", resp.Schema.Attributes["proxy_secondary_vmid"])
-	}
-	if vmid.Required || vmid.Optional || !vmid.Computed {
-		t.Errorf("proxy_secondary_vmid must be Computed-only, got required=%v optional=%v computed=%v",
-			vmid.Required, vmid.Optional, vmid.Computed)
+	for _, name := range []string{"proxy_secondary_vmid", "proxy_secondary_node"} {
+		if _, ok := resp.Schema.Attributes[name]; ok {
+			t.Errorf("%s exposes internal placement and must not be in the schema", name)
+		}
 	}
 
-	for _, name := range []string{"proxy_secondary_node", "proxy_vip_vnet"} {
+	for _, name := range []string{"proxy_vip_vnet"} {
 		attr, ok := resp.Schema.Attributes[name].(schema.StringAttribute)
 		if !ok {
 			t.Fatalf("%s missing or wrong type: %T", name, resp.Schema.Attributes[name])

@@ -122,9 +122,7 @@ type k8sResourceModel struct {
 	// Tier (create-time only, immutable)
 	Tier types.String `tfsdk:"tier"`
 	// Proxy HA (read-only, only populated for tier=prod)
-	ProxySecondaryVmid types.Int64  `tfsdk:"proxy_secondary_vmid"`
-	ProxySecondaryNode types.String `tfsdk:"proxy_secondary_node"`
-	ProxyVipVnet       types.String `tfsdk:"proxy_vip_vnet"`
+	ProxyVipVnet types.String `tfsdk:"proxy_vip_vnet"`
 	// Computed
 	ApiEndpoint types.String `tfsdk:"api_endpoint"`
 	Status      types.String `tfsdk:"status"`
@@ -291,20 +289,6 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"proxy_secondary_vmid": schema.Int64Attribute{
-				MarkdownDescription: "Identifiant interne du frontal apiserver secondaire (tier `prod` uniquement, sinon null). Read-only — exposé pour observabilité.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
-			"proxy_secondary_node": schema.StringAttribute{
-				MarkdownDescription: "Placement interne du frontal apiserver secondaire (tier `prod` uniquement, sinon null). Read-only — exposé pour observabilité.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
 			"proxy_vip_vnet": schema.StringAttribute{
 				MarkdownDescription: "Adresse flottante sur le VNet partagée entre les frontaux apiserver primary+secondary (tier `prod` uniquement, sinon null). C'est l'IP que le kubeconfig pointe en mode HA.",
 				Computed:            true,
@@ -459,16 +443,6 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, currentInitial *ini
 	}
 
 	// Proxy HA fields are only populated for tier=prod; nullable on dev.
-	if c.ProxySecondaryVmid != nil {
-		m.ProxySecondaryVmid = types.Int64Value(*c.ProxySecondaryVmid)
-	} else {
-		m.ProxySecondaryVmid = types.Int64Null()
-	}
-	if c.ProxySecondaryNode != nil {
-		m.ProxySecondaryNode = types.StringValue(*c.ProxySecondaryNode)
-	} else {
-		m.ProxySecondaryNode = types.StringNull()
-	}
 	if c.ProxyVipVnet != nil {
 		m.ProxyVipVnet = types.StringValue(*c.ProxyVipVnet)
 	} else {
