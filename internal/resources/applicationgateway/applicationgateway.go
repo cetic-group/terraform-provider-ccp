@@ -252,7 +252,7 @@ func (r *appgwResource) Configure(_ context.Context, req resource.ConfigureReque
 
 // applyToModel maps an API ApplicationGateway onto the Terraform model.
 // CALLERS must preserve any plan-side intent (e.g. tags lists that the
-// API normalised) BEFORE invoking this helper — see CLAUDE.md pitfall #3.
+// API normalised) BEFORE invoking this helper — see provider pitfall #3.
 func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwResourceModel) []string {
 	m.ID = types.StringValue(gw.ID)
 	m.Name = types.StringValue(gw.Name)

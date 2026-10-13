@@ -1,7 +1,7 @@
 // Package k8scluster implements the ccp_k8s_cluster Terraform resource.
 //
-// CCKS (CETIC Cloud Kubernetes Service) — cluster K8s tenant managé via
-// CAPI/CAPMOX. Le pool de workers initial est créé en même temps que le
+// CCKS (CETIC Cloud Kubernetes Service) — cluster K8s tenant managé par
+// la plateforme. Le pool de workers initial est créé en même temps que le
 // cluster (`initial_pool` block, défaut: 1× small worker `default`).
 // Pour gérer des pools additionnels, utiliser `ccp_k8s_node_pool`.
 //
@@ -136,7 +136,7 @@ func (r *k8sResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud Kubernetes cluster (CCKS) provisioned via CAPI/CAPMOX. " +
+		MarkdownDescription: "Manages a CETIC Cloud Kubernetes cluster (CCKS) managed by the platform. " +
 			"Provisioning is asynchronous (5-15 min). Create blocks until cluster is active. " +
 			"Kubernetes version upgrades are performed in-place via rolling upgrade (no recreation).",
 		Attributes: map[string]schema.Attribute{
@@ -161,11 +161,11 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"k8s_version": schema.StringAttribute{
-				MarkdownDescription: "Kubernetes version (ex: `v1.31.0`). Mutable — triggers a rolling upgrade via CAPI/CAPMOX.",
+				MarkdownDescription: "Kubernetes version (ex: `v1.31.0`). Mutable — triggers a rolling upgrade.",
 				Required:            true,
 			},
 			"os_template_key": schema.StringAttribute{
-				MarkdownDescription: "QEMU template key for worker nodes (ex: `clks-capi-debian-13`). Forces replacement.",
+				MarkdownDescription: "VM template key for worker nodes (ex: `clks-capi-debian-13`). Forces replacement.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},

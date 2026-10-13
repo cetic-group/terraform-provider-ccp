@@ -1,7 +1,7 @@
-// Application Gateway v1 (ccp-appgw) types — L7 routing with TLS termination,
+// Application Gateway v1 types — L7 routing with TLS termination,
 // rate limiting, IP allow/deny, CORS, basic auth and WAF presets.
 //
-// Mirrors the API schemas in `apps/api/app/schemas/appgw.py`. The Terraform
+// Mirrors the API schemas. The Terraform
 // provider exposes 5 resources (gateway / listener / target_group / target_
 // group_member / route) + 1 datasource (gateway lookup).
 package client
@@ -90,8 +90,7 @@ const (
 )
 
 // Public IP attachment lifecycle exposed via `public_ip_status` on the
-// gateway response (mirrors the AppGw public_ip pattern documented in
-// `apps/api/CLAUDE.md`). Empty when no IP is attached.
+// gateway response (same pattern as the other public IP consumers). Empty when no IP is attached.
 const (
 	AppGWPublicIPStatusAllocated = "allocated"
 	AppGWPublicIPStatusAttaching = "attaching"

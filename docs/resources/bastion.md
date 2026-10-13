@@ -48,7 +48,7 @@ resource "ccp_vpc" "staging" {
   region = "RNN"
 }
 
-# Optional: bring your own reserved public IP (otherwise IPaaS allocates one).
+# Optional: bring your own reserved public IP (otherwise the platform allocates one).
 resource "ccp_public_ip" "bastion" {
   region = "RNN"
 }
@@ -84,7 +84,7 @@ output "bastion_ssh" {
 
 - `plan` - (Optional, Computed, Forces new resource) Sizing plan: `small`, `medium`, or `large`. Defaults to `small`.
 - `vpc_ids` - (Optional, Computed, Forces new resource) UUIDs of all the VPCs the bastion fronts (1–5). The primary `vpc_id` is always included — list it explicitly to control ordering, or add only the extra VPCs. If omitted, the bastion covers just `vpc_id`.
-- `public_ip_id` - (Optional, Computed, Forces new resource) UUID of a reserved public IP to attach to the bastion endpoint. If omitted, the platform allocates one (IPaaS).
+- `public_ip_id` - (Optional, Computed, Forces new resource) UUID of a reserved public IP to attach to the bastion endpoint. If omitted, the platform allocates one.
 - `tags` - (Optional, Computed, Forces new resource) Free-form labels attached to the bastion.
 
 ## Attributes Reference

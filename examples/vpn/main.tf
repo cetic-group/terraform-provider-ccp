@@ -19,7 +19,7 @@ resource "ccp_vpc" "prod" {
 }
 
 # ─── Optional: bring your own reserved public IP ─────────────────────────────
-# Omit this block (and public_ip_id below) to let IPaaS allocate one.
+# Omit this block (and public_ip_id below) to let the platform allocate one.
 
 resource "ccp_public_ip" "vpn" {
   region = "RNN"

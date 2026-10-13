@@ -72,7 +72,7 @@ func TestPreciseAddressIsUnaffected(t *testing.T) {
 
 // At `terraform validate` the default has not been applied yet and `wildcard`
 // is UNKNOWN, not false. Treating unknown as a concrete false would raise the
-// error on a configuration that is perfectly fine — CLAUDE.md pitfall #4, which
+// error on a configuration that is perfectly fine — provider pitfall #4, which
 // once broke every consumer's `make validate`.
 func TestUnknownWildcardDoesNotFireTheGuard(t *testing.T) {
 	unknown := tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue)

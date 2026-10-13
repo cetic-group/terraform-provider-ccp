@@ -364,7 +364,7 @@ func (r *publicIPResource) Create(ctx context.Context, req resource.CreateReques
 		}
 	}
 
-	// Re-fetch the authoritative record so timestamps and any IPaaS-task
+	// Re-fetch the authoritative record so timestamps and any attach-task
 	// side-effects are reflected.
 	fresh, err := r.client.GetPublicIP(ctx, created.ID)
 	if err != nil {
@@ -576,7 +576,7 @@ func (r *publicIPResource) ImportState(ctx context.Context, req resource.ImportS
 
 // attachAndPoll performs an attach call followed by a poll until the IP
 // reaches `attached`. Routed public IPs converge asynchronously and stay in
-// `allocated` until it completes; demo pools transition synchronously.
+// `allocated` until it completes.
 // Returns nil diagnostics on success, otherwise a slice suitable for
 // resp.Diagnostics.Append.
 func (r *publicIPResource) attachAndPoll(ctx context.Context, id, resourceID, resourceType string) diag.Diagnostics {

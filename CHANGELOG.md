@@ -8,29 +8,27 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed — BREAKING
 
-- **`ccp_ipaas_pool`** (resource and data source). It managed a platform
-  operator API that is not available to tenant credentials; it never
-  belonged in the public provider. Remove it from your configuration and
-  from the state (`terraform state rm`) before upgrading.
+- **`ccp_ipaas_pool`** (resource and data source), not usable with tenant
+  credentials. Remove it from your configuration and from the state
+  (`terraform state rm`) before upgrading.
 - **`ccp_k8s_cluster.proxy_secondary_vmid`** and
   **`ccp_k8s_cluster.proxy_secondary_node`** (resource and data source).
-  They exposed internal placement details with no use for a tenant.
   `proxy_vip_vnet` — the private address the kubeconfig points at in HA
   mode — is kept.
 - **`ccp_block_volume.rbd_pool`** and **`ccp_block_volume.rbd_image`**
-  (resource and data source), internal storage identifiers.
-- **`ccp_k8s_templates.templates[*].vmid`**, an internal identifier.
+  (resource and data source).
+- **`ccp_vpc.vlan_id`** and **`ccp_vpc.sdn_type`** (resource and data source).
+- **`ccp_k8s_templates.templates[*].vmid`**.
 
 ### Changed
 
-- Resource and attribute descriptions no longer refer to the platform's
-  internal implementation.
+- Documentation wording simplified.
 
 ### Migration
 
 Delete any reference to the removed attributes (outputs, locals,
 interpolations), then run `terraform init -upgrade`. The removed attributes
-are dropped from the state on the next refresh; no resource is replaced.
+are dropped from the state on the next plan; no resource is replaced.
 
 ## v6.7.0 (2026-10-10)
 

@@ -180,7 +180,7 @@ func TestCreate_StateIsWrittenEvenWhenActivationFails(t *testing.T) {
 // ─── Mapping ─────────────────────────────────────────────────────────────────
 
 // The list shape carries none of the detail blocks. Writing zeroes over them
-// would claim the customer has nothing to publish (CLAUDE.md pitfall #5).
+// would claim the customer has nothing to publish (provider pitfall #5).
 func TestStateFrom_ListShapeLeavesTheDetailBlocksNull(t *testing.T) {
 	m, diags := stateFrom(&client.EmailDomain{
 		ID: "d-1", Name: "example.com", Status: client.EmailDomainStatusPendingVerification,

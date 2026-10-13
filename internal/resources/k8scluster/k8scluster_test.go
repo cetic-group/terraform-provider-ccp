@@ -225,8 +225,8 @@ func TestSchema_TierForceNew(t *testing.T) {
 }
 
 // TestSchema_ProxyHAFieldsComputed asserts the HA proxy attribute is
-// Computed-only (not user-settable), and that the internal placement
-// attributes removed in v7.0.0 stay out of the public schema.
+// Computed-only (not user-settable), and that the attributes removed in
+// v7.0.0 stay out of the schema.
 func TestSchema_ProxyHAFieldsComputed(t *testing.T) {
 	r := New().(*k8sResource)
 	resp := &resource.SchemaResponse{}
@@ -234,7 +234,7 @@ func TestSchema_ProxyHAFieldsComputed(t *testing.T) {
 
 	for _, name := range []string{"proxy_secondary_vmid", "proxy_secondary_node"} {
 		if _, ok := resp.Schema.Attributes[name]; ok {
-			t.Errorf("%s exposes internal placement and must not be in the schema", name)
+			t.Errorf("%s was removed in v7.0.0 and must not be in the schema", name)
 		}
 	}
 

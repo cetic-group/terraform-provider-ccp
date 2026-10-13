@@ -2,7 +2,7 @@ package client
 
 // ─── Private DNS (zones served inside the customer's private network) ────────
 //
-// Backend contract: `apps/api/app/services/DNS_CONTRACT.md` (#1387).
+// Mirrors the private DNS API contract.
 //
 // Two shapes matter here and neither is guessable from the resource schema:
 //
@@ -12,7 +12,7 @@ package client
 //  2. `GET /v1/dns/zones` (list) returns the *summary* shape: no `resolver`,
 //     no `ownership_challenge`. Only `GET /v1/dns/zones/{id}` carries them.
 //     Anything that needs the resolver has to read the zone by ID — see
-//     pitfall #5 in CLAUDE.md (mapping a field the response omits wipes it).
+//     provider pitfall #5 (mapping a field the response omits wipes it).
 
 // DNS zone lifecycle states, as returned by the API.
 const (

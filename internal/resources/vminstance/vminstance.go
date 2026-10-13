@@ -19,7 +19,7 @@
 // pick up the address.
 //
 // Deletion is also asynchronous: the VM enters `deleting` and disappears
-// from the API once the QEMU teardown + IPAM release completes. We poll for
+// from the API once the teardown + IPAM release completes. We poll for
 // 404 up to 5 minutes and surface a warning rather than an error if the
 // timeout elapses, since the resource will still be removed from Terraform
 // state and the API is converging on its own.
@@ -128,7 +128,7 @@ func (r *vmInstanceResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud VM instance (QEMU). Only `name` and `tags` " +
+		MarkdownDescription: "Manages a CETIC Cloud VM instance. Only `name` and `tags` " +
 			"are mutable in place via the API's PATCH endpoint; every other user-settable " +
 			"attribute forces replacement. Creation is asynchronous: the provider polls until " +
 			"the VM reaches the `running` state with a resolved IP address (or up to 10 minutes).",
@@ -327,7 +327,7 @@ func (r *vmInstanceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"ip_address": schema.StringAttribute{
 				MarkdownDescription: "Private IPv4 address allocated from the VNet's IPAM. " +
 					"May be empty briefly after provisioning until cloud-init completes and " +
-					"qemu-guest-agent reports the address.",
+					"guest agent reports the address.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

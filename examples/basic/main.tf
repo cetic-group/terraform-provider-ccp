@@ -4,7 +4,7 @@
 #   export CCP_API_KEY="ccp_live_..."   (required, scope >= write)
 #
 # Note: ccp_vpc and ccp_vnet are provisioned asynchronously by
-# the CCP SDN backend. The provider polls the resource until it
+# the platform. The provider polls the resource until it
 # reaches "active" — expect up to ~90s on first apply.
 
 terraform {

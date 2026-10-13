@@ -107,7 +107,6 @@ production API on `api.cloud.cetic-group.com`.
   small fleets, will need pagination later.
 - **SSH keys — no Update endpoint at all.** `PATCH` / `PUT` are not implemented
   server-side. Every attribute is therefore `RequiresReplace`.
-- **VPC — `sdn_type` returned as a string, not a validated enum.** Free-form JSON.
   We type it as `types.String` and don't validate.
 - **VNet — also no GET single endpoint.** Same trick: list under the parent VPC
   and filter by ID.
@@ -213,7 +212,7 @@ git push origin v0.8.0
 gh run watch
 ```
 
-**Convention** (from `CLAUDE.md`): every tag MUST update :
+**Convention**: every tag MUST update :
 1. `docs/index.md` — `required_providers` example.
 2. `README.md` — Quick start example, status banner.
 3. `docs/resources/*.md` and `docs/data-sources/*.md` — schema fidelity (Required / Optional / Computed) + example HCL using current field names.

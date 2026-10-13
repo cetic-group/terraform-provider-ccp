@@ -195,7 +195,7 @@ func (r *listenerResource) Configure(_ context.Context, req resource.ConfigureRe
 }
 
 // ValidateConfig enforces the dns01 invariant at plan time: a clear error
-// instead of a backend 400. Per CLAUDE.md pitfall #4, early-return when the
+// instead of a backend 400. Per provider pitfall #4, early-return when the
 // challenge is unresolved (Null OR Unknown) so `terraform validate` does not
 // fire before plan modifiers/defaults run.
 func (r *listenerResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {

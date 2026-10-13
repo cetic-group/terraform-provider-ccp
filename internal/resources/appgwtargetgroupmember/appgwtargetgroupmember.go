@@ -167,7 +167,7 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 
 // ValidateConfig enforces exactly one target among the five the API accepts
 // (container_id, vm_instance_id, target_ip, container_scale_set_id,
-// vm_scale_set_id). Per CLAUDE.md pitfall #4, we early-return when ANY of
+// vm_scale_set_id). Per provider pitfall #4, we early-return when ANY of
 // them is Unknown — a false positive would block every `terraform validate`.
 func (r *memberResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var cfg memberResourceModel

@@ -309,7 +309,7 @@ func (c *Client) CreateVPNPeer(ctx context.Context, gatewayID string, req VPNPee
 }
 
 // ListVPNPeers returns all peers of a gateway. The API exposes no single-peer
-// GET, so Read uses this list and filters by id client-side (cf. CLAUDE.md
+// GET, so Read uses this list and filters by id client-side (provider
 // pitfall #6).
 func (c *Client) ListVPNPeers(ctx context.Context, gatewayID string) ([]VPNPeer, error) {
 	var out []VPNPeer
@@ -717,7 +717,7 @@ func (c *Client) FindPublicIPByResource(ctx context.Context, resourceType, resou
 	return nil, nil
 }
 
-// ─── Object Buckets ────────────────────────────────────────────────────────────
+// ─── Object Buckets ──────────────────────────────────────────────────────────
 
 func (c *Client) ListObjectBuckets(ctx context.Context, region string) ([]ObjectBucket, error) {
 	path := "/v1/buckets"
@@ -770,7 +770,7 @@ func (c *Client) GetObjectBucketCredentials(ctx context.Context, id string) (*Ob
 	return &out, nil
 }
 
-// ─── VM Instances (QEMU) ─────────────────────────────────────────────────────
+// ─── VM Instances ────────────────────────────────────────────────────────────
 
 func (c *Client) ListVMInstances(ctx context.Context, region string) ([]VMInstance, error) {
 	path := "/v1/vm-instances"
@@ -1631,7 +1631,7 @@ func (c *Client) ListLxcTemplates(ctx context.Context) ([]LxcTemplate, error) {
 	return out, nil
 }
 
-// ListQemuTemplates returns the QEMU/VM template catalog (filtered to client-usable
+// ListQemuTemplates returns the VM template catalog (filtered to client-usable
 // templates, excludes ccks-* internal kubernetes images).
 // GET /v1/qemu-templates — no auth required.
 func (c *Client) ListQemuTemplates(ctx context.Context) ([]QemuTemplate, error) {

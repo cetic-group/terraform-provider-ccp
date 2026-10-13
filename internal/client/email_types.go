@@ -2,7 +2,7 @@ package client
 
 // ─── Hosted email (EmaaS) — domains, mailboxes, aliases ──────────────────────
 //
-// Backend: `apps/api/app/api/v1/email_{domains,accounts,aliases}.py` (#932).
+// Mirrors the hosted email API.
 //
 // Three shapes that do not show up in the resource schema:
 //
@@ -59,7 +59,7 @@ type EmailClientConfig struct {
 
 // EmailDomain is a hosted mail domain. `Verification`, `Records` and
 // `ClientConfig` are only populated by the single-domain GET — the list shape
-// omits them (CLAUDE.md pitfall #5).
+// omits them (provider pitfall #5).
 type EmailDomain struct {
 	ID              string  `json:"id"`
 	Name            string  `json:"name"`

@@ -1,6 +1,6 @@
 // Package vmscaleset implements the ccp_vm_scale_set Terraform resource.
 //
-// Le scale set fait grandir/réduire un pool de VMs QEMU identiques selon
+// Le scale set fait grandir/réduire un pool de VMs identiques selon
 // `desired_instances` (entre min et max). Les VMs individuelles sont
 // gérées par CL en interne — pas exposées en TF state pour éviter les drifts
 // avec l'auto-repair / auto-scale.
@@ -94,7 +94,7 @@ func (r *vmssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"template": schema.StringAttribute{
-				MarkdownDescription: "VM template key (clé QEMU) (default: `ubuntu-24.04` (VM template clé)). Forces replacement.",
+				MarkdownDescription: "VM template key (default: `ubuntu-24.04`). Forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("ubuntu-24.04"),

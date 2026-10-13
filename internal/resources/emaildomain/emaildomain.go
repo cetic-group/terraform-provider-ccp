@@ -356,7 +356,7 @@ func stateFrom(d *client.EmailDomain, wantWait types.Bool) (emailDomainModel, di
 	}
 
 	// The list shape of the API carries none of the three blocks below. Writing
-	// zero values over them would be CLAUDE.md pitfall #5 — so absent stays
+	// zero values over them would be provider pitfall #5 — so absent stays
 	// null, and only the single-domain GET fills them in.
 	if d.Verification == nil {
 		m.Verification = types.ObjectNull(DNSRecordAttrTypes)

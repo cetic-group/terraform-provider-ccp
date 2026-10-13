@@ -185,7 +185,7 @@ CETIC Cloud Kubernetes Service (CCKS) ships with an ingress controller deployed 
     * `managed` — A dedicated CETIC Cloud load balancer (HA pair with automatic failover) is provisioned in front of the cluster. Useful when you need L4 features like proxy protocol or per-listener TLS termination decoupled from the cluster.
 - `ingress_controller_scope` - Network reachability:
     * `internal` (default) — Private IP on the VNet. Reachable only from inside the VPC (or via VPC peering).
-    * `external` — Public IP routed through the regional IPaaS edge.
+    * `external` — Public IP routed by the platform.
 - `ingress_public_ip_id` - UUID of a pre-reserved public IP to use for the ingress (only meaningful with `scope = "external"`). If empty, the API auto-allocates one from the regional pool.
 - `ingress_internal_ip` - Pre-reserved private VNet IP for the ingress (only meaningful with `scope = "internal"`). If empty, the API auto-allocates one from the VNet CIDR. The IP must be inside the VNet's range and outside the DHCP range.
 

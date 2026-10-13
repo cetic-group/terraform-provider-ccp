@@ -159,7 +159,7 @@ func (r *bastionResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"public_ip_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of a reserved public IP to attach to the bastion endpoint. " +
-					"If omitted, the platform allocates one (IPaaS). Immutable — changing forces replacement.",
+					"If omitted, the platform allocates one. Immutable — changing forces replacement.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -228,10 +228,10 @@ func (r *bastionResource) Configure(_ context.Context, req resource.ConfigureReq
 
 // applyToModel maps an API Bastion onto the Terraform model. `status` is
 // volatile (known-after-apply) so it carries no UseStateForUnknown — see
-// CLAUDE.md (v2.0.4 fix). The endpoint fields are nullable until the
+// the v2.0.4 fix. The endpoint fields are nullable until the
 // appliance finishes provisioning. Optional+Computed fields that the API may
 // omit from its response are preserved on the model rather than blindly
-// overwritten with a zero value (CLAUDE.md pitfall #5).
+// overwritten with a zero value (provider pitfall #5).
 func applyToModel(ctx context.Context, m *bastionResourceModel, b *client.Bastion) diag.Diagnostics {
 	var diags diag.Diagnostics
 

@@ -137,7 +137,7 @@ func (r *emailAliasResource) Schema(_ context.Context, _ resource.SchemaRequest,
 // Both values are checked for Unknown as well as Null: at `terraform validate`
 // the `wildcard` default has not been applied yet, and treating Unknown as a
 // concrete `false` would raise the error on a configuration that is fine
-// (CLAUDE.md pitfall #4).
+// (provider pitfall #4).
 func (r *emailAliasResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var cfg emailAliasModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)

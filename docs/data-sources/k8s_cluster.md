@@ -50,7 +50,7 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `display_name` — Human-readable name (nullable).
 - `region` — Region code (`RNN`, `PAR`, `ABJ`, …).
 - `k8s_version` — Kubernetes version currently deployed (e.g. `v1.31.0`).
-- `os_template_key` — QEMU template key used to provision worker nodes.
+- `os_template_key` — VM template key used to provision worker nodes.
 - `vpc_id` — UUID of the VPC the cluster lives in.
 - `vnet_id` — UUID of the VNet the cluster nodes are attached to.
 - `pod_cidr` — Pod network CIDR.

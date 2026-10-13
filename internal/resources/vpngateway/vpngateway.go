@@ -168,7 +168,7 @@ func (r *vpnGatewayResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			"public_ip_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of a reserved public IP to attach to the gateway endpoint. " +
-					"If omitted, the platform allocates one (IPaaS). Immutable — changing forces replacement.",
+					"If omitted, the platform allocates one. Immutable — changing forces replacement.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -265,9 +265,9 @@ func (r *vpnGatewayResource) Configure(_ context.Context, req resource.Configure
 
 // applyToModel maps an API VPNGateway onto the Terraform model. `status` is
 // volatile (known-after-apply) so it carries no UseStateForUnknown — see
-// CLAUDE.md (v2.0.4 fix). Optional+Computed fields that the API may omit from
+// the v2.0.4 fix. Optional+Computed fields that the API may omit from
 // its response are preserved on the model rather than blindly overwritten with
-// a zero value (CLAUDE.md pitfall #5).
+// a zero value (provider pitfall #5).
 func applyToModel(ctx context.Context, m *vpnGatewayResourceModel, g *client.VPNGateway) diag.Diagnostics {
 	var diags diag.Diagnostics
 

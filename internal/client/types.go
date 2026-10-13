@@ -38,8 +38,6 @@ type VPC struct {
 	Name      string    `json:"name"`
 	Region    string    `json:"region"`
 	CIDR      *string   `json:"cidr,omitempty"`
-	VlanID    *int      `json:"vlan_id,omitempty"`
-	SDNType   string    `json:"sdn_type"`
 	Status    string    `json:"status"`
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
@@ -307,7 +305,7 @@ const (
 	BucketStatusError    = "error"
 )
 
-// VMInstance represents a QEMU VM instance.
+// VMInstance represents a VM instance.
 // Status: provisioning | running | stopped | error | deleting.
 type VMInstance struct {
 	ID              string   `json:"id"`
@@ -694,7 +692,7 @@ type VMScaleSetUpdateRequest struct {
 
 // ─── K8s Cluster (CLKS — Phase 6) ───────────────────────────────────────────
 //
-// Cluster Kubernetes tenant managé via CAPI/CAPMOX. Le node pool initial est
+// Cluster Kubernetes tenant managé par la plateforme. Le node pool initial est
 // requis par l'API (default 1 worker `small`). Pour ajouter des pools après
 // création, utiliser `ccp_k8s_node_pool` (séparée).
 
@@ -1164,7 +1162,7 @@ type SupportTicketCreateRequest struct {
 	Priority string `json:"priority"`
 }
 
-// ─── Object Storage Key ────────────────────────────────────────────────────
+// ─── Object Storage Key ──────────────────────────────────────────────────────
 
 type ObjectStorageKey struct {
 	ID              string `json:"id"`
@@ -1456,7 +1454,7 @@ type LxcTemplate struct {
 	IsDefault   bool   `json:"is_default"`
 }
 
-// QemuTemplate represents a QEMU/VM template (admin-managed catalog).
+// QemuTemplate represents a VM template.
 // GET /v1/qemu-templates
 type QemuTemplate struct {
 	Key         string `json:"key"`
