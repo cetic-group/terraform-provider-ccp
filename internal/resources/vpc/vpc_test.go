@@ -14,7 +14,7 @@ import (
 //
 // alors que les VNets enfants venaient d'être supprimés. Le Delete du VNet
 // poll bien jusqu'au 404 dans la liste du VPC, mais le teardown backend
-// (detach NIC NAT GW + IPAM + zone SDN) qui lève la précondition « has vnets »
+// (nettoyage réseau) qui lève la précondition « has vnets »
 // côté VPC se termine un peu après. Le DELETE du VPC doit donc réessayer sur
 // 409 transitoire au lieu d'échouer dur. Cf. incident 2026-06-14.
 func TestClassifyVPCDeleteAttempt(t *testing.T) {

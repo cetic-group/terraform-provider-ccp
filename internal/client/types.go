@@ -38,8 +38,6 @@ type VPC struct {
 	Name      string    `json:"name"`
 	Region    string    `json:"region"`
 	CIDR      *string   `json:"cidr,omitempty"`
-	VlanID    *int      `json:"vlan_id,omitempty"`
-	SDNType   string    `json:"sdn_type"`
 	Status    string    `json:"status"`
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
@@ -101,7 +99,7 @@ const (
 	StatusError    = "error"
 )
 
-// Container represents an LXC container instance.
+// Container represents a container instance.
 // Status: provisioning | running | stopped | error | deleting.
 type Container struct {
 	ID              string    `json:"id"`
@@ -170,7 +168,7 @@ const (
 	ContainerStatusDeleting     = "deleting"
 )
 
-// BlockVolume represents a Ceph RBD volume.
+// BlockVolume represents a block volume.
 // Status: creating | available | attached | detaching | deleting | error.
 type BlockVolume struct {
 	ID             string    `json:"id"`
@@ -181,8 +179,6 @@ type BlockVolume struct {
 	AttachedToID   *string   `json:"attached_to_id,omitempty"`
 	AttachedToType *string   `json:"attached_to_type,omitempty"`
 	AttachedToName *string   `json:"attached_to_name,omitempty"`
-	RBDPool        *string   `json:"rbd_pool,omitempty"`
-	RBDImage       *string   `json:"rbd_image,omitempty"`
 	ErrorMessage   *string   `json:"error_message,omitempty"`
 	Tags           []string  `json:"tags"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -263,7 +259,7 @@ const (
 	PublicIPStatusError     = "error"
 )
 
-// ObjectBucket represents a Ceph RGW S3 bucket.
+// ObjectBucket represents an S3 bucket.
 // Status: creating | active | deleting | error.
 type ObjectBucket struct {
 	ID           string    `json:"id"`
@@ -309,7 +305,7 @@ const (
 	BucketStatusError    = "error"
 )
 
-// VMInstance represents a QEMU VM instance.
+// VMInstance represents a VM instance.
 // Status: provisioning | running | stopped | error | deleting.
 type VMInstance struct {
 	ID              string   `json:"id"`
@@ -696,7 +692,7 @@ type VMScaleSetUpdateRequest struct {
 
 // ─── K8s Cluster (CLKS — Phase 6) ───────────────────────────────────────────
 //
-// Cluster Kubernetes tenant managé via CAPI/CAPMOX. Le node pool initial est
+// Cluster Kubernetes tenant managé par la plateforme. Le node pool initial est
 // requis par l'API (default 1 worker `small`). Pour ajouter des pools après
 // création, utiliser `ccp_k8s_node_pool` (séparée).
 
@@ -725,17 +721,15 @@ type K8sCluster struct {
 	IngressPublicIPID        *string `json:"ingress_public_ip_id,omitempty"`
 	IngressPublicIPAddress   *string `json:"ingress_public_ip_address,omitempty"`
 	IngressInternalIP        *string `json:"ingress_internal_ip,omitempty"`
-	// Tier — `dev` (single LXC proxy) or `prod` (HA Keepalived VRRP + VIP).
+	// Tier — `dev` (single apiserver frontend) or `prod` (HA frontends + floating address).
 	// Immutable on the backend; provider exposes it as Optional+Computed+ForceNew.
-	Tier               string    `json:"tier"`
-	ProxySecondaryVmid *int64    `json:"proxy_secondary_vmid,omitempty"`
-	ProxySecondaryNode *string   `json:"proxy_secondary_node,omitempty"`
-	ProxyVipVnet       *string   `json:"proxy_vip_vnet,omitempty"`
-	Status             string    `json:"status"`
-	ErrorMessage       *string   `json:"error_message,omitempty"`
-	Tags               []string  `json:"tags"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	Tier         string    `json:"tier"`
+	ProxyVipVnet *string   `json:"proxy_vip_vnet,omitempty"`
+	Status       string    `json:"status"`
+	ErrorMessage *string   `json:"error_message,omitempty"`
+	Tags         []string  `json:"tags"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type K8sInitialPool struct {
@@ -783,7 +777,7 @@ type K8sClusterCreateRequest struct {
 	// Apiserver IP (optionnel, auto-attaché après provisioning)
 	ApiserverPublicIPID *string `json:"apiserver_public_ip_id,omitempty"`
 	ApiserverInternalIP *string `json:"apiserver_internal_ip,omitempty"`
-	// Tier — `dev` (default, single LXC proxy) or `prod` (HA Keepalived VRRP).
+	// Tier — `dev` (default, single apiserver frontend) or `prod` (HA frontends).
 	// Immutable on the backend — changing requires recreate.
 	Tier string `json:"tier,omitempty"`
 }
@@ -1168,7 +1162,7 @@ type SupportTicketCreateRequest struct {
 	Priority string `json:"priority"`
 }
 
-// ─── Object Storage Key (subuser RGW) ─────────────────────────────────────
+// ─── Object Storage Key ──────────────────────────────────────────────────────
 
 type ObjectStorageKey struct {
 	ID              string `json:"id"`
@@ -1190,32 +1184,6 @@ type ObjectStorageKeyCreateRequest struct {
 	Label         string `json:"label"`
 	AccessLevel   string `json:"access_level"`
 	ExpiresInDays *int   `json:"expires_in_days,omitempty"`
-}
-
-// ─── IPaaS Pool (admin only) ───────────────────────────────────────────────
-
-type IpaasPool struct {
-	ID        string    `json:"id"`
-	Region    string    `json:"region"`
-	CIDR      string    `json:"cidr"`
-	Gateway   string    `json:"gateway"`
-	Kind      string    `json:"kind"`
-	EdgeID    *string   `json:"edge_id,omitempty"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type IpaasPoolCreateRequest struct {
-	Region   string  `json:"region"`
-	CIDR     string  `json:"cidr"`
-	Gateway  string  `json:"gateway"`
-	EdgeID   *string `json:"edge_id,omitempty"`
-	IsActive bool    `json:"is_active"`
-}
-
-type IpaasPoolUpdateRequest struct {
-	IsActive *bool   `json:"is_active,omitempty"`
-	EdgeID   *string `json:"edge_id,omitempty"`
 }
 
 // ─── Quota Request ─────────────────────────────────────────────────────────
@@ -1478,7 +1446,7 @@ type VPNPolicyRule struct {
 	Proto     string  `json:"proto"`
 }
 
-// LxcTemplate represents an LXC container template (admin-managed catalog).
+// LxcTemplate represents a container template.
 // GET /v1/templates
 type LxcTemplate struct {
 	Key         string `json:"key"`
@@ -1486,7 +1454,7 @@ type LxcTemplate struct {
 	IsDefault   bool   `json:"is_default"`
 }
 
-// QemuTemplate represents a QEMU/VM template (admin-managed catalog).
+// QemuTemplate represents a VM template.
 // GET /v1/qemu-templates
 type QemuTemplate struct {
 	Key         string `json:"key"`
@@ -1524,7 +1492,6 @@ type K8sTemplate struct {
 	DisplayName string  `json:"display_name"`
 	K8sVersion  string  `json:"k8s_version"`
 	Region      string  `json:"region"`
-	VMID        *int    `json:"vmid,omitempty"`
 	BuiltAt     *string `json:"built_at,omitempty"`
 }
 

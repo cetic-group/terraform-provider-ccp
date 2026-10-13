@@ -1,8 +1,5 @@
 // Types for the Billing v2 API surface (pricing, free-tier, budgets,
 // commits, promo codes, estimate).
-//
-// Source of truth : cetic-cloud-platform/apps/api/app/api/v1/billing_v2.py
-// and apps/api/app/api/v1/billing_credits.py.
 package client
 
 import "time"

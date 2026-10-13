@@ -1,27 +1,26 @@
 // Package vpc implements the ccp_vpc Terraform resource.
 //
-// A VPC in CETIC Cloud is a Proxmox SDN zone (vxlan, with a per-VPC NAT GW LXC
+// A VPC in CETIC Cloud is an isolated private network (its gateway is
 // provisioned lazily on first VNet creation). The API exposes no PATCH
 // endpoint, so every user-settable attribute (`name`, `region`, `tags`) forces
 // replacement on change.
 //
 // Provisioning is asynchronous: POST /v1/vpcs returns 201 immediately but the
-// SDN zone may still be propagating across nodes. Status transitions are
+// network may still be propagating. Status transitions are
 // `active` (terminal success) or `error` (terminal failure). We poll
 // GetVPC for up to 90 s and re-fetch the resource once it settles so the
-// Terraform state reflects the authoritative server view (vlan_id, sdn_type,
+// Terraform state reflects the authoritative server view (status,
 // timestamps).
 //
 // Deletion is also asynchronous: the VPC enters `deleting` and disappears
-// from the API once the NAT GW teardown + zone removal completes. We poll
+// from the API once the network teardown completes. We poll
 // for 404 up to 60 s and surface a warning rather than an error if the
 // timeout elapses, since the resource will still be removed from Terraform
 // state and the API is converging on its own.
 //
 // The DELETE itself can transiently return 409 "Le VPC contient des VNets"
 // during a `terraform destroy`: each child VNet's Delete already polls until it
-// leaves the per-VPC VNet list (404), but the backend's NAT GW NIC detach +
-// IPAM + SDN zone cleanup that clears the VPC-level "has vnets" precondition
+// leaves the per-VPC VNet list (404), but the backend network cleanup that clears the VPC-level "has vnets" precondition
 // finishes a beat later. We retry the DELETE on 409 until that precondition
 // clears (up to deleteConflictRetryTimeout) instead of failing the apply and
 // forcing the user to re-run destroy. A 409 that outlives the budget (a child
@@ -40,7 +39,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -75,8 +73,6 @@ type vpcResourceModel struct {
 	Region    types.String `tfsdk:"region"`
 	Cidr      types.String `tfsdk:"cidr"`
 	Tags      types.List   `tfsdk:"tags"`
-	VlanID    types.Int64  `tfsdk:"vlan_id"`
-	SDNType   types.String `tfsdk:"sdn_type"`
 	Status    types.String `tfsdk:"status"`
 	CreatedAt types.String `tfsdk:"created_at"`
 }
@@ -94,7 +90,7 @@ const (
 	deletePollTimeout  = 60 * time.Second
 	// deleteConflictRetryTimeout bounds how long we keep retrying the DELETE
 	// while it returns 409 (child VNet teardown still settling server-side).
-	// Larger than deletePollTimeout to give the NAT GW NIC detach + SDN zone
+	// Larger than deletePollTimeout to give the backend network
 	// cleanup headroom in busy regions before we give up and surface the 409.
 	deleteConflictRetryTimeout = 120 * time.Second
 )
@@ -165,21 +161,6 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					listplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"vlan_id": schema.Int64Attribute{
-				MarkdownDescription: "Internal network segmentation tag allocated by the platform " +
-					"from the per-tenant pool; not user-settable.",
-				Computed: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
-			"sdn_type": schema.StringAttribute{
-				MarkdownDescription: "Internal network backing type assigned by the platform.",
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
 			"status": schema.StringAttribute{
 				MarkdownDescription: "Current lifecycle state. One of `active`, `deleting`, or " +
 					"`error`. After a successful apply this will always be `active`.",
@@ -244,7 +225,7 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		Tags:   tags,
 	})
 	if err != nil {
-		// 409 (e.g. name collision) and 503 (no active Proxmox node in the
+		// 409 (e.g. name collision) and 503 (no capacity available in the
 		// region) both arrive with a detail message we want to surface
 		// verbatim — the API speaks French and the messages are user-facing.
 		if client.IsConflict(err) {
@@ -312,7 +293,7 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 			return
 		}
 		// Re-fetch the authoritative record after polling — the initial
-		// response may not reflect the final vlan_id / sdn_type / tags.
+		// response may not reflect the final status / tags.
 		fresh, err := r.client.GetVPC(ctx, created.ID)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -478,7 +459,6 @@ func applyVPCToModel(ctx context.Context, src *client.VPC, dst *vpcResourceModel
 	dst.ID = types.StringValue(src.ID)
 	dst.Name = types.StringValue(src.Name)
 	dst.Region = types.StringValue(src.Region)
-	dst.SDNType = types.StringValue(src.SDNType)
 	dst.Status = types.StringValue(src.Status)
 	dst.CreatedAt = types.StringValue(src.CreatedAt.Format(time.RFC3339))
 
@@ -489,11 +469,6 @@ func applyVPCToModel(ctx context.Context, src *client.VPC, dst *vpcResourceModel
 		dst.Cidr = types.StringNull()
 	}
 
-	if src.VlanID != nil {
-		dst.VlanID = types.Int64Value(int64(*src.VlanID))
-	} else {
-		dst.VlanID = types.Int64Null()
-	}
 
 	tagValues := make([]string, 0, len(src.Tags))
 	tagValues = append(tagValues, src.Tags...)

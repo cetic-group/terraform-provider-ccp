@@ -309,7 +309,7 @@ func (c *Client) CreateVPNPeer(ctx context.Context, gatewayID string, req VPNPee
 }
 
 // ListVPNPeers returns all peers of a gateway. The API exposes no single-peer
-// GET, so Read uses this list and filters by id client-side (cf. CLAUDE.md
+// GET, so Read uses this list and filters by id client-side (provider
 // pitfall #6).
 func (c *Client) ListVPNPeers(ctx context.Context, gatewayID string) ([]VPNPeer, error) {
 	var out []VPNPeer
@@ -717,7 +717,7 @@ func (c *Client) FindPublicIPByResource(ctx context.Context, resourceType, resou
 	return nil, nil
 }
 
-// ─── Object Buckets (Ceph RGW) ───────────────────────────────────────────────
+// ─── Object Buckets ──────────────────────────────────────────────────────────
 
 func (c *Client) ListObjectBuckets(ctx context.Context, region string) ([]ObjectBucket, error) {
 	path := "/v1/buckets"
@@ -770,7 +770,7 @@ func (c *Client) GetObjectBucketCredentials(ctx context.Context, id string) (*Ob
 	return &out, nil
 }
 
-// ─── VM Instances (QEMU) ─────────────────────────────────────────────────────
+// ─── VM Instances ────────────────────────────────────────────────────────────
 
 func (c *Client) ListVMInstances(ctx context.Context, region string) ([]VMInstance, error) {
 	path := "/v1/vm-instances"
@@ -1429,36 +1429,6 @@ func (c *Client) DeleteObjectStorageKey(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/object-storage/keys/"+id, nil, nil)
 }
 
-// ─── IPaaS Pool (admin) ────────────────────────────────────────────────────
-
-func (c *Client) GetIpaasPool(ctx context.Context, id string) (*IpaasPool, error) {
-	var out IpaasPool
-	if err := c.do(ctx, http.MethodGet, "/v1/admin/ipaas/pools/"+id, nil, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) CreateIpaasPool(ctx context.Context, req IpaasPoolCreateRequest) (*IpaasPool, error) {
-	var out IpaasPool
-	if err := c.do(ctx, http.MethodPost, "/v1/admin/ipaas/pools", req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) UpdateIpaasPool(ctx context.Context, id string, req IpaasPoolUpdateRequest) (*IpaasPool, error) {
-	var out IpaasPool
-	if err := c.do(ctx, http.MethodPatch, "/v1/admin/ipaas/pools/"+id, req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-func (c *Client) DeleteIpaasPool(ctx context.Context, id string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/admin/ipaas/pools/"+id, nil, nil)
-}
-
 // ─── Quota Request ─────────────────────────────────────────────────────────
 
 func (c *Client) GetQuotaRequest(ctx context.Context, id string) (*QuotaRequest, error) {
@@ -1651,7 +1621,7 @@ func Poll(ctx context.Context, interval, timeout time.Duration, fn PollFunc) err
 	}
 }
 
-// ListLxcTemplates returns the LXC template catalog (active templates only).
+// ListLxcTemplates returns the container template catalog (active templates only).
 // GET /v1/templates — no auth required (public catalog).
 func (c *Client) ListLxcTemplates(ctx context.Context) ([]LxcTemplate, error) {
 	var out []LxcTemplate
@@ -1661,7 +1631,7 @@ func (c *Client) ListLxcTemplates(ctx context.Context) ([]LxcTemplate, error) {
 	return out, nil
 }
 
-// ListQemuTemplates returns the QEMU/VM template catalog (filtered to client-usable
+// ListQemuTemplates returns the VM template catalog (filtered to client-usable
 // templates, excludes ccks-* internal kubernetes images).
 // GET /v1/qemu-templates — no auth required.
 func (c *Client) ListQemuTemplates(ctx context.Context) ([]QemuTemplate, error) {

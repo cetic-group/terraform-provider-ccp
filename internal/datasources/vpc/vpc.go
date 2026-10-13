@@ -27,8 +27,6 @@ type vpcDSModel struct {
 	Name      types.String `tfsdk:"name"`
 	Region    types.String `tfsdk:"region"`
 	Cidr      types.String `tfsdk:"cidr"`
-	VlanID    types.Int64  `tfsdk:"vlan_id"`
-	SDNType   types.String `tfsdk:"sdn_type"`
 	Status    types.String `tfsdk:"status"`
 	Tags      types.List   `tfsdk:"tags"`
 	CreatedAt types.String `tfsdk:"created_at"`
@@ -58,8 +56,6 @@ func (d *vpcDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 				Computed:            true,
 			},
 			"cidr":       schema.StringAttribute{Computed: true},
-			"vlan_id":    schema.Int64Attribute{Computed: true},
-			"sdn_type":   schema.StringAttribute{Computed: true},
 			"status":     schema.StringAttribute{Computed: true},
 			"tags":       schema.ListAttribute{ElementType: types.StringType, Computed: true},
 			"created_at": schema.StringAttribute{Computed: true},
@@ -141,7 +137,6 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		ID:        types.StringValue(found.ID),
 		Name:      types.StringValue(found.Name),
 		Region:    types.StringValue(found.Region),
-		SDNType:   types.StringValue(found.SDNType),
 		Status:    types.StringValue(found.Status),
 		CreatedAt: types.StringValue(found.CreatedAt.Format(time.RFC3339)),
 	}
@@ -149,11 +144,6 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		state.Cidr = types.StringValue(*found.CIDR)
 	} else {
 		state.Cidr = types.StringNull()
-	}
-	if found.VlanID != nil {
-		state.VlanID = types.Int64Value(int64(*found.VlanID))
-	} else {
-		state.VlanID = types.Int64Null()
 	}
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags

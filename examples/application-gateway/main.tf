@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 6.7"
+      version = "~> 7.0"
     }
   }
 }
@@ -147,7 +147,7 @@ output "appgw_public_ip" {
 }
 
 # `public_ip_status` walks `allocated → attaching → attached` while the
-# IPaaS pipeline converges; the provider blocks on it during apply.
+# public IP attachment converges; the provider blocks on it during apply.
 output "appgw_public_ip_status" {
   value = ccp_application_gateway.web.public_ip_status
 }

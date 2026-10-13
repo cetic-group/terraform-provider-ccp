@@ -128,7 +128,7 @@ func recordSets() []map[string]any {
 
 // The API exposes no `GET /records/{id}` — only the collection. Assuming
 // otherwise yields a 405 on the FIRST refresh, long after Create looked fine
-// (CLAUDE.md pitfall #6). The client must list and filter, and it must
+// (provider pitfall #6). The client must list and filter, and it must
 // synthesise the 404 that Read relies on to drop the resource from state.
 func TestGetDNSRecordSet_ListsAndFilters(t *testing.T) {
 	srv := testutil.NewTestServer(t, testutil.Routes{

@@ -38,8 +38,6 @@ func clusterFixture(id, name, region, tier string) map[string]any {
 		"updated_at":                            "2026-05-25T10:05:00Z",
 	}
 	if tier == "prod" {
-		fx["proxy_secondary_vmid"] = 1042
-		fx["proxy_secondary_node"] = "px-node-02"
 		fx["proxy_vip_vnet"] = "10.10.0.250"
 	}
 	return fx
@@ -64,9 +62,6 @@ func TestDatasourceByID(t *testing.T) {
 	}
 	if got.Tier != "prod" {
 		t.Errorf("expected tier=prod, got %q", got.Tier)
-	}
-	if got.ProxySecondaryVmid == nil || *got.ProxySecondaryVmid != 1042 {
-		t.Errorf("expected proxy_secondary_vmid=1042, got %v", got.ProxySecondaryVmid)
 	}
 	if got.ProxyVipVnet == nil || *got.ProxyVipVnet != "10.10.0.250" {
 		t.Errorf("expected proxy_vip_vnet=10.10.0.250, got %v", got.ProxyVipVnet)

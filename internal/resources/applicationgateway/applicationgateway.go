@@ -1,7 +1,6 @@
 // Package applicationgateway implements the ccp_application_gateway
-// Terraform resource — the L7 Application Gateway (ccp-appgw) which
-// provisions an HA pair of LXC containers running HAProxy with TLS
-// termination, SNI multi-cert, rate limiting and WAF presets.
+// Terraform resource — the L7 Application Gateway, a highly available
+// reverse proxy with TLS termination, SNI multi-cert, rate limiting and WAF presets.
 //
 // Listeners, target groups, target group members and routes are managed
 // as SEPARATE resources (ccp_appgw_listener, ccp_appgw_target_group,
@@ -253,7 +252,7 @@ func (r *appgwResource) Configure(_ context.Context, req resource.ConfigureReque
 
 // applyToModel maps an API ApplicationGateway onto the Terraform model.
 // CALLERS must preserve any plan-side intent (e.g. tags lists that the
-// API normalised) BEFORE invoking this helper — see CLAUDE.md pitfall #3.
+// API normalised) BEFORE invoking this helper — see provider pitfall #3.
 func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwResourceModel) []string {
 	m.ID = types.StringValue(gw.ID)
 	m.Name = types.StringValue(gw.Name)

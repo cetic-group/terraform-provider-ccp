@@ -15,8 +15,6 @@ func fixture(id, name, region string) map[string]any {
 		"name":       name,
 		"region":     region,
 		"cidr":       "10.1.0.0/16",
-		"vlan_id":    1234,
-		"sdn_type":   "evpn",
 		"status":     "active",
 		"tags":       []string{},
 		"created_at": "2026-05-25T10:00:00Z",
@@ -35,9 +33,6 @@ func TestLookupByID(t *testing.T) {
 	}
 	if got.Name != "prod" || got.Region != "RNN" {
 		t.Errorf("unexpected: %+v", got)
-	}
-	if got.VlanID == nil || *got.VlanID != 1234 {
-		t.Errorf("expected vlan_id=1234, got %v", got.VlanID)
 	}
 	if got.CIDR == nil || *got.CIDR != "10.1.0.0/16" {
 		t.Errorf("expected cidr=10.1.0.0/16, got %v", got.CIDR)

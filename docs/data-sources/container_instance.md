@@ -2,12 +2,12 @@
 page_title: "ccp_container_instance Data Source - ccp"
 subcategory: "Compute"
 description: |-
-  Look up an LXC container instance by ID or by (name, region).
+  Look up a container instance by ID or by (name, region).
 ---
 
 # ccp_container_instance (Data Source)
 
-Look up an LXC container instance.
+Look up a container instance.
 
 ## Example Usage
 

@@ -7,7 +7,7 @@ description: |-
 
 # ccp_object_storage_key (Data Source)
 
-Look up an Object Storage subuser key (RGW) by `id`. Lookup by label is not supported.
+Look up an Object Storage key by `id`. Lookup by label is not supported.
 
 ~> The secret access key is NEVER exposed — only returned once at creation time on the `ccp_object_storage_key` resource.
 

@@ -349,7 +349,7 @@ func quotaGBFrom(quotaBytes int64, configured types.Int64) types.Int64 {
 //
 // `password` is carried over from the configuration, not from the response: no
 // response of this API carries one, and writing it from the response would
-// blank the only copy Terraform holds — the shape of CLAUDE.md pitfall #5, with
+// blank the only copy Terraform holds — the shape of provider pitfall #5, with
 // a secret at stake.
 //
 // `quota_gb` is NOT carried over blindly. The API answers in bytes, and the

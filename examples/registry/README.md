@@ -20,7 +20,7 @@ terraform apply
 ```
 
 Provisioning takes ~5-10 min while Let's Encrypt issues the certificate
-and the LXC stack converges. Once the registry reports `status = "active"`:
+and the registry converges. Once the registry reports `status = "active"`:
 
 ```bash
 HOST=$(terraform output -raw registry_hostname)
@@ -50,7 +50,7 @@ resource "ccp_registry" "main" {
   region   = "RNN"
   vpc_id   = ccp_vpc.main.id
   vnet_id  = ccp_vnet.registry.id
-  exposure = "private"   # DNS-01 IONOS, no public IP
+  exposure = "private"   # DNS-01, no public IP
 }
 ```
 

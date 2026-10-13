@@ -4,14 +4,14 @@
 #   export CCP_API_KEY="ccp_live_..."   (required, scope >= write)
 #
 # Note: ccp_vpc and ccp_vnet are provisioned asynchronously by
-# the CCP SDN backend. The provider polls the resource until it
+# the platform. The provider polls the resource until it
 # reaches "active" — expect up to ~90s on first apply.
 
 terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 6.7"
+      version = "~> 7.0"
     }
   }
 }
@@ -88,7 +88,7 @@ resource "ccp_public_ip" "web" {
 }
 
 # ---------------------------------------------------------------------------
-# Container instance — LXC, attached to the web VNet
+# Container instance — attached to the web VNet
 # ---------------------------------------------------------------------------
 
 resource "ccp_container_instance" "web" {
@@ -114,7 +114,7 @@ resource "ccp_container_instance" "web" {
 }
 
 # ---------------------------------------------------------------------------
-# Block volume — Ceph RBD, attached to the container, 20 GB
+# Block volume — attached to the container, 20 GB
 # ---------------------------------------------------------------------------
 
 resource "ccp_block_volume" "data" {

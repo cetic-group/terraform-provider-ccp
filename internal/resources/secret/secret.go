@@ -55,7 +55,7 @@ var (
 )
 
 // nameRegex matches the path-based (Vault KV style) secret name accepted by
-// the API (mirrored from `apps/api/app/schemas/secret.py::NAME_REGEX`).
+// the API (mirrored from the API's NAME_REGEX).
 // One or more DNS-friendly segments joined by `/`. Examples:
 //   "password", "prod/db/credentials", "team-a/api-tokens/github".
 var nameRegex = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}(/[a-z][a-z0-9-]{0,62})*$`)

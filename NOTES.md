@@ -21,7 +21,6 @@ Internal notes for contributors. Audience: the next dev picking this up.
 - `ccp_vnet_ip_reservation` — Reserve a single IP or a range (`ip` + `range_end`).
 - `ccp_vnet_peering` — Intra-VPC, between two VNets.
 - `ccp_public_ip` — Allocate / attach via `attached_to_*` / detach / release.
-- `ccp_ipaas_pool` — **admin only** — BYOIP routed pools.
 - `ccp_load_balancer` — Highly available with floating VIP, automatic failover. Multi-listener, backends nested.
 
 **Compute**
@@ -108,7 +107,6 @@ production API on `api.cloud.cetic-group.com`.
   small fleets, will need pagination later.
 - **SSH keys — no Update endpoint at all.** `PATCH` / `PUT` are not implemented
   server-side. Every attribute is therefore `RequiresReplace`.
-- **VPC — `sdn_type` returned as a string, not a validated enum.** Free-form JSON.
   We type it as `types.String` and don't validate.
 - **VNet — also no GET single endpoint.** Same trick: list under the parent VPC
   and filter by ID.
@@ -121,7 +119,7 @@ production API on `api.cloud.cetic-group.com`.
   `status: provisioning`. The provider polls until `active` (10s interval,
   3 min timeout).
 - **Public IP — async attach.** Synchronous allocate, but `attached_to_*`
-  triggers an IPaaS routing reconcile that takes 10–30 s (BGP convergence).
+  triggers a routing reconcile that takes 10–30 s.
   Provider polls until `attached`.
 - **Object bucket — master credentials only after `active`.** A second `GET`
   on `/credentials` is needed to populate `access_key` / `secret_key`.
@@ -214,7 +212,7 @@ git push origin v0.8.0
 gh run watch
 ```
 
-**Convention** (from `CLAUDE.md`): every tag MUST update :
+**Convention**: every tag MUST update :
 1. `docs/index.md` — `required_providers` example.
 2. `README.md` — Quick start example, status banner.
 3. `docs/resources/*.md` and `docs/data-sources/*.md` — schema fidelity (Required / Optional / Computed) + example HCL using current field names.

@@ -45,7 +45,7 @@ func domainBody(status string, withDetail bool) map[string]any {
 
 // The list shape carries none of the three detail blocks. Reading them from a
 // list response would silently blank the records the customer has to publish
-// (CLAUDE.md pitfall #5) — so the client must leave them nil and the resource
+// (provider pitfall #5) — so the client must leave them nil and the resource
 // must read the domain back.
 func TestListEmailDomains_HasNoDetailBlocks(t *testing.T) {
 	srv := testutil.NewTestServer(t, testutil.Routes{

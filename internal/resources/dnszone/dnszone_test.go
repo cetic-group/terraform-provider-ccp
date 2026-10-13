@@ -61,7 +61,7 @@ func TestStateFrom_MapsEveryResolverEndpointWithItsSubnet(t *testing.T) {
 }
 
 // `tier` is what the operator asked for; `resolver_tier` is what is serving the
-// network. Overwriting the first with the second is CLAUDE.md pitfall #1: the
+// network. Overwriting the first with the second is provider pitfall #1: the
 // planned value would differ from the applied one and Terraform would abort.
 func TestApplyTier_KeepsWhatWasConfigured(t *testing.T) {
 	// A zone still waiting for its proof reports the REQUESTED level, and a
@@ -90,7 +90,7 @@ func TestApplyTier_FallsBackToTheServedLevel(t *testing.T) {
 }
 
 // The list shape has no resolver block. Mapping zero values over it would claim
-// the name server has no address at all (CLAUDE.md pitfall #5).
+// the name server has no address at all (provider pitfall #5).
 func TestStateFrom_AbsentResolverStaysNull(t *testing.T) {
 	z := servedZone("active", "prod")
 	z.Resolver = nil

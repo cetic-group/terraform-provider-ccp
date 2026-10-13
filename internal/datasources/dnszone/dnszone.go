@@ -160,7 +160,7 @@ func (d *dnsZoneDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	id := cfg.ID.ValueString()
 	if !hasID {
 		// Resolve by name through the list, then read the zone itself: the
-		// list shape carries no resolver block (CLAUDE.md pitfall #5), and the
+		// list shape carries no resolver block (provider pitfall #5), and the
 		// resolver is the whole point of this data source.
 		zones, err := d.client.ListDNSZones(ctx)
 		if err != nil {

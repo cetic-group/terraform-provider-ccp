@@ -1,17 +1,16 @@
 // Package vnet implements the ccp_vnet Terraform resource.
 //
-// A VNet in CETIC Cloud is a Proxmox SDN VXLAN VNet nested under a VPC, with
-// IPAM allocations served by the per-VPC NAT gateway. Most fields are
-// immutable post-create (CIDR, DHCP range, parent VPC) and force replacement
-// on change. Only `name` and `snat` are mutable via the PATCH endpoint.
+// A VNet in CETIC Cloud is a private subnet nested under a VPC, with IPAM
+// allocations served by the platform. Most fields are immutable post-create
+// (CIDR, DHCP range, parent VPC) and force replacement on change. Only `name` and `snat` are mutable via the PATCH endpoint.
 //
 // Provisioning is asynchronous: POST /v1/vpcs/{vpc_id}/vnets returns 201
-// immediately while the NAT GW NIC attach + iptables MASQUERADE sync runs in
-// the Celery worker. We poll GetVNet (list-and-filter under the parent VPC)
-// every 5 s up to 90 s until the VNet reaches `active` (or `error`).
+// immediately while the network setup runs asynchronously on the platform.
+// We poll GetVNet (list-and-filter under the parent VPC) every 5 s up to 90 s
+// until the VNet reaches `active` (or `error`).
 //
-// Deletion is asynchronous as well — the VNet enters `deleting` until the NAT
-// GW NIC detach + IPAM cleanup completes, then disappears from the list. We
+// Deletion is asynchronous as well — the VNet enters `deleting` until the
+// network + IPAM cleanup completes, then disappears from the list. We
 // poll for 404 up to 60 s; if the timeout elapses we surface a warning rather
 // than a hard error so Terraform still removes the resource from state.
 //
@@ -211,8 +210,8 @@ func (r *vnetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				// This is THE attribute that says whether the subnet is isolated, so its
 				// description has to answer the two questions that follow from that — can my
 				// machines reach the internet, and can I give them a public address — without
-				// naming any of the machinery underneath. See the anti-leak rule in CLAUDE.md:
-				// these strings are published on the Terraform Registry.
+				// naming any of the machinery underneath. These strings are
+				// published on the Terraform Registry.
 				MarkdownDescription: "Outbound mode of the subnet, and the one setting that " +
 					"distinguishes an isolated network:\n\n" +
 					"- `true` — resources in this subnet reach the internet, and a public address " +
@@ -475,7 +474,7 @@ func (r *vnetResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 //
 // We diff plan vs prior state and only send fields that actually changed —
 // PATCH with no fields would still be valid but pointless, and sending the
-// old value of `snat` could spuriously trigger the IPaaS-attachment 409 check.
+// old value of `snat` could spuriously trigger the public-IP attachment 409 check.
 func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state vnetResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -514,14 +513,14 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	if hasChange {
 		if _, err := r.client.UpdateVNet(ctx, vpcID, id, updateReq); err != nil {
-			// 409 most commonly means "snat=false rejected because IPaaS
-			// routed IPs are still attached" — surface the API detail so the
+			// 409 most commonly means "snat=false rejected because routed
+			// public IPs are still attached" — surface the API detail so the
 			// user knows what to detach.
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"VNet update conflicts with current state",
 					fmt.Sprintf("CETIC Cloud rejected the update for vnet %s: %s. "+
-						"For `snat=false`, ensure no IPaaS routed public IPs remain attached "+
+						"For `snat=false`, ensure no routed public IPs remain attached "+
 						"to instances in this VNet before retrying.", id, err.Error()),
 				)
 				return

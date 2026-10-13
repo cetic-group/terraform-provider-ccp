@@ -1,7 +1,7 @@
 // Package k8scluster implements the ccp_k8s_cluster Terraform resource.
 //
-// CCKS (CETIC Cloud Kubernetes Service) — cluster K8s tenant managé via
-// CAPI/CAPMOX. Le pool de workers initial est créé en même temps que le
+// CCKS (CETIC Cloud Kubernetes Service) — cluster K8s tenant managé par
+// la plateforme. Le pool de workers initial est créé en même temps que le
 // cluster (`initial_pool` block, défaut: 1× small worker `default`).
 // Pour gérer des pools additionnels, utiliser `ccp_k8s_node_pool`.
 //
@@ -122,9 +122,7 @@ type k8sResourceModel struct {
 	// Tier (create-time only, immutable)
 	Tier types.String `tfsdk:"tier"`
 	// Proxy HA (read-only, only populated for tier=prod)
-	ProxySecondaryVmid types.Int64  `tfsdk:"proxy_secondary_vmid"`
-	ProxySecondaryNode types.String `tfsdk:"proxy_secondary_node"`
-	ProxyVipVnet       types.String `tfsdk:"proxy_vip_vnet"`
+	ProxyVipVnet types.String `tfsdk:"proxy_vip_vnet"`
 	// Computed
 	ApiEndpoint types.String `tfsdk:"api_endpoint"`
 	Status      types.String `tfsdk:"status"`
@@ -138,7 +136,7 @@ func (r *k8sResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud Kubernetes cluster (CCKS) provisioned via CAPI/CAPMOX. " +
+		MarkdownDescription: "Manages a CETIC Cloud Kubernetes cluster (CCKS) managed by the platform. " +
 			"Provisioning is asynchronous (5-15 min). Create blocks until cluster is active. " +
 			"Kubernetes version upgrades are performed in-place via rolling upgrade (no recreation).",
 		Attributes: map[string]schema.Attribute{
@@ -163,11 +161,11 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"k8s_version": schema.StringAttribute{
-				MarkdownDescription: "Kubernetes version (ex: `v1.31.0`). Mutable — triggers a rolling upgrade via CAPI/CAPMOX.",
+				MarkdownDescription: "Kubernetes version (ex: `v1.31.0`). Mutable — triggers a rolling upgrade.",
 				Required:            true,
 			},
 			"os_template_key": schema.StringAttribute{
-				MarkdownDescription: "QEMU template key for worker nodes (ex: `clks-capi-debian-13`). Forces replacement.",
+				MarkdownDescription: "VM template key for worker nodes (ex: `clks-capi-debian-13`). Forces replacement.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -289,20 +287,6 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"proxy_secondary_vmid": schema.Int64Attribute{
-				MarkdownDescription: "Identifiant interne du frontal apiserver secondaire (tier `prod` uniquement, sinon null). Read-only — exposé pour observabilité.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
-			"proxy_secondary_node": schema.StringAttribute{
-				MarkdownDescription: "Placement interne du frontal apiserver secondaire (tier `prod` uniquement, sinon null). Read-only — exposé pour observabilité.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"proxy_vip_vnet": schema.StringAttribute{
@@ -459,16 +443,6 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, currentInitial *ini
 	}
 
 	// Proxy HA fields are only populated for tier=prod; nullable on dev.
-	if c.ProxySecondaryVmid != nil {
-		m.ProxySecondaryVmid = types.Int64Value(*c.ProxySecondaryVmid)
-	} else {
-		m.ProxySecondaryVmid = types.Int64Null()
-	}
-	if c.ProxySecondaryNode != nil {
-		m.ProxySecondaryNode = types.StringValue(*c.ProxySecondaryNode)
-	} else {
-		m.ProxySecondaryNode = types.StringNull()
-	}
 	if c.ProxyVipVnet != nil {
 		m.ProxyVipVnet = types.StringValue(*c.ProxyVipVnet)
 	} else {

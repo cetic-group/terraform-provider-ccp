@@ -23,7 +23,7 @@ resource "ccp_container_scale_set" "api_workers" {
   desired_instances = 3
   min_instances     = 2
   max_instances     = 10
-  root_password = var.lxcss_root_password  # sensible — préférer une variable
+  root_password = var.css_root_password  # sensible — préférer une variable
   tags          = ["api", "env:prod"]
 }
 ```

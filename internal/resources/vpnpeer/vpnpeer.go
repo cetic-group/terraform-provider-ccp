@@ -16,7 +16,7 @@
 //     public_key, model and config. `config` is returned ONLY here, so it is
 //     persisted in state and never re-fetched.
 //   - Read   : the API exposes no single-peer GET, so Read LISTS the gateway's
-//     peers and filters by id (CLAUDE.md pitfall #6). The list response omits
+//     peers and filters by id (provider pitfall #6). The list response omits
 //     `config`, so Read preserves the create-time `config`/`model` from state
 //     rather than clobbering them.
 //   - Delete : DELETE /v1/vpn/gateways/{gateway_id}/peers/{id}.
@@ -313,7 +313,7 @@ func (r *vpnPeerResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	// No single-peer GET: list and filter by id (CLAUDE.md pitfall #6).
+	// No single-peer GET: list and filter by id (provider pitfall #6).
 	got, err := r.client.GetVPNPeer(ctx, state.GatewayID.ValueString(), state.ID.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {

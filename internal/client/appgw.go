@@ -1,7 +1,7 @@
 // Application Gateway v1 client wrappers.
 //
 // Endpoints under `/v1/app-gateways/...`. Mutation calls trigger an async
-// HAProxy regen on the LXC pair — provider Read() must poll the gateway
+// configuration reload — provider Read() must poll the gateway
 // `status` field for stabilisation.
 package client
 

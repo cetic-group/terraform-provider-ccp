@@ -21,7 +21,7 @@ resource "ccp_vpc" "prod" {
   region = "RNN"
 }
 
-# Optional: bring your own reserved public IP (otherwise IPaaS allocates one).
+# Optional: bring your own reserved public IP (otherwise the platform allocates one).
 resource "ccp_public_ip" "vpn" {
   region = "RNN"
 }
@@ -56,7 +56,7 @@ output "vpn_endpoint" {
 
 ### Optional
 
-- `public_ip_id` - (Optional, Computed, Forces new resource) UUID of a reserved public IP to attach to the gateway endpoint. If omitted, the platform allocates one (IPaaS).
+- `public_ip_id` - (Optional, Computed, Forces new resource) UUID of a reserved public IP to attach to the gateway endpoint. If omitted, the platform allocates one.
 - `peer_pool_cidr` - (Optional, Computed, Forces new resource) CIDR block the gateway allocates peer tunnel IPs from. If omitted, the platform picks one.
 - `dns` - (Optional, Computed, Forces new resource) DNS server pushed to peers in their generated WireGuard config.
 - `tags` - (Optional, Computed, Forces new resource) Free-form labels attached to the gateway.

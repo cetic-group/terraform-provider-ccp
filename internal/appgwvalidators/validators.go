@@ -4,8 +4,8 @@
 //
 // We use the framework's `validator.String` / `validator.List` interfaces;
 // each validator silently passes when the value is null or unknown so it
-// composes safely with plan-time defaults (cf. ValidateConfig pitfall #4
-// in CLAUDE.md).
+// composes safely with plan-time defaults (cf. ValidateConfig
+// provider pitfall #4).
 package appgwvalidators
 
 import (

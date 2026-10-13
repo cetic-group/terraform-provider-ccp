@@ -7,7 +7,7 @@ description: |-
 
 # ccp_object_bucket (Data Source)
 
-Look up an S3 (Ceph RGW) Object Bucket. Credentials are not surfaced.
+Look up an S3 Object Bucket. Credentials are not surfaced.
 
 ## Example Usage
 

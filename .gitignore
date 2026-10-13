@@ -2,3 +2,6 @@
 /terraform-provider-cetic-cloud-platform_*
 /terraform-provider-ccp
 /terraform-provider-ccp_*
+
+# Local notes
+/CLAUDE.md

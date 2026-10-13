@@ -18,9 +18,8 @@
 //   - `resource_path` (everything after the 5th `:`) → free fnmatch glob over
 //     the whole string (`*` traverses `/`).
 //
-// This is a Go port of `apps/api/app/services/iam_arn.py`. Behaviour parity is
-// validated by `iamarn_test.go` which ports the 75 cases from
-// `apps/api/tests/test_iam_arn.py`.
+// Behaviour parity with the API's ARN parser is validated by `iamarn_test.go`
+// (75 cases).
 package iamarn
 
 import (

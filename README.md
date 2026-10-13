@@ -15,7 +15,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 >   required_providers {
 >     ccp = {
 >       source  = "cetic-group/ccp"
->       version = "~> 6.7"
+>       version = "~> 7.0"
 >     }
 >   }
 > }
@@ -45,7 +45,7 @@ Terraform provider for CETIC Cloud — sovereign cloud by CETIC Group.
 > container instances/scale sets/snapshots, custom templates, load balancers,
 > public IPs, block volumes, object buckets, object storage keys, K8s node
 > pools, the four DB engines (PostgreSQL / MySQL / Valkey / FerretDB),
-> service accounts, SSH keys, API keys, IPaaS pools, VNet firewall rules
+> service accounts, SSH keys, API keys, VNet firewall rules
 > and IP reservations, and registry users + ACLs. Highlights : containers
 > (instance + scale set + snapshot), virtual machines (instance + scale
 > set + snapshot), managed Kubernetes clusters + node pools, **managed
@@ -89,7 +89,7 @@ terraform {
   required_providers {
     ccp = {
       source  = "cetic-group/ccp"
-      version = "~> 6.7"
+      version = "~> 7.0"
     }
   }
 }
@@ -119,7 +119,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Network | `ccp_vnet` | Nested under VPC. PATCH supports `name`, `snat`. |
 | Network | `ccp_vnet_firewall_rule` | Per-VNet rules. |
 | Network | `ccp_vnet_ip_reservation` / `ccp_vnet_peering` | IP reservations + peering intra/inter-VPC. |
-| Network | `ccp_public_ip` / `ccp_ipaas_pool` | Public IPs + BYOIP edge pools. |
+| Network | `ccp_public_ip` | Public IPs. |
 | Network | `ccp_load_balancer` | Highly available with floating VIP, automatic failover. |
 | Network | `ccp_dns_zone` / `ccp_dns_record` | Private DNS — a zone answered only inside your own private network, and the records in it. Machines of the network receive its name server automatically, **at their creation**. |
 | Network | `ccp_application_gateway` / `ccp_appgw_listener` / `ccp_appgw_target_group` / `ccp_appgw_target_group_member` / `ccp_appgw_route` | L7 reverse proxy with TLS, SNI, rate limit, IP allow/deny, CORS, basic auth, WAF presets. |

@@ -7,7 +7,7 @@ description: |-
 
 # ccp_vm_instance (Data Source)
 
-Look up a QEMU VM instance.
+Look up a VM instance.
 
 ## Example Usage
 

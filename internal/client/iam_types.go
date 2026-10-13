@@ -1,6 +1,6 @@
 // IAM Roles v1 types — POJOs for `/v1/iam/*` and `/v1/service-accounts/*`.
 //
-// Mirrors the Pydantic schemas in `apps/api/app/schemas/iam.py`. Policy
+// Mirrors the API schemas. Policy
 // document version is figée at "2026-05-10".
 package client
 

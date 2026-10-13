@@ -50,7 +50,7 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `display_name` — Human-readable name (nullable).
 - `region` — Region code (`RNN`, `PAR`, `ABJ`, …).
 - `k8s_version` — Kubernetes version currently deployed (e.g. `v1.31.0`).
-- `os_template_key` — QEMU template key used to provision worker nodes.
+- `os_template_key` — VM template key used to provision worker nodes.
 - `vpc_id` — UUID of the VPC the cluster lives in.
 - `vnet_id` — UUID of the VNet the cluster nodes are attached to.
 - `pod_cidr` — Pod network CIDR.
@@ -69,8 +69,6 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `tier` — Topology of the apiserver frontend:
     * `dev` — single frontend (SPOF acceptable in dev/staging).
     * `prod` — redundant frontend (primary + secondary) with automatic failover on a floating address, providing HA at the apiserver layer.
-- `proxy_secondary_vmid` — Internal identifier of the secondary apiserver frontend. Null when `tier = "dev"`.
-- `proxy_secondary_node` — Internal placement of the secondary apiserver frontend. Null when `tier = "dev"`.
 - `proxy_vip_vnet` — Floating address on the VNet shared between the two apiserver frontends — the address the kubeconfig points at when HA is active. Null when `tier = "dev"`.
 - `status` — `creating`, `provisioning`, `active`, `updating`, `error`, or `deleting`.
 - `error_message` — Last error message reported by the provisioning workflow (nullable).

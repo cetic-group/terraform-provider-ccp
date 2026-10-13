@@ -1,11 +1,11 @@
 // Package blockvolume implements the ccp_block_volume Terraform
 // resource.
 //
-// A block volume in CETIC Cloud is a Ceph RBD image that can be attached to
+// A block volume in CETIC Cloud is a network block device that can be attached to
 // either a container instance or a VM instance. Provisioning, deletion,
 // attach, detach and resize are all asynchronous on the API side: the
 // endpoints return 201/202 with a transient status (`creating`, `deleting`,
-// `detaching`, …) and a Celery worker performs the actual rbd/qemu/pct
+// `detaching`, …) and a platform task performs the actual storage
 // operations. The provider therefore polls GetBlockVolume after every
 // mutating call until the volume reaches a quiescent state.
 //
@@ -70,8 +70,6 @@ type blockVolumeResourceModel struct {
 	Tags           types.List   `tfsdk:"tags"`
 	Status         types.String `tfsdk:"status"`
 	AttachedToName types.String `tfsdk:"attached_to_name"`
-	RBDPool        types.String `tfsdk:"rbd_pool"`
-	RBDImage       types.String `tfsdk:"rbd_image"`
 	ErrorMessage   types.String `tfsdk:"error_message"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
@@ -106,7 +104,7 @@ func (r *blockVolumeResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CETIC Cloud block volume (Ceph RBD). " +
+		MarkdownDescription: "Manages a CETIC Cloud block volume. " +
 			"Volumes can be attached to a container or VM instance via " +
 			"`attached_to_id` + `attached_to_type`. The size can be grown in " +
 			"place but never shrunk. Provisioning, attach, detach and resize " +
@@ -148,7 +146,7 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"size_gb": schema.Int64Attribute{
 				MarkdownDescription: "Volume size in GB (1–16384). Mutable in place: " +
 					"the API supports growing the volume via `/resize`. Shrinking " +
-					"is rejected by the provider with a diagnostic — Ceph RBD " +
+					"is rejected by the provider with a diagnostic — a volume " +
 					"never shrinks safely.",
 				Required: true,
 				Validators: []validator.Int64{
@@ -195,20 +193,6 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "Display name of the resource the volume is attached to, " +
 					"if any.",
 				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"rbd_pool": schema.StringAttribute{
-				MarkdownDescription: "Ceph RBD pool that backs this volume (informational).",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"rbd_image": schema.StringAttribute{
-				MarkdownDescription: "Ceph RBD image name backing this volume (informational).",
-				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -356,7 +340,7 @@ func (r *blockVolumeResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
-	// Re-fetch the authoritative record so timestamps, rbd_*, attached_to_name
+	// Re-fetch the authoritative record so timestamps, attached_to_name
 	// and tags echo what the API has on file.
 	fresh, err := r.client.GetBlockVolume(ctx, created.ID)
 	if err != nil {
@@ -445,7 +429,7 @@ func (r *blockVolumeResource) Update(ctx context.Context, req resource.UpdateReq
 		resp.Diagnostics.AddError(
 			"Block volume cannot be shrunk",
 			fmt.Sprintf("size_gb can only grow (current: %d, requested: %d). "+
-				"Ceph RBD does not support safe shrinking; create a smaller "+
+				"Block volumes do not support safe shrinking; create a smaller "+
 				"volume and copy the data manually if you need to reduce size.",
 				stateSize, planSize),
 		)
@@ -737,8 +721,6 @@ func applyVolumeToModel(ctx context.Context, src *client.BlockVolume, dst *block
 	dst.AttachedToID = stringPtrToValue(src.AttachedToID)
 	dst.AttachedToType = stringPtrToValue(src.AttachedToType)
 	dst.AttachedToName = stringPtrToValue(src.AttachedToName)
-	dst.RBDPool = stringPtrToValue(src.RBDPool)
-	dst.RBDImage = stringPtrToValue(src.RBDImage)
 	dst.ErrorMessage = stringPtrToValue(src.ErrorMessage)
 	dst.CreatedAt = types.StringValue(src.CreatedAt.Format(time.RFC3339))
 	dst.UpdatedAt = types.StringValue(src.UpdatedAt.Format(time.RFC3339))

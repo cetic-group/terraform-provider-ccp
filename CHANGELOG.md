@@ -4,6 +4,32 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v7.0.0 (2026-10-13)
+
+### Removed — BREAKING
+
+- **`ccp_ipaas_pool`** (resource and data source), not usable with tenant
+  credentials. Remove it from your configuration and from the state
+  (`terraform state rm`) before upgrading.
+- **`ccp_k8s_cluster.proxy_secondary_vmid`** and
+  **`ccp_k8s_cluster.proxy_secondary_node`** (resource and data source).
+  `proxy_vip_vnet` — the private address the kubeconfig points at in HA
+  mode — is kept.
+- **`ccp_block_volume.rbd_pool`** and **`ccp_block_volume.rbd_image`**
+  (resource and data source).
+- **`ccp_vpc.vlan_id`** and **`ccp_vpc.sdn_type`** (resource and data source).
+- **`ccp_k8s_templates.templates[*].vmid`**.
+
+### Changed
+
+- Documentation wording simplified.
+
+### Migration
+
+Delete any reference to the removed attributes (outputs, locals,
+interpolations), then run `terraform init -upgrade`. The removed attributes
+are dropped from the state on the next plan; no resource is replaced.
+
 ## v6.7.0 (2026-10-10)
 
 ### Added — `type` sur `ccp_public_ip` (cetic-cloud-platform#1612)
@@ -818,24 +844,20 @@ corrections are shipped as fixes rather than a major bump:
 ### Added — CCKS HA tier (`dev` / `prod`)
 
 - **`ccp_k8s_cluster.tier`** — new Optional+Computed attribute (default
-  `"dev"`) controlling the LXC proxy topology fronting the apiserver:
-  - `dev` — single LXC proxy (SPOF acceptable in dev/staging — current
+  `"dev"`) controlling the topology of the apiserver frontend:
+  - `dev` — single frontend (SPOF acceptable in dev/staging — current
     behaviour, preserved as the default for backward compatibility).
-  - `prod` — 2 LXC proxies (primary + secondary) with Keepalived VRRP
-    and a floating VIP, providing HA at the proxy layer.
+  - `prod` — 2 frontends (primary + secondary) with a floating address,
+    providing HA at the frontend layer.
 
   Validators enforce `OneOf("dev", "prod")`. The attribute is immutable —
-  changing the tier carries `RequiresReplace()` because the proxy LXC
+  changing the tier carries `RequiresReplace()` because the frontend
   topology is baked at provision time on the backend.
-- **`ccp_k8s_cluster.proxy_secondary_vmid`** — new Computed (read-only)
-  Int64 attribute exposing the Proxmox VMID of the secondary LXC proxy.
-  Null for `tier = "dev"`.
-- **`ccp_k8s_cluster.proxy_secondary_node`** — new Computed (read-only)
-  String attribute exposing the Proxmox node hosting the secondary LXC
-  proxy. Null for `tier = "dev"`.
+- **`ccp_k8s_cluster.proxy_secondary_vmid`** / **`proxy_secondary_node`** —
+  new Computed (read-only) attributes (removed in v7.0.0).
 - **`ccp_k8s_cluster.proxy_vip_vnet`** — new Computed (read-only) String
-  attribute exposing the Keepalived VRRP floating VIP shared between the
-  LXC proxies. Null for `tier = "dev"`.
+  attribute exposing the floating address shared between the two
+  frontends. Null for `tier = "dev"`.
 
 ### Changed
 
@@ -935,7 +957,7 @@ corrections are shipped as fixes rather than a major bump:
   Validators enforce `OneOf("small", "medium", "large")`. The attribute is
   immutable — changing the plan carries `RequiresReplace()` since the
   platform does not support in-place resizing of the LB pair (would
-  require an LXC rebuild). Existing load balancers with no explicit `plan`
+  require a rebuild). Existing load balancers with no explicit `plan`
   in HCL continue to default to `small`, matching the API default — no
   drift, no breaking change.
 
@@ -1213,9 +1235,8 @@ corrections are shipped as fixes rather than a major bump:
 ### Added — CETIC Container Registry (CCR, Phase 6)
 
 - **`ccp_registry`** resource — manages a per-tenant Distribution-based
-  registry (Traefik + `registry:2.8` + cesanta/docker_auth in an LXC
-  container). Supports both `public` (HTTP-01 Let's Encrypt) and `private`
-  (DNS-01 IONOS) exposure modes. Provisioning is asynchronous; the
+  registry. Supports both `public` (HTTP-01 Let's Encrypt) and `private`
+  (DNS-01) exposure modes. Provisioning is asynchronous; the
   provider polls until the registry reaches `active` status with a 20 min
   budget (DNS-01 propagation can stretch a few minutes past TLS issuance).
   - One-shot `admin_password` returned by Create — captured into state,

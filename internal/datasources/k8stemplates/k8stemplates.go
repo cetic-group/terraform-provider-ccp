@@ -32,7 +32,6 @@ type k8sTemplateModel struct {
 	DisplayName types.String `tfsdk:"display_name"`
 	K8sVersion  types.String `tfsdk:"k8s_version"`
 	Region      types.String `tfsdk:"region"`
-	VMID        types.Int64  `tfsdk:"vmid"`
 	BuiltAt     types.String `tfsdk:"built_at"`
 }
 
@@ -73,10 +72,6 @@ func (d *k8sTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 							Description: "Region where this template is built.",
 							Computed:    true,
 						},
-						"vmid": schema.Int64Attribute{
-							Description: "Proxmox VMID of the template (admin-internal, may be null).",
-							Computed:    true,
-						},
 						"built_at": schema.StringAttribute{
 							Description: "Timestamp at which the template was last built.",
 							Computed:    true,
@@ -111,10 +106,6 @@ func (d *k8sTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequ
 	}
 	state := k8sTemplatesModel{Templates: make([]k8sTemplateModel, 0, len(tpls))}
 	for _, t := range tpls {
-		vmid := types.Int64Null()
-		if t.VMID != nil {
-			vmid = types.Int64Value(int64(*t.VMID))
-		}
 		built := types.StringNull()
 		if t.BuiltAt != nil {
 			built = types.StringValue(*t.BuiltAt)
@@ -126,7 +117,6 @@ func (d *k8sTemplatesDataSource) Read(ctx context.Context, _ datasource.ReadRequ
 			DisplayName: types.StringValue(t.DisplayName),
 			K8sVersion:  types.StringValue(t.K8sVersion),
 			Region:      types.StringValue(t.Region),
-			VMID:        vmid,
 			BuiltAt:     built,
 		})
 	}

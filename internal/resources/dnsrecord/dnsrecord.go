@@ -179,7 +179,7 @@ func (r *dnsRecordResource) Configure(_ context.Context, req resource.ConfigureR
 // with the fully qualified name, while the configuration is free to use the
 // relative form. Overwriting a Required attribute with a value that differs
 // from the configuration is exactly what raises "inconsistent result after
-// apply" (CLAUDE.md pitfall #1) — so the configured name stays in `name`, and
+// apply" (provider pitfall #1) — so the configured name stays in `name`, and
 // the canonical one is reported in `fqdn`.
 func stateFrom(ctx context.Context, rs *client.DNSRecordSet, name, recordType types.String) (dnsRecordModel, diag.Diagnostics) {
 	var diags diag.Diagnostics

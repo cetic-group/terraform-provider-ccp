@@ -1,4 +1,4 @@
-// Tests porting `apps/api/tests/test_iam_arn.py` (66 distinct cases + helpers,
+// Tests porting the API's ARN parser cases (66 distinct cases + helpers,
 // total 75 t.Run invocations) to Go. Behaviour parity with the Python parser
 // is the contract — if a test fails here it means the Go port diverges from
 // the source-of-truth implementation in `app/services/iam_arn.py`.

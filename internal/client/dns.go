@@ -74,7 +74,7 @@ func (c *Client) ListDNSRecordSets(ctx context.Context, zoneID string) ([]DNSRec
 // GetDNSRecordSet fetches a single record set.
 //
 // The API exposes no `GET /records/{id}` — only the collection. This is
-// pitfall #6 of CLAUDE.md: assuming the individual GET exists yields a 405 on
+// provider pitfall #6: assuming the individual GET exists yields a 405 on
 // the FIRST refresh, long after Create looked fine. So: list + filter, and
 // synthesise the 404 the caller's Read expects.
 func (c *Client) GetDNSRecordSet(ctx context.Context, zoneID, recordSetID string) (*DNSRecordSet, error) {

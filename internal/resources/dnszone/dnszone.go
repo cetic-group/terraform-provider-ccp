@@ -323,7 +323,7 @@ func stateFrom(ctx context.Context, z *client.DNSZone, wantWait types.Bool) (dns
 	// `tier` is what the caller asked for; the API reports the level actually
 	// serving the network under `resolver.tier`. Keeping them in separate
 	// attributes is what makes the difference visible instead of silently
-	// rewriting the configured value (CLAUDE.md pitfall #1).
+	// rewriting the configured value (provider pitfall #1).
 	endpointsType := types.ObjectType{AttrTypes: endpointAttrTypes}
 	if z.Resolver == nil {
 		// List shape: the resolver block is simply absent. Preserving the
