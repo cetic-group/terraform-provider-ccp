@@ -4,6 +4,19 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v7.0.1 (2026-10-15)
+
+### Changed
+
+- **`ccp_public_ip.type`**: the description of `firewall` now matches the
+  platform. This type is for the CCP private cloud only and is never offered
+  on the public cloud. The address comes from the private network of the
+  firewall interface wired to the bridge, and the VPC NAT gateway translates
+  it to the resource. It serves every resource except databases and
+  Kubernetes clusters. The documentation example now uses `type = "edge"`.
+  Documentation only: the schema does not change, and existing resources show
+  no diff.
+
 ## v7.0.0 (2026-10-13)
 
 ### Removed — BREAKING
