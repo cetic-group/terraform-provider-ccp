@@ -29,9 +29,9 @@ resource "ccp_public_ip" "spare" {
 }
 
 # Choose how the IP reaches the resource (types offered depend on the platform)
-resource "ccp_public_ip" "behind_firewall" {
+resource "ccp_public_ip" "routed" {
   region = "RNN"
-  type   = "firewall"
+  type   = "edge"
 }
 
 # Allocate several IPs at once — use Terraform's native count
@@ -52,7 +52,7 @@ resource "ccp_public_ip" "api" {
 
 - `type` - (Optional) How the public IP reaches the resource:
   - `edge` — routed straight to your network; usable on every resource.
-  - `firewall` — published by the platform firewall; for VMs and containers.
+  - `firewall` — CCP private cloud only, never offered on the public cloud: an address on the private network of the firewall interface wired to the bridge. The VPC NAT gateway translates it to the resource (nothing is configured in the guest), and your own firewall decides whether to expose it. Every resource except databases and Kubernetes clusters.
   - `nat` — 1:1 translation; the resource keeps its private address.
 
   Which types are offered depends on the platform: `cetic ip types --region <R>` lists them, and an unavailable type is rejected at creation. If omitted, the first offered type that still has free IPs in the region is used and exported here. Changing a configured type forces a new resource; leaving it unset, or adding it to an IP created before the attribute existed, never does — existing IPs are not replaced when upgrading the provider. On a platform that does not offer types yet, creating an IP with `type` is refused before anything is allocated.

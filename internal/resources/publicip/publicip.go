@@ -124,10 +124,13 @@ func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"type": schema.StringAttribute{
 				MarkdownDescription: "How the public IP reaches the resource. One of " +
 					"`edge` (routed straight to your network, usable on every " +
-					"resource), `firewall` (published by the platform firewall, for " +
-					"VMs and containers) or `nat` (1:1 translation, the resource keeps " +
-					"its private address). Which types are offered depends on the " +
-					"platform — an unavailable type is rejected at creation. If " +
+					"resource), `firewall` (CCP private cloud only: an address on the " +
+					"private network of the firewall interface wired to the bridge, " +
+					"exposed or not by your own firewall; every resource except " +
+					"databases and Kubernetes clusters) or `nat` (1:1 translation, the " +
+					"resource keeps its private address). Which types are offered " +
+					"depends on the platform — `firewall` is never offered on the " +
+					"public cloud; an unavailable type is rejected at creation. If " +
 					"omitted, the first offered type that still has free IPs in the " +
 					"region is used and reported back here. Changing a configured " +
 					"type forces replacement; leaving it unset, or adding it to an " +
