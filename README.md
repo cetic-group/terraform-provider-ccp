@@ -212,6 +212,7 @@ output "accessible_orgs" {
 | Argument   | Env var       | Default                       | Description                    |
 |------------|---------------|-------------------------------|--------------------------------|
 | `api_key`  | `CCP_API_KEY`  | _(required)_                          | API key, format `ccp_live_*`.        |
+| `endpoint` | `CCP_API_URL`  | `https://api.cloud.cetic-group.com`   | API base URL.                        |
 
 ```hcl
 provider "ccp" {

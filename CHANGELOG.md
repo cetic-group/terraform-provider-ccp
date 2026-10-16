@@ -4,6 +4,15 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v7.0.2 (2026-10-16)
+
+### Changed
+
+- **Provider configuration**: the `endpoint` argument and its environment
+  variable `CCP_API_URL` are now listed in the configuration reference
+  (default `https://api.cloud.cetic-group.com`). Documentation only: the
+  provider already read them.
+
 ## v7.0.1 (2026-10-15)
 
 ### Changed
