@@ -81,6 +81,7 @@ variable "ccp_api_key" {
 | Argument | Environment Variable | Required | Description |
 |---|---|---|---|
 | `api_key` | `CCP_API_KEY` | Yes | API key prefixed `ccp_live_`. Generate in console → Settings → API Keys. |
+| `endpoint` | `CCP_API_URL` | No | API base URL. Defaults to `https://api.cloud.cetic-group.com`. |
 
 ## Example: full stack
 
