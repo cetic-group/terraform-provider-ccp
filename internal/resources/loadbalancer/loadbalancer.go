@@ -182,9 +182,13 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				Optional:   true,
 				Computed:   true,
 				Validators: []validator.String{appgwvalidators.IPv4()},
+				// Order matters: UseStateForUnknown first, or an unrelated in-place
+				// edit (which marks this computed attribute unknown) would compare
+				// unknown to the state and replace the resource. IfConfigured: an
+				// omitted vip_address never replaces, even over a null state.
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplaceIfConfigured(),
 				},
 			},
 			"public_ip_address": schema.StringAttribute{
@@ -877,7 +881,8 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 		}
 		resp.Diagnostics.AddAttributeError(path.Root("vip_address"), "vip_address not applied",
 			fmt.Sprintf("Requested %s but the platform assigned %s. The platform does not support "+
-				"pinning the private address yet; remove vip_address or retry once it does.", *want, got))
+				"pinning the private address yet: remove vip_address, or retry once it does (the resource is "+
+				"tainted and will be replaced on the next apply).", *want, got))
 		return
 	}
 
