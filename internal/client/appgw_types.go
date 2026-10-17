@@ -51,6 +51,7 @@ type ApplicationGatewayCreateRequest struct {
 	VpcID                 string   `json:"vpc_id"`
 	VnetID                string   `json:"vnet_id"`
 	PublicIPID            *string  `json:"public_ip_id,omitempty"`
+	VIPAddress            *string  `json:"vip_address,omitempty"`
 	ForceHTTPS            *bool    `json:"force_https,omitempty"`
 	HSTSEnabled           *bool    `json:"hsts_enabled,omitempty"`
 	HSTSMaxAge            *int64   `json:"hsts_max_age,omitempty"`

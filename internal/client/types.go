@@ -520,6 +520,7 @@ type LoadBalancerCreateRequest struct {
 	Plan       string                    `json:"plan,omitempty"`
 	VnetID     string                    `json:"vnet_id"`
 	PublicIPID *string                   `json:"public_ip_id,omitempty"`
+	VIPAddress *string                   `json:"vip_address,omitempty"`
 	Listeners  []LBListenerCreateRequest `json:"listeners,omitempty"`
 	Tags       []string                  `json:"tags,omitempty"`
 }

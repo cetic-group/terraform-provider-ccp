@@ -73,6 +73,29 @@ resource "ccp_appgw_route" "api_v1" {
 }
 ```
 
+### Pinned private address
+
+Reserve the address, then hand it to the gateway. Keep it outside the address
+block of any Kubernetes cluster sharing the VNet.
+
+```hcl
+resource "ccp_vnet_ip_reservation" "web_vip" {
+  vnet_id     = ccp_vnet.web.id
+  name        = "web-vip"
+  ip          = "10.0.1.40"
+  description = "Private address of the gateway"
+}
+
+resource "ccp_application_gateway" "web" {
+  name        = "web-appgw"
+  region      = "RNN"
+  plan        = "appgw-medium"
+  vpc_id      = ccp_vpc.main.id
+  vnet_id     = ccp_vnet.web.id
+  vip_address = ccp_vnet_ip_reservation.web_vip.ip
+}
+```
+
 ## Argument Reference
 
 ### Required
@@ -86,6 +109,7 @@ resource "ccp_appgw_route" "api_v1" {
 ### Optional
 
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Set to attach, remove to detach.
+- `vip_address` - (Optional, Forces new resource) Private IPv4 address of the gateway in the VNet, in canonical dotted form (`10.0.1.40`). When omitted, the platform picks a free address and exports it. Set it to pin the address: reserve it first with `ccp_vnet_ip_reservation` (a reservation of your own is accepted). The API rejects an address outside the VNet, an address reserved for the network itself (network, gateway `.1`, `.2`, broadcast), or one already in use — including the address block reserved for the nodes of a Kubernetes cluster on the same VNet.
 - `force_https` - (Optional, default `true`) Redirect plain HTTP (`:80`) traffic to HTTPS (`:443`).
 - `hsts_enabled` - (Optional, default `false`) Send the `Strict-Transport-Security` header on every HTTPS response.
 - `hsts_max_age` - (Optional, default `31536000`) `max-age` directive of the HSTS header in seconds.
@@ -106,7 +130,7 @@ In addition to all arguments above, the following attributes are exported:
 
 - `id` - UUID of the gateway.
 - `status` - Current status. One of: `creating`, `active`, `error`, `deleting`. PATCH operations apply in place and the row stays `active` throughout — there is no `updating` state in v1.
-- `vip_address` - Private virtual IP address within the VNet.
+- `vip_address` - Private virtual IP address within the VNet — the pinned one, or the address picked by the platform.
 - `vpc_name` - Name of the VPC the gateway is attached to.
 - `vnet_name` - Name of the VNet the gateway is attached to.
 - `vnet_cidr` - Address range (CIDR) of that VNet.

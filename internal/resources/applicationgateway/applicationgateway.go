@@ -163,9 +163,17 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"vip_address": schema.StringAttribute{
-				MarkdownDescription: "Private virtual IP address within the VNet. Available once status is `active`.",
-				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Private virtual IP address within the VNet. Optional: when omitted, the platform " +
+					"picks a free address. Set it to pin the address — reserve it first with " +
+					"`ccp_vnet_ip_reservation` (a reservation of your own is accepted, an address already " +
+					"in use is rejected). Changing it forces a new resource.",
+				Optional:   true,
+				Computed:   true,
+				Validators: []validator.String{appgwvalidators.IPv4()},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"status": schema.StringAttribute{
 				MarkdownDescription: "Provisioning status: `creating` | `active` | `error` | `deleting`.",
@@ -366,6 +374,10 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		VpcID:  plan.VpcID.ValueString(),
 		VnetID: plan.VnetID.ValueString(),
 	}
+	if !plan.VIPAddress.IsNull() && !plan.VIPAddress.IsUnknown() && plan.VIPAddress.ValueString() != "" {
+		v := plan.VIPAddress.ValueString()
+		createReq.VIPAddress = &v
+	}
 	if !plan.PublicIPID.IsNull() && !plan.PublicIPID.IsUnknown() && plan.PublicIPID.ValueString() != "" {
 		v := plan.PublicIPID.ValueString()
 		createReq.PublicIPID = &v
@@ -411,6 +423,20 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	early.CustomErrorPage = types.StringNull() // pas encore posée : PATCH après provisioning
 	_ = applyToModel(ctx, created, &early)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+
+	// A platform that predates `vip_address` ignores the field and picks its
+	// own address. Fail loudly instead of letting Terraform report an
+	// inconsistent result: the resource exists (kept in state, tainted).
+	if want := createReq.VIPAddress; want != nil && (created.VIPAddress == nil || *created.VIPAddress != *want) {
+		got := "none"
+		if created.VIPAddress != nil {
+			got = *created.VIPAddress
+		}
+		resp.Diagnostics.AddAttributeError(path.Root("vip_address"), "vip_address not applied",
+			fmt.Sprintf("Requested %s but the platform assigned %s. The platform does not support "+
+				"pinning the private address yet; remove vip_address or retry once it does.", *want, got))
+		return
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}

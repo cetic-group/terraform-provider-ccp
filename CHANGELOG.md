@@ -4,6 +4,18 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v7.1.0 (2026-10-18)
+
+### Added
+
+- **`vip_address` on `ccp_application_gateway` and `ccp_load_balancer`**:
+  the private address can now be pinned instead of being picked by the
+  platform (`Optional` + `Computed`, forces a new resource, validated as a
+  canonical IPv4 address at plan time). Reserve it first with
+  `ccp_vnet_ip_reservation`, then pass it. When omitted, behaviour is
+  unchanged: the platform picks a free address and the attribute keeps it
+  in state, so existing configurations show no diff.
+
 ## v7.0.2 (2026-10-16)
 
 ### Changed

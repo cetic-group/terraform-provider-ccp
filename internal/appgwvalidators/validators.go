@@ -71,6 +71,31 @@ func (cidrValidator) ValidateString(_ context.Context, req validator.StringReque
 // CIDR returns a validator that enforces a valid IPv4/IPv6 CIDR.
 func CIDR() validator.String { return cidrValidator{} }
 
+// ipv4Validator enforces a single IPv4 address in canonical dotted form.
+// The canonical form matters: the API stores and returns `str(IPv4Address)`,
+// so `10.0.1.040` would come back as `10.0.1.40` and Terraform would report
+// an inconsistent result after apply.
+type ipv4Validator struct{}
+
+func (ipv4Validator) Description(_ context.Context) string {
+	return "must be an IPv4 address in canonical dotted form (e.g. `10.0.1.40`)"
+}
+func (v ipv4Validator) MarkdownDescription(ctx context.Context) string { return v.Description(ctx) }
+func (ipv4Validator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	s := req.ConfigValue.ValueString()
+	ip := net.ParseIP(s)
+	if ip == nil || ip.To4() == nil || ip.To4().String() != s {
+		resp.Diagnostics.AddAttributeError(req.Path, "Invalid IPv4 address",
+			fmt.Sprintf("%q is not an IPv4 address in canonical form (e.g. `10.0.1.40`)", s))
+	}
+}
+
+// IPv4 returns a validator that enforces a canonical IPv4 address.
+func IPv4() validator.String { return ipv4Validator{} }
+
 // cidrListValidator enforces every element of a List(String) is a valid CIDR.
 type cidrListValidator struct{}
 
