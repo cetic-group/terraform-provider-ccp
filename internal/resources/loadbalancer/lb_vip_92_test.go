@@ -64,12 +64,12 @@ func runCreateDiags(t *testing.T, plan lbResourceModel, postVIP, vipFromAPI stri
 
 func TestCreate_SendsPinnedVIP(t *testing.T) {
 	plan := baseModel(types.StringNull())
-	plan.VIPAddress = types.StringValue("10.0.1.40")
-	sent, out := runCreate(t, plan, "10.0.1.40")
-	if sent["vip_address"] != "10.0.1.40" {
+	plan.VIPAddress = types.StringValue("10.0.1.200")
+	sent, out := runCreate(t, plan, "10.0.1.200")
+	if sent["vip_address"] != "10.0.1.200" {
 		t.Fatalf("vip_address not sent: %v", sent)
 	}
-	if out.VIPAddress.ValueString() != "10.0.1.40" {
+	if out.VIPAddress.ValueString() != "10.0.1.200" {
 		t.Fatalf("state vip = %v", out.VIPAddress)
 	}
 }
@@ -89,7 +89,7 @@ func TestCreate_OmitsVIPWhenUnset(t *testing.T) {
 // A platform that ignores vip_address must not yield a silent wrong address.
 func TestCreate_PlatformIgnoringVIPFailsLoudly(t *testing.T) {
 	plan := baseModel(types.StringNull())
-	plan.VIPAddress = types.StringValue("10.0.1.40")
+	plan.VIPAddress = types.StringValue("10.0.1.200")
 	_, out, diags := runCreateDiags(t, plan, "", "10.0.1.254")
 	if !diags.HasError() {
 		t.Fatal("expected an error when the platform ignores vip_address")
