@@ -126,8 +126,8 @@ func (r *publicIPResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 					"`edge` (routed straight to your network, usable on every " +
 					"resource), `firewall` (CCP private cloud only: an address on the " +
 					"private network of the firewall interface wired to the bridge, " +
-					"exposed or not by your own firewall; every resource except " +
-					"databases and Kubernetes clusters) or `nat` (1:1 translation, the " +
+					"exposed or not by your own firewall; usable on every resource) " +
+					"or `nat` (1:1 translation, the " +
 					"resource keeps its private address). Which types are offered " +
 					"depends on the platform — `firewall` is never offered on the " +
 					"public cloud; an unavailable type is rejected at creation. If " +
