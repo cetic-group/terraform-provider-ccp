@@ -4,6 +4,15 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v7.1.1 (2026-10-18)
+
+### Changed
+
+- **`ccp_public_ip.type`**: the description of `firewall` no longer excludes
+  databases and Kubernetes clusters. The platform now accepts every resource
+  for this type. Documentation only: the schema does not change, and existing
+  resources show no diff.
+
 ## v7.1.0 (2026-10-18)
 
 ### Added
