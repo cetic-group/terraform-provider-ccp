@@ -207,6 +207,27 @@ output "shop_cert_expiry" {
 }
 ```
 
+### Pinned private address
+
+Reserve the address, then hand it to the load balancer. Keep it outside the address
+block of any Kubernetes cluster sharing the VNet.
+
+```hcl
+resource "ccp_vnet_ip_reservation" "api_vip" {
+  vnet_id     = ccp_vnet.web.id
+  name        = "api-vip"
+  ip          = "10.0.1.200"
+  description = "Private address of the load balancer"
+}
+
+resource "ccp_load_balancer" "api" {
+  name        = "api-lb"
+  region      = "RNN"
+  vnet_id     = ccp_vnet.web.id
+  vip_address = ccp_vnet_ip_reservation.api_vip.ip
+}
+```
+
 ## Argument Reference
 
 ### Required
@@ -219,6 +240,7 @@ output "shop_cert_expiry" {
 
 - `plan` - (Optional, Forces new resource) Capacity plan key, e.g. `small` (default), `medium`, `large`. Resolved server-side against the live plan catalog (`compute_plans`, key `lb-<plan>`, kind `lb`) — no hardcoded list, so plans added to the catalogue are usable without a provider release. Changing the plan forces replacement.
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Remove to detach.
+- `vip_address` - (Optional, Forces new resource) Private IPv4 address of the load balancer in the VNet, in canonical dotted form (`10.0.1.200`). When omitted, the platform picks a free address and exports it. Set it to pin the address: reserve it first with `ccp_vnet_ip_reservation` (a reservation of your own organization is accepted). The API rejects an address outside the VNet or below the start of the network's address range, an address reserved for the network itself (network, gateway `.1`, broadcast), or one already in use — including the address block reserved for the nodes of a Kubernetes cluster on the same VNet, and an address reserved by another organization on a shared network.
 - `tags` - (Optional) Free-form tags (max 60 tags, max 50 chars each).
 - `custom_error_page_html` - (Optional) Your own HTML page, served instead of the default one when no backend can answer (HTTP 502, 503 and 504). At most 7 KiB (UTF-8 bytes) once leading and trailing whitespace is trimmed — inline the styles and host images elsewhere. Updated in place; **removing the attribute restores the default page**. Leading/trailing whitespace (e.g. the final newline of a heredoc or `file()`) does not cause a diff.
 - `listener` - (Optional) One or more `listener` blocks. See [Listener Reference](#listener-reference) below.
@@ -293,7 +315,7 @@ In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the load balancer.
 - `status` - Current status: `provisioning`, `active`, `updating`, or `error`.
-- `vip_address` - Private virtual IP address within the VNet.
+- `vip_address` - Private virtual IP address within the VNet — the pinned one, or the address picked by the platform.
 - `public_ip_address` - Public IP address if one is attached, otherwise empty.
 - `vpc_id` - UUID of the VPC that contains `vnet_id`.
 - `vpc_name` - Name of that VPC.
