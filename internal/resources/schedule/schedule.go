@@ -16,7 +16,9 @@
 //   - Create : POST /v1/schedules — the platform validates the windows and
 //     rejects flapping schedules with a business 422 (message surfaced as-is).
 //   - Read   : GET /v1/schedules/{id}. 404 ⇒ removed from state.
-//   - Update : PATCH /v1/schedules/{id} (name / timezone / enabled / windows).
+//   - Update : PATCH /v1/schedules/{id} (name / timezone / enabled / windows /
+//     starts_on / ends_on). Removing a bound from the configuration sends an
+//     explicit null so the platform clears it.
 //   - Delete : DELETE /v1/schedules/{id} — powers the target back on. 404 ⇒
 //     idempotent no-op.
 package schedule
@@ -24,6 +26,7 @@ package schedule
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -77,7 +80,18 @@ type scheduleResourceModel struct {
 	CurrentState             types.String `tfsdk:"current_state"`
 	LastTransitionAt         types.String `tfsdk:"last_transition_at"`
 	EstimatedMonthlyFeeCents types.Int64  `tfsdk:"estimated_monthly_fee_cents"`
+	StartsOn                 types.String `tfsdk:"starts_on"`
+	EndsOn                   types.String `tfsdk:"ends_on"`
+	EndedAt                  types.String `tfsdk:"ended_at"`
 }
+
+// dateRe matches the `YYYY-MM-DD` format of starts_on / ends_on.
+var dateRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+
+// periodUnsupported is returned when the platform answers without the period
+// fields: it ignored the bounds, and the schedule would run without limit.
+const periodUnsupported = "The platform did not record the validity period (`starts_on` / `ends_on`): " +
+	"this feature is not available on it yet."
 
 // scheduleWindowModel mirrors one element of the `windows` ListNestedAttribute.
 type scheduleWindowModel struct {
@@ -193,6 +207,27 @@ func (r *scheduleResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 					"or null if none yet.",
 				Computed: true,
 			},
+			"starts_on": schema.StringAttribute{
+				MarkdownDescription: "First day (inclusive, `YYYY-MM-DD`, in `timezone`) the schedule applies. " +
+					"Before it the target stays **on**. Omit for no lower bound. Mutable in place; removing it " +
+					"from the configuration clears the bound.",
+				Optional:   true,
+				Validators: []validator.String{stringvalidator.RegexMatches(dateRe, "must be a YYYY-MM-DD date")},
+			},
+			"ends_on": schema.StringAttribute{
+				MarkdownDescription: "Last day (inclusive, `YYYY-MM-DD`, in `timezone`) the schedule applies. " +
+					"After it the target is powered back **on** and the schedule ends (see `ended_at`). Must " +
+					"not be in the past when set, nor more than three years ahead. Omit for no upper bound. " +
+					"Mutable in place; moving it later on an ended schedule runs it again.",
+				Optional:   true,
+				Validators: []validator.String{stringvalidator.RegexMatches(dateRe, "must be a YYYY-MM-DD date")},
+			},
+			"ended_at": schema.StringAttribute{
+				MarkdownDescription: "RFC 3339 timestamp at which the schedule ended because its validity " +
+					"period was over, or null. Once ended, the platform pauses the schedule; this is not " +
+					"reported as drift on `enabled`.",
+				Computed: true,
+			},
 			"estimated_monthly_fee_cents": schema.Int64Attribute{
 				MarkdownDescription: "Estimated monthly scheduler fee in cents (number of driven instances × " +
 					"the per-instance rate). Read-only.",
@@ -249,6 +284,17 @@ func windowsFromModel(ctx context.Context, list types.List) ([]client.ScheduleWi
 	return out, diags
 }
 
+// effectiveEnabled is the `enabled` value written to state. A schedule ended
+// by its validity period is paused by the platform (`enabled=false`); keeping
+// the configured value avoids a perpetual diff that could never be applied
+// (re-enabling an ended period is refused). `ended_at` tells the real story.
+func effectiveEnabled(s *client.Schedule, prior types.Bool) types.Bool {
+	if s.EndedAt != nil && !s.Enabled && !prior.IsNull() && !prior.IsUnknown() {
+		return prior
+	}
+	return types.BoolValue(s.Enabled)
+}
+
 // applyScheduleToModel maps an API Schedule onto the Terraform model.
 func applyScheduleToModel(ctx context.Context, m *scheduleResourceModel, s *client.Schedule) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -258,7 +304,10 @@ func applyScheduleToModel(ctx context.Context, m *scheduleResourceModel, s *clie
 	m.ResourceType = types.StringValue(s.ResourceType)
 	m.ResourceID = types.StringValue(s.ResourceID)
 	m.Timezone = types.StringValue(s.Timezone)
-	m.Enabled = types.BoolValue(s.Enabled)
+	m.Enabled = effectiveEnabled(s, m.Enabled)
+	m.StartsOn = types.StringPointerValue(s.StartsOn)
+	m.EndsOn = types.StringPointerValue(s.EndsOn)
+	m.EndedAt = types.StringPointerValue(s.EndedAt)
 	m.CurrentState = types.StringValue(s.CurrentState)
 	m.EstimatedMonthlyFeeCents = types.Int64Value(s.EstimatedMonthlyFeeCents)
 
@@ -318,9 +367,22 @@ func (r *scheduleResource) Create(ctx context.Context, req resource.CreateReques
 		payload.Enabled = &v
 	}
 
+	payload.StartsOn = plan.StartsOn.ValueStringPointer()
+	payload.EndsOn = plan.EndsOn.ValueStringPointer()
+
 	created, err := r.client.CreateSchedule(ctx, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create CETIC Cloud schedule", err.Error())
+		return
+	}
+	if (payload.StartsOn != nil || payload.EndsOn != nil) && !created.SupportsPeriod {
+		// Never leave behind a schedule that would run without its bound.
+		detail := periodUnsupported + " The schedule was not created."
+		if derr := r.client.DeleteSchedule(ctx, created.ID); derr != nil && !client.IsNotFound(derr) {
+			detail = periodUnsupported + fmt.Sprintf(" Schedule %s was created WITHOUT its period and "+
+				"could not be removed (%s): delete it manually.", created.ID, derr)
+		}
+		resp.Diagnostics.AddError("Validity period not supported", detail)
 		return
 	}
 
@@ -385,11 +447,6 @@ func (r *scheduleResource) Update(ctx context.Context, req resource.UpdateReques
 		upd.Timezone = &v
 		patchNeeded = true
 	}
-	if !plan.Enabled.Equal(state.Enabled) {
-		v := plan.Enabled.ValueBool()
-		upd.Enabled = &v
-		patchNeeded = true
-	}
 	if !plan.Windows.Equal(state.Windows) {
 		windows, diags := windowsFromModel(ctx, plan.Windows)
 		resp.Diagnostics.Append(diags...)
@@ -400,8 +457,49 @@ func (r *scheduleResource) Update(ctx context.Context, req resource.UpdateReques
 		patchNeeded = true
 	}
 
+	periodChanged := false
+	if !plan.StartsOn.Equal(state.StartsOn) {
+		upd.StartsOn = dateField(plan.StartsOn)
+		periodChanged = true
+	}
+	if !plan.EndsOn.Equal(state.EndsOn) {
+		upd.EndsOn = dateField(plan.EndsOn)
+		periodChanged = true
+	}
+	if periodChanged {
+		patchNeeded = true
+	}
+	ended := !state.EndedAt.IsNull()
+	switch {
+	case periodChanged && plan.Enabled.ValueBool():
+		// A period change does not re-enable a schedule on its own: send
+		// `enabled` too, so that an ended schedule runs again (no effect on
+		// an active one). Unconditional on `ended_at`: a plan made before the
+		// end and applied after it must converge as well.
+		v := true
+		upd.Enabled = &v
+	case !plan.Enabled.Equal(state.Enabled) && plan.Enabled.ValueBool() && ended:
+		// Re-enabling an ended schedule without moving its period is refused
+		// by the platform: keep the configured value in state instead (see
+		// effectiveEnabled), so the configuration converges.
+	case !plan.Enabled.Equal(state.Enabled):
+		v := plan.Enabled.ValueBool()
+		upd.Enabled = &v
+		patchNeeded = true
+	}
+
 	if !patchNeeded {
-		// Nothing mutable changed — persist the plan as-is.
+		// Nothing to send: read the schedule back so that computed attributes
+		// are known and `enabled` keeps its configured value when ended.
+		got, err := r.client.GetSchedule(ctx, id)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read schedule", err.Error())
+			return
+		}
+		resp.Diagnostics.Append(applyScheduleToModel(ctx, &plan, got)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
 	}
@@ -409,6 +507,11 @@ func (r *scheduleResource) Update(ctx context.Context, req resource.UpdateReques
 	updated, err := r.client.UpdateSchedule(ctx, id, upd)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update schedule", err.Error())
+		return
+	}
+	if periodChanged && !updated.SupportsPeriod {
+		resp.Diagnostics.AddError("Validity period not supported",
+			periodUnsupported+" Other changes in this update were applied.")
 		return
 	}
 
@@ -436,4 +539,12 @@ func (r *scheduleResource) Delete(ctx context.Context, req resource.DeleteReques
 // ImportState rebinds an existing schedule by UUID.
 func (r *scheduleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// dateField converts a planned bound into a PATCH field: null clears it.
+func dateField(v types.String) client.NullableDate {
+	if v.IsNull() {
+		return client.ClearDate()
+	}
+	return client.SetDate(v.ValueString())
 }

@@ -35,6 +35,9 @@ type scheduleDataSourceModel struct {
 	CurrentState             types.String `tfsdk:"current_state"`
 	LastTransitionAt         types.String `tfsdk:"last_transition_at"`
 	EstimatedMonthlyFeeCents types.Int64  `tfsdk:"estimated_monthly_fee_cents"`
+	StartsOn                 types.String `tfsdk:"starts_on"`
+	EndsOn                   types.String `tfsdk:"ends_on"`
+	EndedAt                  types.String `tfsdk:"ended_at"`
 }
 
 func windowObjectAttrTypes() map[string]attr.Type {
@@ -106,6 +109,18 @@ func (d *scheduleDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 				MarkdownDescription: "Estimated monthly scheduler fee in cents.",
 				Computed:            true,
 			},
+			"starts_on": schema.StringAttribute{
+				MarkdownDescription: "First day (inclusive, `YYYY-MM-DD`) of the validity period, or null.",
+				Computed:            true,
+			},
+			"ends_on": schema.StringAttribute{
+				MarkdownDescription: "Last day (inclusive, `YYYY-MM-DD`) of the validity period, or null.",
+				Computed:            true,
+			},
+			"ended_at": schema.StringAttribute{
+				MarkdownDescription: "RFC 3339 timestamp at which the schedule ended with its period, or null.",
+				Computed:            true,
+			},
 		},
 	}
 }
@@ -162,6 +177,9 @@ func (d *scheduleDataSource) Read(ctx context.Context, req datasource.ReadReques
 		Enabled:                  types.BoolValue(found.Enabled),
 		CurrentState:             types.StringValue(found.CurrentState),
 		EstimatedMonthlyFeeCents: types.Int64Value(found.EstimatedMonthlyFeeCents),
+		StartsOn:                 types.StringPointerValue(found.StartsOn),
+		EndsOn:                   types.StringPointerValue(found.EndsOn),
+		EndedAt:                  types.StringPointerValue(found.EndedAt),
 	}
 	if found.LastTransitionAt != nil {
 		state.LastTransitionAt = types.StringValue(*found.LastTransitionAt)

@@ -15,6 +15,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 )
 
@@ -44,6 +45,59 @@ type Schedule struct {
 	EstimatedMonthlyFeeCents int64            `json:"estimated_monthly_fee_cents"`
 	CreatedAt                string           `json:"created_at"`
 	UpdatedAt                string           `json:"updated_at"`
+	// Validity period: inclusive `YYYY-MM-DD` dates in the schedule's
+	// timezone, nil when unbounded. EndedAt is set once the period is over.
+	StartsOn *string `json:"starts_on"`
+	EndsOn   *string `json:"ends_on"`
+	EndedAt  *string `json:"ended_at"`
+	// SupportsPeriod is true when the response carries the period fields at
+	// all. A platform that predates them would silently ignore a period sent
+	// in a request — the resource must refuse rather than leave an unbounded
+	// schedule behind.
+	SupportsPeriod bool `json:"-"`
+}
+
+// UnmarshalJSON decodes a Schedule and records whether the period fields
+// were present in the payload (see SupportsPeriod).
+func (s *Schedule) UnmarshalJSON(data []byte) error {
+	type plain Schedule
+	var p plain
+	if err := json.Unmarshal(data, &p); err != nil {
+		return err
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &keys); err != nil {
+		return err
+	}
+	_, hasStart := keys["starts_on"]
+	_, hasEnd := keys["ends_on"]
+	*s = Schedule(p)
+	s.SupportsPeriod = hasStart && hasEnd
+	return nil
+}
+
+// NullableDate is a PATCH field that distinguishes "leave unchanged"
+// (omitted), "clear" (JSON null) and "set" (a date string).
+type NullableDate struct {
+	set   bool
+	value *string
+}
+
+// SetDate returns a NullableDate that sets the field to `v`.
+func SetDate(v string) NullableDate { return NullableDate{set: true, value: &v} }
+
+// ClearDate returns a NullableDate that clears the field (sends null).
+func ClearDate() NullableDate { return NullableDate{set: true} }
+
+// IsSet reports whether the field is sent at all.
+func (n NullableDate) IsSet() bool { return n.set }
+
+// MarshalJSON renders the value, or null when clearing.
+func (n NullableDate) MarshalJSON() ([]byte, error) {
+	if n.value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(*n.value)
 }
 
 // ScheduleCreatePayload is the body of POST /v1/schedules.
@@ -54,6 +108,8 @@ type ScheduleCreatePayload struct {
 	Timezone     *string          `json:"timezone,omitempty"`
 	Enabled      *bool            `json:"enabled,omitempty"`
 	Windows      []ScheduleWindow `json:"windows"`
+	StartsOn     *string          `json:"starts_on,omitempty"`
+	EndsOn       *string          `json:"ends_on,omitempty"`
 }
 
 // ScheduleUpdatePayload is the body of PATCH /v1/schedules/{id}.
@@ -64,6 +120,38 @@ type ScheduleUpdatePayload struct {
 	Timezone *string           `json:"timezone,omitempty"`
 	Enabled  *bool             `json:"enabled,omitempty"`
 	Windows  *[]ScheduleWindow `json:"windows,omitempty"`
+	// StartsOn / EndsOn: zero value = unchanged, ClearDate() = remove the
+	// bound, SetDate(d) = new bound.
+	StartsOn NullableDate `json:"-"`
+	EndsOn   NullableDate `json:"-"`
+}
+
+// MarshalJSON adds the period fields only when they are set, so that an
+// explicit null (clear) and an omitted field (unchanged) stay distinct.
+func (p ScheduleUpdatePayload) MarshalJSON() ([]byte, error) {
+	type plain ScheduleUpdatePayload
+	base, err := json.Marshal(plain(p))
+	if err != nil {
+		return nil, err
+	}
+	if !p.StartsOn.IsSet() && !p.EndsOn.IsSet() {
+		return base, nil
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(base, &m); err != nil {
+		return nil, err
+	}
+	for key, field := range map[string]NullableDate{"starts_on": p.StartsOn, "ends_on": p.EndsOn} {
+		if !field.IsSet() {
+			continue
+		}
+		raw, err := field.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		m[key] = raw
+	}
+	return json.Marshal(m)
 }
 
 // CreateSchedule registers a new start/stop schedule. Returns 422 (flapping),

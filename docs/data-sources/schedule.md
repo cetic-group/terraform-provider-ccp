@@ -44,3 +44,6 @@ output "currently" {
 - `last_transition_at` - RFC 3339 timestamp of the last power transition,
   or null.
 - `estimated_monthly_fee_cents` - Estimated monthly scheduler fee in cents.
+- `starts_on` - First day (inclusive, `YYYY-MM-DD`) of the validity period, or null.
+- `ends_on` - Last day (inclusive, `YYYY-MM-DD`) of the validity period, or null.
+- `ended_at` - RFC 3339 timestamp at which the schedule ended with its period, or null.

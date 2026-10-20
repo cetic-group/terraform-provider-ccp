@@ -97,6 +97,33 @@ resource "ccp_schedule" "staging_db" {
 }
 ```
 
+### Limit the schedule in time
+
+`starts_on` and `ends_on` bound the schedule with a validity period (inclusive
+dates, read in `timezone`). Before the start and after the end the target stays
+**on**. When the period is over, the target is powered back on and the
+schedule ends: `ended_at` is set and the platform pauses the schedule.
+
+```hcl
+# Every Monday from 08:00 to 20:00, for four months.
+resource "ccp_schedule" "mondays" {
+  name          = "mondays-4-months"
+  resource_type = "vm"
+  resource_id   = ccp_vm_instance.lab.id
+  starts_on     = "2026-10-20"
+  ends_on       = "2027-02-19"
+
+  windows = [
+    { start_day = 0, start_hour = 8, end_day = 0, end_hour = 20 },
+  ]
+}
+```
+
+Moving `ends_on` later (or removing it) runs an ended schedule again. Once the
+schedule has ended, `enabled` is not reported as drift. Changing only
+`starts_on` on an ended schedule is refused while `ends_on` is in the past:
+move `ends_on` as well.
+
 ## Argument Reference
 
 ### Required
@@ -121,6 +148,13 @@ resource "ccp_schedule" "staging_db" {
 - `enabled` - (Optional) Whether the schedule actively drives the target.
   When `false` the plan is kept but never applied. Defaults to `true`.
   Mutable in place.
+- `starts_on` - (Optional) First day (inclusive, `YYYY-MM-DD`, in
+  `timezone`) the schedule applies. Before it the target stays on. Removing
+  it clears the bound. Mutable in place.
+- `ends_on` - (Optional) Last day (inclusive, `YYYY-MM-DD`, in `timezone`)
+  the schedule applies. Must not be in the past when set, nor more than three
+  years ahead. After it the target is powered back on and the schedule ends.
+  Removing it clears the bound. Mutable in place.
 
 ### `windows`
 
@@ -148,6 +182,8 @@ In addition to all arguments above, the following attributes are exported:
   or null if none yet.
 - `estimated_monthly_fee_cents` - Estimated monthly scheduler fee in cents
   (number of driven instances × the per-instance rate).
+- `ended_at` - RFC 3339 timestamp at which the schedule ended because its
+  validity period was over, or null.
 
 ## Import
 
@@ -156,3 +192,7 @@ Schedules are imported using their UUID:
 ```
 terraform import ccp_schedule.office_hours <schedule_id>
 ```
+
+An ended schedule imports with `enabled = false`. With `enabled = true` in the
+configuration, the next apply keeps it ended and records the configured value
+without calling the platform; move `ends_on` later to run it again.
