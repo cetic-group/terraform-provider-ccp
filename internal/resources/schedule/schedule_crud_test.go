@@ -291,3 +291,16 @@ func TestRead_PicksUpPeriodChangedElsewhere(t *testing.T) {
 		t.Fatalf("period changed elsewhere not read: %+v", m)
 	}
 }
+
+func TestUpdate_StartsOnChangeIsSent(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{{Method: "PATCH", Path: "/v1/schedules/" + sid, Status: http.StatusOK,
+		Body: apiBody(map[string]any{"starts_on": "2026-11-02"})}})
+	defer srv.Close()
+	resp, m := doUpdate(t, newResource(srv.URL), map[string]any{"starts_on": "2026-10-20"}, map[string]any{"starts_on": "2026-11-02"})
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	if lastBody(t, srv, "PATCH")["starts_on"] != "2026-11-02" || m.StartsOn.ValueString() != "2026-11-02" {
+		t.Fatal("starts_on change not sent")
+	}
+}
