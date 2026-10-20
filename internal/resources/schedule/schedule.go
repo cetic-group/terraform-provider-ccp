@@ -447,11 +447,6 @@ func (r *scheduleResource) Update(ctx context.Context, req resource.UpdateReques
 		upd.Timezone = &v
 		patchNeeded = true
 	}
-	if !plan.Enabled.Equal(state.Enabled) {
-		v := plan.Enabled.ValueBool()
-		upd.Enabled = &v
-		patchNeeded = true
-	}
 	if !plan.Windows.Equal(state.Windows) {
 		windows, diags := windowsFromModel(ctx, plan.Windows)
 		resp.Diagnostics.Append(diags...)
@@ -473,17 +468,38 @@ func (r *scheduleResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 	if periodChanged {
 		patchNeeded = true
-		// An ended schedule is paused by the platform while state keeps the
-		// configured `enabled` (see effectiveEnabled): moving its period runs
-		// it again only if `enabled` is sent too.
-		if !state.EndedAt.IsNull() && plan.Enabled.ValueBool() {
-			v := true
-			upd.Enabled = &v
-		}
+	}
+	ended := !state.EndedAt.IsNull()
+	switch {
+	case periodChanged && plan.Enabled.ValueBool():
+		// A period change does not re-enable a schedule on its own: send
+		// `enabled` too, so that an ended schedule runs again (no effect on
+		// an active one). Unconditional on `ended_at`: a plan made before the
+		// end and applied after it must converge as well.
+		v := true
+		upd.Enabled = &v
+	case !plan.Enabled.Equal(state.Enabled) && plan.Enabled.ValueBool() && ended:
+		// Re-enabling an ended schedule without moving its period is refused
+		// by the platform: keep the configured value in state instead (see
+		// effectiveEnabled), so the configuration converges.
+	case !plan.Enabled.Equal(state.Enabled):
+		v := plan.Enabled.ValueBool()
+		upd.Enabled = &v
+		patchNeeded = true
 	}
 
 	if !patchNeeded {
-		// Nothing mutable changed — persist the plan as-is.
+		// Nothing to send: read the schedule back so that computed attributes
+		// are known and `enabled` keeps its configured value when ended.
+		got, err := r.client.GetSchedule(ctx, id)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read schedule", err.Error())
+			return
+		}
+		resp.Diagnostics.Append(applyScheduleToModel(ctx, &plan, got)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
 	}

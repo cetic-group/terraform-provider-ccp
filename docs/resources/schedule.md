@@ -120,7 +120,9 @@ resource "ccp_schedule" "mondays" {
 ```
 
 Moving `ends_on` later (or removing it) runs an ended schedule again. Once the
-schedule has ended, `enabled` is not reported as drift.
+schedule has ended, `enabled` is not reported as drift. Changing only
+`starts_on` on an ended schedule is refused while `ends_on` is in the past:
+move `ends_on` as well.
 
 ## Argument Reference
 
@@ -190,3 +192,7 @@ Schedules are imported using their UUID:
 ```
 terraform import ccp_schedule.office_hours <schedule_id>
 ```
+
+An ended schedule imports with `enabled = false`. With `enabled = true` in the
+configuration, the next apply keeps it ended and records the configured value
+without calling the platform; move `ends_on` later to run it again.
