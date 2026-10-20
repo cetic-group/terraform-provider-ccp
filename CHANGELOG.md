@@ -4,6 +4,21 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v7.2.0 (2026-10-20)
+
+### Added
+
+- **`ccp_schedule`**: validity period with `starts_on` and `ends_on` (inclusive
+  `YYYY-MM-DD` dates, read in `timezone`) and the read-only `ended_at`. Before
+  the start and after the end the target stays on; when the period is over the
+  target is powered back on and the schedule ends. Removing a bound from the
+  configuration clears it. Once a schedule has ended, `enabled` is not reported
+  as drift, and moving `ends_on` later runs it again.
+- **`data.ccp_schedule`**: exposes `starts_on`, `ends_on` and `ended_at`.
+
+If the platform does not record the period, `terraform apply` fails instead of
+leaving a schedule without its bound: a schedule just created is removed.
+
 ## v7.1.1 (2026-10-18)
 
 ### Changed
