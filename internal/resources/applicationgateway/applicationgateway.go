@@ -44,6 +44,11 @@ func New() resource.Resource { return &appgwResource{} }
 type appgwResource struct{ client *client.Client }
 
 type appgwResourceModel struct {
+	CacheEnabled          types.Bool   `tfsdk:"cache_enabled"`
+	CacheSizeMB           types.Int64  `tfsdk:"cache_size_mb"`
+	CacheMaxObjectKB      types.Int64  `tfsdk:"cache_max_object_kb"`
+	CacheSizeLimitMB      types.Int64  `tfsdk:"cache_size_limit_mb"`
+	CacheEffectiveSizeMB  types.Int64  `tfsdk:"cache_effective_size_mb"`
 	ID                    types.String `tfsdk:"id"`
 	Name                  types.String `tfsdk:"name"`
 	Region                types.String `tfsdk:"region"`
@@ -87,6 +92,12 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"~> **Provisioning is asynchronous.** The provider polls until status is `active` " +
 			"(typically 3-5 minutes for the initial create).",
 		Attributes: map[string]schema.Attribute{
+			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the HTTP cache. Disabled by default.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
+			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Requested cache budget in MiB, shared across routes. The plan limits the effective size.", Computed: true, Optional: true, Default: int64default.StaticInt64(64), Validators: []validator.Int64{int64validator.Between(1, 1024)}},
+			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB (1–1024).", Computed: true, Optional: true, Default: int64default.StaticInt64(512), Validators: []validator.Int64{int64validator.Between(1, 1024)}},
+			"cache_size_limit_mb":     schema.Int64Attribute{MarkdownDescription: "Cache size limit of the current plan, in MiB.", Computed: true},
+			"cache_effective_size_mb": schema.Int64Attribute{MarkdownDescription: "Effective cache budget after applying the current plan limit, in MiB.", Computed: true},
+
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the gateway.",
 				Computed:            true,
@@ -266,6 +277,17 @@ func (r *appgwResource) Configure(_ context.Context, req resource.ConfigureReque
 // CALLERS must preserve any plan-side intent (e.g. tags lists that the
 // API normalised) BEFORE invoking this helper — see provider pitfall #3.
 func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwResourceModel) []string {
+	m.CacheEnabled = types.BoolValue(gw.CacheEnabled)
+	if gw.CacheSizeMB == 0 {
+		gw.CacheSizeMB = 64
+	}
+	m.CacheSizeMB = types.Int64Value(gw.CacheSizeMB)
+	if gw.CacheMaxObjectKB == 0 {
+		gw.CacheMaxObjectKB = 512
+	}
+	m.CacheMaxObjectKB = types.Int64Value(gw.CacheMaxObjectKB)
+	m.CacheSizeLimitMB = types.Int64Value(gw.CacheSizeLimitMB)
+	m.CacheEffectiveSizeMB = types.Int64Value(gw.CacheEffectiveSizeMB)
 	m.ID = types.StringValue(gw.ID)
 	m.Name = types.StringValue(gw.Name)
 	m.Region = types.StringValue(gw.Region)
@@ -377,6 +399,18 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		Plan:   plan.Plan.ValueString(),
 		VpcID:  plan.VpcID.ValueString(),
 		VnetID: plan.VnetID.ValueString(),
+	}
+	if !plan.CacheEnabled.IsNull() && !plan.CacheEnabled.IsUnknown() {
+		v := plan.CacheEnabled.ValueBool()
+		createReq.CacheEnabled = &v
+	}
+	if !plan.CacheSizeMB.IsNull() && !plan.CacheSizeMB.IsUnknown() {
+		v := plan.CacheSizeMB.ValueInt64()
+		createReq.CacheSizeMB = &v
+	}
+	if !plan.CacheMaxObjectKB.IsNull() && !plan.CacheMaxObjectKB.IsUnknown() {
+		v := plan.CacheMaxObjectKB.ValueInt64()
+		createReq.CacheMaxObjectKB = &v
 	}
 	if !plan.VIPAddress.IsNull() && !plan.VIPAddress.IsUnknown() && plan.VIPAddress.ValueString() != "" {
 		v := plan.VIPAddress.ValueString()
@@ -507,6 +541,26 @@ func (r *appgwResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	// 1. PATCH mutable fields
 	var upd client.ApplicationGatewayUpdateRequest
 	patchNeeded := false
+	if !plan.CacheEnabled.Equal(state.CacheEnabled) {
+		v := plan.CacheEnabled.ValueBool()
+		upd.CacheEnabled = &v
+		patchNeeded = true
+	}
+	if !plan.CacheSizeMB.Equal(state.CacheSizeMB) {
+		v := plan.CacheSizeMB.ValueInt64()
+		upd.CacheSizeMB = &v
+		patchNeeded = true
+	}
+	if !plan.CacheMaxObjectKB.Equal(state.CacheMaxObjectKB) {
+		v := plan.CacheMaxObjectKB.ValueInt64()
+		upd.CacheMaxObjectKB = &v
+		patchNeeded = true
+	}
+	if !plan.Plan.Equal(state.Plan) {
+		v := plan.Plan.ValueString()
+		upd.Plan = &v
+		patchNeeded = true
+	}
 	if !plan.Name.Equal(state.Name) {
 		v := plan.Name.ValueString()
 		upd.Name = &v

@@ -101,6 +101,12 @@ resource "ccp_appgw_route" "api_admin" {
 
 ### Optional
 
+- `cache_mode` (String, Optional) — `off` (default), `respect` or `force`. Force adds freshness only when the origin provides none; private directives remain authoritative.
+- `cache_default_ttl_s` (Number, Optional) — Force-mode fallback lifetime, 1–3600 seconds (default `60`). Must not exceed `cache_max_ttl_s`.
+- `cache_max_ttl_s` (Number, Optional) — Maximum lifetime, 1–3600 seconds (default `3600`).
+- `cache_bypass_cookies` (List of String, Optional) — Session cookies to exclude. An empty list bypasses any Cookie header. With an explicit list, other cookies must not personalize public responses.
+- `cache_debug_headers` (Boolean, Optional) — Exposes `X-Cache: HIT` or `MISS` (default `false`).
+
 - `priority` - (Optional, default `100`) Evaluation priority (lower = earlier). Two routes with the same priority on the same listener have undefined ordering — keep them unique.
 - `path_match` - (Optional) Path expression to match (e.g. `/api/`, `/v1/users`, `^/[a-z]+/[0-9]+`). Omit to match all paths.
 - `path_match_type` - (Optional, default `prefix`) How `path_match` is interpreted. One of: `prefix`, `exact`, `regex`.
@@ -142,3 +148,7 @@ terraform import ccp_appgw_route.api_v1 <appgw_id>/<route_id>
 ```
 
 ~> After import, `basic_auth_user` is empty in state — the platform never returns plaintext passwords. Run `terraform apply` with the expected `basic_auth_user` blocks to reconcile.
+
+## HTTP cache safety
+
+Requires a platform version implementing cetic-cloud-platform#1733. Only public GET 200 responses populate the cache; HEAD may read a cached GET. Authorization, session cookies, Set-Cookie, private, no-store and no-cache bypass it. Unsupported Vary fields (including Accept-Language) bypass caching. Host, path, query string, route and gateway are isolated. Each replica owns its own cache; failover may reach a cold cache. Use the API, console or `cetic appgw cache purge` for invalidation; there is no Terraform purge resource.

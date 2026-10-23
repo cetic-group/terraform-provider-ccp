@@ -57,6 +57,11 @@ type basicAuthUserModel struct {
 }
 
 type routeResourceModel struct {
+	CacheMode          types.String         `tfsdk:"cache_mode"`
+	CacheDefaultTTLS   types.Int64          `tfsdk:"cache_default_ttl_s"`
+	CacheMaxTTLS       types.Int64          `tfsdk:"cache_max_ttl_s"`
+	CacheBypassCookies types.List           `tfsdk:"cache_bypass_cookies"`
+	CacheDebugHeaders  types.Bool           `tfsdk:"cache_debug_headers"`
 	ID                 types.String         `tfsdk:"id"`
 	AppGWID            types.String         `tfsdk:"appgw_id"`
 	ListenerID         types.String         `tfsdk:"listener_id"`
@@ -95,6 +100,12 @@ func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"keep your state backend secure. The platform never returns plaintext back: the server hashes the values " +
 			"into a Secret Manager entry (`basic_auth_secret_ref`).",
 		Attributes: map[string]schema.Attribute{
+			"cache_mode":           schema.StringAttribute{MarkdownDescription: "Cache policy: off, respect origin directives, or force a fallback lifetime.", Computed: true, Optional: true, Default: stringdefault.StaticString("off"), Validators: []validator.String{stringvalidator.OneOf("off", "respect", "force")}},
+			"cache_default_ttl_s":  schema.Int64Attribute{MarkdownDescription: "Fallback lifetime in force mode, in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(60), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
+			"cache_max_ttl_s":      schema.Int64Attribute{MarkdownDescription: "Maximum lifetime in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(3600), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
+			"cache_bypass_cookies": schema.ListAttribute{MarkdownDescription: "Session cookie names that bypass caching. Empty means any Cookie bypasses the cache.", Computed: true, Optional: true, ElementType: types.StringType},
+			"cache_debug_headers":  schema.BoolAttribute{MarkdownDescription: "Expose X-Cache: HIT or MISS on responses.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
+
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the route.",
 				Computed:            true,
@@ -352,6 +363,23 @@ func apiBasicAuthUsers(in []basicAuthUserModel) []client.AppGWBasicAuthUser {
 // so the caller must preserve the plan-side list before invoking this
 // (mirrors the secret.applySecretToModel pattern).
 func applyToModel(ctx context.Context, rt *client.AppGWRoute, m *routeResourceModel) {
+	if rt.CacheMode == "" {
+		rt.CacheMode = "off"
+	}
+	m.CacheMode = types.StringValue(rt.CacheMode)
+	if rt.CacheDefaultTTLS == 0 {
+		rt.CacheDefaultTTLS = 60
+	}
+	m.CacheDefaultTTLS = types.Int64Value(rt.CacheDefaultTTLS)
+	if rt.CacheMaxTTLS == 0 {
+		rt.CacheMaxTTLS = 3600
+	}
+	m.CacheMaxTTLS = types.Int64Value(rt.CacheMaxTTLS)
+	if rt.CacheBypassCookies == nil {
+		rt.CacheBypassCookies = []string{}
+	}
+	m.CacheBypassCookies, _ = types.ListValueFrom(ctx, types.StringType, rt.CacheBypassCookies)
+	m.CacheDebugHeaders = types.BoolValue(rt.CacheDebugHeaders)
 	m.ID = types.StringValue(rt.ID)
 	m.AppGWID = types.StringValue(rt.AppGWID)
 	m.ListenerID = types.StringValue(rt.ListenerID)
@@ -422,10 +450,30 @@ func (r *routeResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	createReq := client.AppGWRouteCreateRequest{
-		ListenerID:    plan.ListenerID.ValueString(),
-		TargetGroupID: plan.TargetGroupID.ValueString(),
-		HeaderMatches: apiHeaderMatches(plan.HeaderMatches),
+		ListenerID:     plan.ListenerID.ValueString(),
+		TargetGroupID:  plan.TargetGroupID.ValueString(),
+		HeaderMatches:  apiHeaderMatches(plan.HeaderMatches),
 		BasicAuthUsers: apiBasicAuthUsers(plan.BasicAuthUsers),
+	}
+	if !plan.CacheMode.IsNull() && !plan.CacheMode.IsUnknown() {
+		v := plan.CacheMode.ValueString()
+		createReq.CacheMode = &v
+	}
+	if !plan.CacheDefaultTTLS.IsNull() && !plan.CacheDefaultTTLS.IsUnknown() {
+		v := plan.CacheDefaultTTLS.ValueInt64()
+		createReq.CacheDefaultTTLS = &v
+	}
+	if !plan.CacheMaxTTLS.IsNull() && !plan.CacheMaxTTLS.IsUnknown() {
+		v := plan.CacheMaxTTLS.ValueInt64()
+		createReq.CacheMaxTTLS = &v
+	}
+	if !plan.CacheBypassCookies.IsNull() && !plan.CacheBypassCookies.IsUnknown() {
+		v := stringsFromList(ctx, plan.CacheBypassCookies)
+		createReq.CacheBypassCookies = &v
+	}
+	if !plan.CacheDebugHeaders.IsNull() && !plan.CacheDebugHeaders.IsUnknown() {
+		v := plan.CacheDebugHeaders.ValueBool()
+		createReq.CacheDebugHeaders = &v
 	}
 	if !plan.Priority.IsNull() && !plan.Priority.IsUnknown() {
 		v := plan.Priority.ValueInt64()
@@ -510,6 +558,29 @@ func (r *routeResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 	var upd client.AppGWRouteUpdateRequest
+	if !plan.CacheMode.Equal(state.CacheMode) {
+		v := plan.CacheMode.ValueString()
+		upd.CacheMode = &v
+	}
+	if !plan.CacheDefaultTTLS.Equal(state.CacheDefaultTTLS) {
+		v := plan.CacheDefaultTTLS.ValueInt64()
+		upd.CacheDefaultTTLS = &v
+	}
+	if !plan.CacheMaxTTLS.Equal(state.CacheMaxTTLS) {
+		v := plan.CacheMaxTTLS.ValueInt64()
+		upd.CacheMaxTTLS = &v
+	}
+	if !plan.CacheBypassCookies.Equal(state.CacheBypassCookies) {
+		v := stringsFromList(ctx, plan.CacheBypassCookies)
+		if v == nil {
+			v = []string{}
+		}
+		upd.CacheBypassCookies = &v
+	}
+	if !plan.CacheDebugHeaders.Equal(state.CacheDebugHeaders) {
+		v := plan.CacheDebugHeaders.ValueBool()
+		upd.CacheDebugHeaders = &v
+	}
 	if !plan.Priority.Equal(state.Priority) {
 		v := plan.Priority.ValueInt64()
 		upd.Priority = &v
