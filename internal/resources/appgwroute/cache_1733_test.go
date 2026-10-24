@@ -22,7 +22,7 @@ func TestCacheUpdateSendsOffFalseAndEmptyCookieList(t *testing.T) {
 	plan := state
 	plan.CacheMode = types.StringValue("off")
 	plan.CacheDebugHeaders = types.BoolValue(false)
-	plan.CacheBypassCookies = types.ListValueMust(types.StringType, nil)
+	plan.CacheBypassCookies = types.SetValueMust(types.StringType, nil)
 	route.CacheMode, route.CacheDebugHeaders, route.CacheBypassCookies = "off", false, []string{}
 	server := testutil.NewTestServer(t, testutil.Routes{
 		{Method: "PATCH", Path: "/v1/app-gateways/gateway/routes/route", Status: http.StatusOK, Body: route},
@@ -58,5 +58,15 @@ func TestCacheUpdateSendsOffFalseAndEmptyCookieList(t *testing.T) {
 	cookies, ok := payload["cache_bypass_cookies"].([]any)
 	if !ok || len(cookies) != 0 {
 		t.Fatalf("missing explicit empty list: %v", payload)
+	}
+}
+
+func TestCacheCookieOrderIsNotPartOfState(t *testing.T) {
+	ctx := context.Background()
+	var first, second routeResourceModel
+	applyToModel(ctx, &client.AppGWRoute{CacheBypassCookies: []string{"session", "auth"}}, &first)
+	applyToModel(ctx, &client.AppGWRoute{CacheBypassCookies: []string{"auth", "session"}}, &second)
+	if !first.CacheBypassCookies.Equal(second.CacheBypassCookies) {
+		t.Fatal("API canonicalization must not change the planned cookie set")
 	}
 }

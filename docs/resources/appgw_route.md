@@ -104,7 +104,7 @@ resource "ccp_appgw_route" "api_admin" {
 - `cache_mode` (String, Optional) — `off` (default), `respect` or `force`. Force adds freshness only when the origin provides none; private directives remain authoritative.
 - `cache_default_ttl_s` (Number, Optional) — Force-mode fallback lifetime, 1–3600 seconds (default `60`). Must not exceed `cache_max_ttl_s`.
 - `cache_max_ttl_s` (Number, Optional) — Maximum lifetime, 1–3600 seconds (default `3600`).
-- `cache_bypass_cookies` (List of String, Optional) — Session cookies to exclude. An empty list bypasses any Cookie header. With an explicit list, other cookies must not personalize public responses.
+- `cache_bypass_cookies` (Set of String, Optional) — Session cookies to exclude. An empty list bypasses any Cookie header. With an explicit list, other cookies must not personalize public responses.
 - `cache_debug_headers` (Boolean, Optional) — Exposes `X-Cache: HIT` or `MISS` (default `false`).
 
 - `priority` - (Optional, default `100`) Evaluation priority (lower = earlier). Two routes with the same priority on the same listener have undefined ordering — keep them unique.

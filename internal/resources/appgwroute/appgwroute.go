@@ -60,7 +60,7 @@ type routeResourceModel struct {
 	CacheMode          types.String         `tfsdk:"cache_mode"`
 	CacheDefaultTTLS   types.Int64          `tfsdk:"cache_default_ttl_s"`
 	CacheMaxTTLS       types.Int64          `tfsdk:"cache_max_ttl_s"`
-	CacheBypassCookies types.List           `tfsdk:"cache_bypass_cookies"`
+	CacheBypassCookies types.Set            `tfsdk:"cache_bypass_cookies"`
 	CacheDebugHeaders  types.Bool           `tfsdk:"cache_debug_headers"`
 	ID                 types.String         `tfsdk:"id"`
 	AppGWID            types.String         `tfsdk:"appgw_id"`
@@ -103,7 +103,7 @@ func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"cache_mode":           schema.StringAttribute{MarkdownDescription: "Cache policy: off, respect origin directives, or force a fallback lifetime.", Computed: true, Optional: true, Default: stringdefault.StaticString("off"), Validators: []validator.String{stringvalidator.OneOf("off", "respect", "force")}},
 			"cache_default_ttl_s":  schema.Int64Attribute{MarkdownDescription: "Fallback lifetime in force mode, in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(60), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
 			"cache_max_ttl_s":      schema.Int64Attribute{MarkdownDescription: "Maximum lifetime in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(3600), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
-			"cache_bypass_cookies": schema.ListAttribute{MarkdownDescription: "Session cookie names that bypass caching. Empty means any Cookie bypasses the cache.", Computed: true, Optional: true, ElementType: types.StringType},
+			"cache_bypass_cookies": schema.SetAttribute{MarkdownDescription: "Session cookie names that bypass caching. Empty means any Cookie bypasses the cache.", Computed: true, Optional: true, ElementType: types.StringType},
 			"cache_debug_headers":  schema.BoolAttribute{MarkdownDescription: "Expose X-Cache: HIT or MISS on responses.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
 
 			"id": schema.StringAttribute{
@@ -378,7 +378,7 @@ func applyToModel(ctx context.Context, rt *client.AppGWRoute, m *routeResourceMo
 	if rt.CacheBypassCookies == nil {
 		rt.CacheBypassCookies = []string{}
 	}
-	m.CacheBypassCookies, _ = types.ListValueFrom(ctx, types.StringType, rt.CacheBypassCookies)
+	m.CacheBypassCookies, _ = types.SetValueFrom(ctx, types.StringType, rt.CacheBypassCookies)
 	m.CacheDebugHeaders = types.BoolValue(rt.CacheDebugHeaders)
 	m.ID = types.StringValue(rt.ID)
 	m.AppGWID = types.StringValue(rt.AppGWID)
@@ -468,7 +468,11 @@ func (r *routeResource) Create(ctx context.Context, req resource.CreateRequest, 
 		createReq.CacheMaxTTLS = &v
 	}
 	if !plan.CacheBypassCookies.IsNull() && !plan.CacheBypassCookies.IsUnknown() {
-		v := stringsFromList(ctx, plan.CacheBypassCookies)
+		var v []string
+		resp.Diagnostics.Append(plan.CacheBypassCookies.ElementsAs(ctx, &v, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		createReq.CacheBypassCookies = &v
 	}
 	if !plan.CacheDebugHeaders.IsNull() && !plan.CacheDebugHeaders.IsUnknown() {
@@ -571,7 +575,11 @@ func (r *routeResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		upd.CacheMaxTTLS = &v
 	}
 	if !plan.CacheBypassCookies.Equal(state.CacheBypassCookies) {
-		v := stringsFromList(ctx, plan.CacheBypassCookies)
+		var v []string
+		resp.Diagnostics.Append(plan.CacheBypassCookies.ElementsAs(ctx, &v, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		if v == nil {
 			v = []string{}
 		}
