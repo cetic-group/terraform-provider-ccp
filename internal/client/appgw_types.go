@@ -9,6 +9,11 @@ package client
 // ─── Application Gateway ─────────────────────────────────────────────────────
 
 type ApplicationGateway struct {
+	CacheEnabled          bool     `json:"cache_enabled"`
+	CacheSizeMB           int64    `json:"cache_size_mb"`
+	CacheMaxObjectKB      int64    `json:"cache_max_object_kb"`
+	CacheSizeLimitMB      int64    `json:"cache_size_limit_mb"`
+	CacheEffectiveSizeMB  int64    `json:"cache_effective_size_mb"`
 	ID                    string   `json:"id"`
 	Name                  string   `json:"name"`
 	Region                string   `json:"region"`
@@ -45,6 +50,9 @@ type ApplicationGateway struct {
 }
 
 type ApplicationGatewayCreateRequest struct {
+	CacheEnabled          *bool    `json:"cache_enabled,omitempty"`
+	CacheSizeMB           *int64   `json:"cache_size_mb,omitempty"`
+	CacheMaxObjectKB      *int64   `json:"cache_max_object_kb,omitempty"`
 	Name                  string   `json:"name"`
 	Region                string   `json:"region"`
 	Plan                  string   `json:"plan"`
@@ -63,6 +71,10 @@ type ApplicationGatewayCreateRequest struct {
 }
 
 type ApplicationGatewayUpdateRequest struct {
+	Plan                  *string   `json:"plan,omitempty"`
+	CacheEnabled          *bool     `json:"cache_enabled,omitempty"`
+	CacheSizeMB           *int64    `json:"cache_size_mb,omitempty"`
+	CacheMaxObjectKB      *int64    `json:"cache_max_object_kb,omitempty"`
 	Name                  *string   `json:"name,omitempty"`
 	ForceHTTPS            *bool     `json:"force_https,omitempty"`
 	HSTSEnabled           *bool     `json:"hsts_enabled,omitempty"`
@@ -242,6 +254,11 @@ type AppGWBasicAuthUser struct {
 }
 
 type AppGWRoute struct {
+	CacheMode          string             `json:"cache_mode"`
+	CacheDefaultTTLS   int64              `json:"cache_default_ttl_s"`
+	CacheMaxTTLS       int64              `json:"cache_max_ttl_s"`
+	CacheBypassCookies []string           `json:"cache_bypass_cookies"`
+	CacheDebugHeaders  bool               `json:"cache_debug_headers"`
 	ID                 string             `json:"id"`
 	AppGWID            string             `json:"appgw_id"`
 	ListenerID         string             `json:"listener_id"`
@@ -268,44 +285,54 @@ type AppGWRoute struct {
 }
 
 type AppGWRouteCreateRequest struct {
-	ListenerID      string               `json:"listener_id"`
-	Priority        *int64               `json:"priority,omitempty"`
-	PathMatch       *string              `json:"path_match,omitempty"`
-	PathMatchType   *string              `json:"path_match_type,omitempty"`
-	HeaderMatches   []AppGWHeaderMatch   `json:"header_matches,omitempty"`
-	MethodMatch     []string             `json:"method_match,omitempty"`
-	TargetGroupID   string               `json:"target_group_id"`
-	RateLimitPerSec *int64               `json:"rate_limit_per_sec,omitempty"`
-	AllowCIDRs      []string             `json:"allow_cidrs,omitempty"`
-	DenyCIDRs       []string             `json:"deny_cidrs,omitempty"`
-	RequestHeaders  map[string]string    `json:"request_headers,omitempty"`
-	ResponseHeaders map[string]string    `json:"response_headers,omitempty"`
-	CORSEnabled     *bool                `json:"cors_enabled,omitempty"`
-	CORSOrigins     []string             `json:"cors_origins,omitempty"`
-	CORSMethods     []string             `json:"cors_methods,omitempty"`
-	CORSCredentials *bool                `json:"cors_credentials,omitempty"`
-	BasicAuthUsers  []AppGWBasicAuthUser `json:"basic_auth_users,omitempty"`
-	WAFPreset       *string              `json:"waf_preset,omitempty"`
-	StripPrefix     *bool                `json:"strip_prefix,omitempty"`
+	CacheMode          *string              `json:"cache_mode,omitempty"`
+	CacheDefaultTTLS   *int64               `json:"cache_default_ttl_s,omitempty"`
+	CacheMaxTTLS       *int64               `json:"cache_max_ttl_s,omitempty"`
+	CacheBypassCookies *[]string            `json:"cache_bypass_cookies,omitempty"`
+	CacheDebugHeaders  *bool                `json:"cache_debug_headers,omitempty"`
+	ListenerID         string               `json:"listener_id"`
+	Priority           *int64               `json:"priority,omitempty"`
+	PathMatch          *string              `json:"path_match,omitempty"`
+	PathMatchType      *string              `json:"path_match_type,omitempty"`
+	HeaderMatches      []AppGWHeaderMatch   `json:"header_matches,omitempty"`
+	MethodMatch        []string             `json:"method_match,omitempty"`
+	TargetGroupID      string               `json:"target_group_id"`
+	RateLimitPerSec    *int64               `json:"rate_limit_per_sec,omitempty"`
+	AllowCIDRs         []string             `json:"allow_cidrs,omitempty"`
+	DenyCIDRs          []string             `json:"deny_cidrs,omitempty"`
+	RequestHeaders     map[string]string    `json:"request_headers,omitempty"`
+	ResponseHeaders    map[string]string    `json:"response_headers,omitempty"`
+	CORSEnabled        *bool                `json:"cors_enabled,omitempty"`
+	CORSOrigins        []string             `json:"cors_origins,omitempty"`
+	CORSMethods        []string             `json:"cors_methods,omitempty"`
+	CORSCredentials    *bool                `json:"cors_credentials,omitempty"`
+	BasicAuthUsers     []AppGWBasicAuthUser `json:"basic_auth_users,omitempty"`
+	WAFPreset          *string              `json:"waf_preset,omitempty"`
+	StripPrefix        *bool                `json:"strip_prefix,omitempty"`
 }
 
 type AppGWRouteUpdateRequest struct {
-	Priority        *int64                `json:"priority,omitempty"`
-	PathMatch       *string               `json:"path_match,omitempty"`
-	PathMatchType   *string               `json:"path_match_type,omitempty"`
-	HeaderMatches   *[]AppGWHeaderMatch   `json:"header_matches,omitempty"`
-	MethodMatch     *[]string             `json:"method_match,omitempty"`
-	TargetGroupID   *string               `json:"target_group_id,omitempty"`
-	RateLimitPerSec *int64                `json:"rate_limit_per_sec,omitempty"`
-	AllowCIDRs      *[]string             `json:"allow_cidrs,omitempty"`
-	DenyCIDRs       *[]string             `json:"deny_cidrs,omitempty"`
-	RequestHeaders  *map[string]string    `json:"request_headers,omitempty"`
-	ResponseHeaders *map[string]string    `json:"response_headers,omitempty"`
-	CORSEnabled     *bool                 `json:"cors_enabled,omitempty"`
-	CORSOrigins     *[]string             `json:"cors_origins,omitempty"`
-	CORSMethods     *[]string             `json:"cors_methods,omitempty"`
-	CORSCredentials *bool                 `json:"cors_credentials,omitempty"`
-	BasicAuthUsers  *[]AppGWBasicAuthUser `json:"basic_auth_users,omitempty"`
-	WAFPreset       *string               `json:"waf_preset,omitempty"`
-	StripPrefix     *bool                 `json:"strip_prefix,omitempty"`
+	CacheMode          *string               `json:"cache_mode,omitempty"`
+	CacheDefaultTTLS   *int64                `json:"cache_default_ttl_s,omitempty"`
+	CacheMaxTTLS       *int64                `json:"cache_max_ttl_s,omitempty"`
+	CacheBypassCookies *[]string             `json:"cache_bypass_cookies,omitempty"`
+	CacheDebugHeaders  *bool                 `json:"cache_debug_headers,omitempty"`
+	Priority           *int64                `json:"priority,omitempty"`
+	PathMatch          *string               `json:"path_match,omitempty"`
+	PathMatchType      *string               `json:"path_match_type,omitempty"`
+	HeaderMatches      *[]AppGWHeaderMatch   `json:"header_matches,omitempty"`
+	MethodMatch        *[]string             `json:"method_match,omitempty"`
+	TargetGroupID      *string               `json:"target_group_id,omitempty"`
+	RateLimitPerSec    *int64                `json:"rate_limit_per_sec,omitempty"`
+	AllowCIDRs         *[]string             `json:"allow_cidrs,omitempty"`
+	DenyCIDRs          *[]string             `json:"deny_cidrs,omitempty"`
+	RequestHeaders     *map[string]string    `json:"request_headers,omitempty"`
+	ResponseHeaders    *map[string]string    `json:"response_headers,omitempty"`
+	CORSEnabled        *bool                 `json:"cors_enabled,omitempty"`
+	CORSOrigins        *[]string             `json:"cors_origins,omitempty"`
+	CORSMethods        *[]string             `json:"cors_methods,omitempty"`
+	CORSCredentials    *bool                 `json:"cors_credentials,omitempty"`
+	BasicAuthUsers     *[]AppGWBasicAuthUser `json:"basic_auth_users,omitempty"`
+	WAFPreset          *string               `json:"waf_preset,omitempty"`
+	StripPrefix        *bool                 `json:"strip_prefix,omitempty"`
 }

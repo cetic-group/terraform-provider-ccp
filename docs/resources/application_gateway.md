@@ -108,6 +108,10 @@ resource "ccp_application_gateway" "web" {
 
 ### Optional
 
+- `cache_enabled` (Boolean, Optional) — Enables the gateway HTTP cache. Default `false`; also enable caching on individual routes.
+- `cache_size_mb` (Number, Optional) — Requested shared budget in MiB (default `64`). Plan limits: small 64, medium 256, large 1024, custom 64. The requested value is preserved after a downgrade.
+- `cache_max_object_kb` (Number, Optional) — Maximum object size in KiB, 1–1024 (default `512`).
+
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Set to attach, remove to detach.
 - `vip_address` - (Optional, Forces new resource) Private IPv4 address of the gateway in the VNet, in canonical dotted form (`10.0.1.200`). When omitted, the platform picks a free address and exports it. Set it to pin the address: reserve it first with `ccp_vnet_ip_reservation` (a reservation of your own organization is accepted). The API rejects an address outside the VNet or below the start of the network's address range, an address reserved for the network itself (network, gateway `.1`, broadcast), or one already in use — including the address block reserved for the nodes of a Kubernetes cluster on the same VNet, and an address reserved by another organization on a shared network.
 - `force_https` - (Optional, default `true`) Redirect plain HTTP (`:80`) traffic to HTTPS (`:443`).
@@ -125,6 +129,9 @@ resource "ccp_application_gateway" "web" {
   ```
 
 ## Attributes Reference
+
+- `cache_size_limit_mb` (Number) — Current plan limit in MiB.
+- `cache_effective_size_mb` (Number) — Effective budget after applying the plan limit. Read-only; do not copy it into `cache_size_mb`.
 
 In addition to all arguments above, the following attributes are exported:
 
@@ -146,3 +153,7 @@ Application Gateways can be imported using their UUID:
 ```
 terraform import ccp_application_gateway.web <appgw_id>
 ```
+
+## HTTP cache safety
+
+Requires a platform version implementing cetic-cloud-platform#1733. Only public GET 200 responses populate the cache; HEAD may read a cached GET. Authorization, session cookies, Set-Cookie, private, no-store and no-cache bypass it. Unsupported Vary fields (including Accept-Language) bypass caching. Host, path, query string, route and gateway are isolated. Each replica owns its own cache; failover may reach a cold cache. Use the API, console or `cetic appgw cache purge` for invalidation; there is no Terraform purge resource.

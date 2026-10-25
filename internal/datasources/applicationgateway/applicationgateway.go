@@ -47,6 +47,11 @@ type routeModel struct {
 }
 
 type appgwDSModel struct {
+	CacheEnabled          types.Bool         `tfsdk:"cache_enabled"`
+	CacheSizeMB           types.Int64        `tfsdk:"cache_size_mb"`
+	CacheMaxObjectKB      types.Int64        `tfsdk:"cache_max_object_kb"`
+	CacheSizeLimitMB      types.Int64        `tfsdk:"cache_size_limit_mb"`
+	CacheEffectiveSizeMB  types.Int64        `tfsdk:"cache_effective_size_mb"`
 	ID                    types.String       `tfsdk:"id"`
 	Name                  types.String       `tfsdk:"name"`
 	Region                types.String       `tfsdk:"region"`
@@ -85,6 +90,12 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 		MarkdownDescription: "Look up an existing CETIC Cloud Application Gateway by `id` or by `(name, region)`. " +
 			"Exactly one of those discriminators must be provided.",
 		Attributes: map[string]schema.Attribute{
+			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the HTTP cache. Disabled by default.", Computed: true},
+			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Requested cache budget in MiB, shared across routes. The plan limits the effective size.", Computed: true},
+			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB (1–1024).", Computed: true},
+			"cache_size_limit_mb":     schema.Int64Attribute{MarkdownDescription: "Cache size limit of the current plan, in MiB.", Computed: true},
+			"cache_effective_size_mb": schema.Int64Attribute{MarkdownDescription: "Effective cache budget after applying the current plan limit, in MiB.", Computed: true},
+
 			"id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the gateway. Conflicts with `name` + `region`.",
 				Optional:            true,
@@ -243,6 +254,18 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		VnetName:          nullableStr(found.VnetName),
 		VnetCIDR:          nullableStr(found.VnetCIDR),
 	}
+	state.CacheEnabled = types.BoolValue(found.CacheEnabled)
+	if found.CacheSizeMB == 0 {
+		found.CacheSizeMB = 64
+	}
+	state.CacheSizeMB = types.Int64Value(found.CacheSizeMB)
+	if found.CacheMaxObjectKB == 0 {
+		found.CacheMaxObjectKB = 512
+	}
+	state.CacheMaxObjectKB = types.Int64Value(found.CacheMaxObjectKB)
+	state.CacheSizeLimitMB = types.Int64Value(found.CacheSizeLimitMB)
+	state.CacheEffectiveSizeMB = types.Int64Value(found.CacheEffectiveSizeMB)
+
 	if found.PublicIPID != nil {
 		state.PublicIPID = types.StringValue(*found.PublicIPID)
 	} else {

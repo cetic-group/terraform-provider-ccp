@@ -44,6 +44,12 @@ output "listeners" {
 
 ## Attributes Reference
 
+- `cache_enabled` (Boolean) — Enables the gateway HTTP cache. Default `false`; also enable caching on individual routes.
+- `cache_size_mb` (Number) — Requested shared budget in MiB (default `64`). Plan limits: small 64, medium 256, large 1024, custom 64. The requested value is preserved after a downgrade.
+- `cache_max_object_kb` (Number) — Maximum object size in KiB, 1–1024 (default `512`).
+- `cache_size_limit_mb` (Number) — Current plan limit in MiB.
+- `cache_effective_size_mb` (Number) — Effective budget after applying the plan limit. Read-only; do not copy it into `cache_size_mb`.
+
 In addition to all arguments above:
 
 - `plan`, `vpc_id`, `vnet_id`, `vpc_name`, `vnet_name`, `vnet_cidr`, `public_ip_id`, `vip_address`, `status`, `error_message`, `created_at`
