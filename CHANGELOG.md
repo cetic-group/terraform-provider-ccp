@@ -4,10 +4,23 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v7.3.0 (2026-10-25)
+
+Requires the platform API released on 2026-10-25 (HTTP cache of application
+gateways, PostgreSQL extensions).
 
 ### Added
 
+- **`ccp_application_gateway`: HTTP cache.** `cache_enabled`, `cache_size_mb`
+  (requested shared budget) and `cache_max_object_kb`; read-only
+  `cache_size_limit_mb` (plan limit) and `cache_effective_size_mb` (budget
+  after the plan limit). The requested and effective budgets are distinct, so
+  changing the gateway plan causes no drift.
+- **`ccp_appgw_route`: HTTP cache per route.** `cache_mode` (`off`, `respect`,
+  `force`), `cache_default_ttl_s`, `cache_max_ttl_s`, `cache_bypass_cookies`
+  (set of session cookies to exclude; an empty set bypasses any `Cookie`
+  header) and `cache_debug_headers` (`X-Cache: HIT` / `MISS`).
+- **`data.ccp_application_gateway`**: exposes the cache settings.
 - **`ccp_db_pg_instance`: PostgreSQL extensions.** `allowed_extensions`,
   `preload_libraries` and `cron_database` are updated in place;
   `extensions_available` and `extensions_status` are read-only. The settings
@@ -30,6 +43,11 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`ccp_db_pg_instance`**: `replicas`, `tags`, `endpoint_port`,
   `cpu_millicores` and `memory_mb` keep their value in a plan instead of
   showing "known after apply".
+
+### Changed
+
+- Release workflow: `goreleaser/goreleaser-action` 6.4.0 → 7.3.0 (pinned by
+  SHA). No change to the published artifacts.
 
 ## v7.2.0 (2026-10-20)
 
