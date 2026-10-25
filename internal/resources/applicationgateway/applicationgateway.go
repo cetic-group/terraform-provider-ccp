@@ -1,5 +1,5 @@
 // Package applicationgateway implements the ccp_application_gateway
-// Terraform resource — the L7 Application Gateway, a highly available
+// Terraform resource — the L7 Application Gateway, a managed
 // reverse proxy with TLS termination, SNI multi-cert, rate limiting and WAF presets.
 //
 // Listeners, target groups, target group members and routes are managed
@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -44,6 +45,7 @@ func New() resource.Resource { return &appgwResource{} }
 type appgwResource struct{ client *client.Client }
 
 type appgwResourceModel struct {
+	ReplicaCount          types.Int64  `tfsdk:"replica_count"`
 	CacheEnabled          types.Bool   `tfsdk:"cache_enabled"`
 	CacheSizeMB           types.Int64  `tfsdk:"cache_size_mb"`
 	CacheMaxObjectKB      types.Int64  `tfsdk:"cache_max_object_kb"`
@@ -92,11 +94,11 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"~> **Provisioning is asynchronous.** The provider polls until status is `active` " +
 			"(typically 3-5 minutes for the initial create).",
 		Attributes: map[string]schema.Attribute{
-			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the HTTP cache. Disabled by default.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
-			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Requested cache budget in MiB, shared across routes. The plan limits the effective size.", Computed: true, Optional: true, Default: int64default.StaticInt64(64), Validators: []validator.Int64{int64validator.Between(1, 1024)}},
-			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB (1–1024).", Computed: true, Optional: true, Default: int64default.StaticInt64(512), Validators: []validator.Int64{int64validator.Between(1, 1024)}},
+			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the paid HTTP cache option. Disabled by default; the platform catalog sets its surcharge for the selected instance count.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
+			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Cache budget in MiB assigned by the selected plan; shared across routes.", Computed: true},
+			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB assigned by the selected plan.", Computed: true},
 			"cache_size_limit_mb":     schema.Int64Attribute{MarkdownDescription: "Cache size limit of the current plan, in MiB.", Computed: true},
-			"cache_effective_size_mb": schema.Int64Attribute{MarkdownDescription: "Effective cache budget after applying the current plan limit, in MiB.", Computed: true},
+			"cache_effective_size_mb": schema.Int64Attribute{MarkdownDescription: "Cache budget assigned by the selected plan, in MiB.", Computed: true},
 
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the gateway.",
@@ -113,6 +115,14 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"replica_count": schema.Int64Attribute{
+				MarkdownDescription: "Number of instances: 1 without redundancy or 2 for high availability (default). Independent of the capacity plan. Changing it replaces the resource.",
+				Optional:            true, Computed: true,
+				Default:       int64default.StaticInt64(2),
+				Validators:    []validator.Int64{int64validator.OneOf(1, 2)},
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+
 			"plan": schema.StringAttribute{
 				MarkdownDescription: "Capacity plan key, e.g. `appgw-small`, `appgw-medium`, `appgw-large`. " +
 					"Validated server-side against the live plan catalog (`compute_plans`, kind=`appgw`) — " +
@@ -278,13 +288,7 @@ func (r *appgwResource) Configure(_ context.Context, req resource.ConfigureReque
 // API normalised) BEFORE invoking this helper — see provider pitfall #3.
 func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwResourceModel) []string {
 	m.CacheEnabled = types.BoolValue(gw.CacheEnabled)
-	if gw.CacheSizeMB == 0 {
-		gw.CacheSizeMB = 64
-	}
 	m.CacheSizeMB = types.Int64Value(gw.CacheSizeMB)
-	if gw.CacheMaxObjectKB == 0 {
-		gw.CacheMaxObjectKB = 512
-	}
 	m.CacheMaxObjectKB = types.Int64Value(gw.CacheMaxObjectKB)
 	m.CacheSizeLimitMB = types.Int64Value(gw.CacheSizeLimitMB)
 	m.CacheEffectiveSizeMB = types.Int64Value(gw.CacheEffectiveSizeMB)
@@ -292,6 +296,7 @@ func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwRe
 	m.Name = types.StringValue(gw.Name)
 	m.Region = types.StringValue(gw.Region)
 	m.Plan = types.StringValue(gw.Plan)
+	m.ReplicaCount = types.Int64Value(client.GatewayReplicaCount(gw.ReplicaCount))
 	// The API response (AppGwResponse) does NOT include vpc_id — never overwrite
 	// the configured/known value with an empty string, otherwise Terraform errors
 	// with "Provider produced inconsistent result after apply".
@@ -400,17 +405,14 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		VpcID:  plan.VpcID.ValueString(),
 		VnetID: plan.VnetID.ValueString(),
 	}
+	if !plan.ReplicaCount.IsNull() && !plan.ReplicaCount.IsUnknown() {
+		value := plan.ReplicaCount.ValueInt64()
+		createReq.ReplicaCount = &value
+	}
+
 	if !plan.CacheEnabled.IsNull() && !plan.CacheEnabled.IsUnknown() {
 		v := plan.CacheEnabled.ValueBool()
 		createReq.CacheEnabled = &v
-	}
-	if !plan.CacheSizeMB.IsNull() && !plan.CacheSizeMB.IsUnknown() {
-		v := plan.CacheSizeMB.ValueInt64()
-		createReq.CacheSizeMB = &v
-	}
-	if !plan.CacheMaxObjectKB.IsNull() && !plan.CacheMaxObjectKB.IsUnknown() {
-		v := plan.CacheMaxObjectKB.ValueInt64()
-		createReq.CacheMaxObjectKB = &v
 	}
 	if !plan.VIPAddress.IsNull() && !plan.VIPAddress.IsUnknown() && plan.VIPAddress.ValueString() != "" {
 		v := plan.VIPAddress.ValueString()
@@ -461,6 +463,13 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	early.CustomErrorPage = types.StringNull() // pas encore posée : PATCH après provisioning
 	_ = applyToModel(ctx, created, &early)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+
+	if want := createReq.ReplicaCount; want != nil && client.GatewayReplicaCount(created.ReplicaCount) != *want {
+		resp.Diagnostics.AddAttributeError(path.Root("replica_count"), "replica_count not applied",
+			fmt.Sprintf("Requested %d instances but the platform returned %d. Update the platform before retrying. The created resource %s remains in state and will be replaced on the next apply.",
+				*want, client.GatewayReplicaCount(created.ReplicaCount), created.ID))
+		return
+	}
 
 	// A platform that predates `vip_address` ignores the field and picks its
 	// own address. Fail loudly instead of letting Terraform report an
@@ -544,16 +553,6 @@ func (r *appgwResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.CacheEnabled.Equal(state.CacheEnabled) {
 		v := plan.CacheEnabled.ValueBool()
 		upd.CacheEnabled = &v
-		patchNeeded = true
-	}
-	if !plan.CacheSizeMB.Equal(state.CacheSizeMB) {
-		v := plan.CacheSizeMB.ValueInt64()
-		upd.CacheSizeMB = &v
-		patchNeeded = true
-	}
-	if !plan.CacheMaxObjectKB.Equal(state.CacheMaxObjectKB) {
-		v := plan.CacheMaxObjectKB.ValueInt64()
-		upd.CacheMaxObjectKB = &v
 		patchNeeded = true
 	}
 	if !plan.Plan.Equal(state.Plan) {

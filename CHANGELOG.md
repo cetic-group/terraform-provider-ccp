@@ -4,6 +4,44 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased — plan-managed Application Gateway cache
+
+### Breaking
+
+- `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
+  computed-only outputs. Remove their HCL assignments when upgrading to the
+  next major provider version (8.0.0). The plan selected on the gateway now
+  determines both values; `cache_enabled` and route policies remain writable.
+- Requests no longer send dimensions or client-side defaults. Existing state
+  keys and types are preserved, and a plan change does not replace the gateway.
+- Resource and data source read the server profile without a local plan table.
+  Coordinate the provider upgrade before rollout of the plan-managed API;
+  provider 7.3 can report inconsistent results with that API. See the resource
+  migration guide. No release is published by this change.
+
+### Added
+
+- `replica_count` on `ccp_application_gateway` and `ccp_load_balancer`, and their
+  data sources: `1` without redundancy or `2` for high availability (default).
+  Changing the count forces replacement; capacity plans remain independent.
+- Creation detects older platforms that ignore the requested mode and keeps
+  the created ID in state. Reading historical two-instance resources remains
+  compatible. Deploy a platform implementing cetic-cloud-platform#1748 before
+  requesting single-instance mode. Prices are selected from the live catalog.
+
+- `data.ccp_pricing` exposes and filters `replica_count` and supports
+  `appgw_cache` tariffs. Base prices and cache surcharges already cover the
+  selected single-instance or high-availability mode; no multiplier is applied.
+- The HTTP cache remains opt-in and mutable. The platform catalog defines its
+  optional surcharge independently from the gateway base rate.
+
+### Fixed
+
+- `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
+  complete pricing response. Periodic prices returned as `null` remain null,
+  rather than appearing as free zero amounts; explicit zero prices are kept.
+  HCL consumers must handle nullable periodic estimates before arithmetic.
+
 ## v7.3.0 (2026-10-25)
 
 Requires the platform API released on 2026-10-25 (HTTP cache of application

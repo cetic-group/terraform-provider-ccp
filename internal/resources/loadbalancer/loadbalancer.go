@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -79,6 +80,7 @@ type lbListenerModel struct {
 }
 
 type lbResourceModel struct {
+	ReplicaCount    types.Int64       `tfsdk:"replica_count"`
 	ID              types.String      `tfsdk:"id"`
 	Name            types.String      `tfsdk:"name"`
 	Region          types.String      `tfsdk:"region"`
@@ -125,6 +127,14 @@ func (r *lbResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"replica_count": schema.Int64Attribute{
+				MarkdownDescription: "Number of instances: 1 without redundancy or 2 for high availability (default). Independent of the capacity plan. Changing it replaces the resource.",
+				Optional:            true, Computed: true,
+				Default:       int64default.StaticInt64(2),
+				Validators:    []validator.Int64{int64validator.OneOf(1, 2)},
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+
 			"plan": schema.StringAttribute{
 				MarkdownDescription: "Capacity plan key, e.g. `small` (default), `medium`, " +
 					"`large`. Resolved server-side against the live plan catalog " +
@@ -662,13 +672,14 @@ func listenerImmutableChanged(a, b lbListenerModel) bool {
 // the API) and avoid a perma-diff. `prior` may be nil (e.g. on import).
 func stateFromAPI(ctx context.Context, lb *client.LoadBalancer, prior []lbListenerModel, priorPage types.String) (lbResourceModel, []string) {
 	m := lbResourceModel{
-		ID:        types.StringValue(lb.ID),
-		Name:      types.StringValue(lb.Name),
-		Region:    types.StringValue(lb.Region),
-		Plan:      types.StringValue(lb.Plan),
-		VnetID:    types.StringValue(lb.VnetID),
-		Status:    types.StringValue(lb.Status),
-		CreatedAt: types.StringValue(lb.CreatedAt),
+		ID:           types.StringValue(lb.ID),
+		Name:         types.StringValue(lb.Name),
+		Region:       types.StringValue(lb.Region),
+		Plan:         types.StringValue(lb.Plan),
+		ReplicaCount: types.Int64Value(client.GatewayReplicaCount(lb.ReplicaCount)),
+		VnetID:       types.StringValue(lb.VnetID),
+		Status:       types.StringValue(lb.Status),
+		CreatedAt:    types.StringValue(lb.CreatedAt),
 	}
 	setOptStr(&m.PublicIPID, lb.PublicIPID)
 	setOptStr(&m.VIPAddress, lb.VIPAddress)
@@ -834,6 +845,11 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 		Region: plan.Region.ValueString(),
 		VnetID: plan.VnetID.ValueString(),
 	}
+	if !plan.ReplicaCount.IsNull() && !plan.ReplicaCount.IsUnknown() {
+		value := plan.ReplicaCount.ValueInt64()
+		createReq.ReplicaCount = &value
+	}
+
 	if !plan.Plan.IsNull() && !plan.Plan.IsUnknown() && plan.Plan.ValueString() != "" {
 		createReq.Plan = plan.Plan.ValueString()
 	}
@@ -868,6 +884,13 @@ func (r *lbResource) Create(ctx context.Context, req resource.CreateRequest, res
 	early, _ := stateFromAPI(ctx, created, plan.Listeners, types.StringNull())
 	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if want := createReq.ReplicaCount; want != nil && client.GatewayReplicaCount(created.ReplicaCount) != *want {
+		resp.Diagnostics.AddAttributeError(path.Root("replica_count"), "replica_count not applied",
+			fmt.Sprintf("Requested %d instances but the platform returned %d. Update the platform before retrying. The created resource %s remains in state and will be replaced on the next apply.",
+				*want, client.GatewayReplicaCount(created.ReplicaCount), created.ID))
 		return
 	}
 

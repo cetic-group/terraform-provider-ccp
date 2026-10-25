@@ -405,6 +405,7 @@ type Organization struct {
 // (create + delete + tags + IP attachment) only.
 
 type LoadBalancer struct {
+	ReplicaCount    *int64       `json:"replica_count,omitempty"`
 	ID              string       `json:"id"`
 	Name            string       `json:"name"`
 	Region          string       `json:"region"`
@@ -515,14 +516,15 @@ type LBBackendUpdateRequest struct {
 }
 
 type LoadBalancerCreateRequest struct {
-	Name       string                    `json:"name"`
-	Region     string                    `json:"region"`
-	Plan       string                    `json:"plan,omitempty"`
-	VnetID     string                    `json:"vnet_id"`
-	PublicIPID *string                   `json:"public_ip_id,omitempty"`
-	VIPAddress *string                   `json:"vip_address,omitempty"`
-	Listeners  []LBListenerCreateRequest `json:"listeners,omitempty"`
-	Tags       []string                  `json:"tags,omitempty"`
+	ReplicaCount *int64                    `json:"replica_count,omitempty"`
+	Name         string                    `json:"name"`
+	Region       string                    `json:"region"`
+	Plan         string                    `json:"plan,omitempty"`
+	VnetID       string                    `json:"vnet_id"`
+	PublicIPID   *string                   `json:"public_ip_id,omitempty"`
+	VIPAddress   *string                   `json:"vip_address,omitempty"`
+	Listeners    []LBListenerCreateRequest `json:"listeners,omitempty"`
+	Tags         []string                  `json:"tags,omitempty"`
 }
 
 // AcmeDNSProvider describes one supported DNS-01 provider (label + the

@@ -9,7 +9,7 @@ description: |-
 
 Manages a CETIC Cloud **Application Gateway** (`ccp-appgw`) — a fully managed L7 HTTP/HTTPS reverse proxy that terminates TLS, multiplexes hostnames via SNI, applies per-route policies (rate limit, IP allow/deny, CORS, basic auth, WAF) and load-balances to a pool of backends.
 
-Each gateway is highly available with a floating virtual IP and automatic failover. Listeners, routes and target groups are declared as separate resources to keep per-route HCL edits idempotent:
+By default each gateway uses two instances with a floating virtual IP and automatic failover. Set `replica_count = 1` for a single instance without redundancy. Listeners, routes and target groups are declared as separate resources to keep per-route HCL edits idempotent:
 
 - [`ccp_appgw_listener`](appgw_listener.md) — one hostname (and Let's Encrypt cert) per listener
 - [`ccp_appgw_target_group`](appgw_target_group.md) — a pool of backends with algorithm + health check
@@ -103,14 +103,13 @@ resource "ccp_application_gateway" "web" {
 - `name` - (Required) Human-readable name of the gateway (1-100 chars).
 - `region` - (Required, Forces new resource) Region code (`RNN`, `PAR`, `ABJ`).
 - `plan` - (Required) Capacity plan key, e.g. `appgw-small`, `appgw-medium`, `appgw-large`. Validated server-side against the live plan catalog — backoffice-defined plans are accepted without a provider upgrade.
+- `replica_count` (Number, Optional) — `1` without redundancy or `2` for high availability (default). Changing it forces replacement.
 - `vpc_id` - (Required, Forces new resource) UUID of the VPC the gateway is provisioned in.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet the gateway VIP is hosted on. Backends declared via target group members must be reachable from this VNet.
 
 ### Optional
 
 - `cache_enabled` (Boolean, Optional) — Enables the gateway HTTP cache. Default `false`; also enable caching on individual routes.
-- `cache_size_mb` (Number, Optional) — Requested shared budget in MiB (default `64`). Plan limits: small 64, medium 256, large 1024, custom 64. The requested value is preserved after a downgrade.
-- `cache_max_object_kb` (Number, Optional) — Maximum object size in KiB, 1–1024 (default `512`).
 
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Set to attach, remove to detach.
 - `vip_address` - (Optional, Forces new resource) Private IPv4 address of the gateway in the VNet, in canonical dotted form (`10.0.1.200`). When omitted, the platform picks a free address and exports it. Set it to pin the address: reserve it first with `ccp_vnet_ip_reservation` (a reservation of your own organization is accepted). The API rejects an address outside the VNet or below the start of the network's address range, an address reserved for the network itself (network, gateway `.1`, broadcast), or one already in use — including the address block reserved for the nodes of a Kubernetes cluster on the same VNet, and an address reserved by another organization on a shared network.
@@ -130,8 +129,10 @@ resource "ccp_application_gateway" "web" {
 
 ## Attributes Reference
 
+- `cache_size_mb` (Number) — Cache budget assigned by the selected plan, in MiB; shared across routes. Read-only.
+- `cache_max_object_kb` (Number) — Maximum object size assigned by the selected plan, in KiB. Read-only.
 - `cache_size_limit_mb` (Number) — Current plan limit in MiB.
-- `cache_effective_size_mb` (Number) — Effective budget after applying the plan limit. Read-only; do not copy it into `cache_size_mb`.
+- `cache_effective_size_mb` (Number) — Cache budget assigned by the selected plan. Read-only.
 
 In addition to all arguments above, the following attributes are exported:
 
@@ -157,3 +158,50 @@ terraform import ccp_application_gateway.web <appgw_id>
 ## HTTP cache safety
 
 Requires a platform version implementing cetic-cloud-platform#1733. Only public GET 200 responses populate the cache; HEAD may read a cached GET. Authorization, session cookies, Set-Cookie, private, no-store and no-cache bypass it. Unsupported Vary fields (including Accept-Language) bypass caching. Host, path, query string, route and gateway are isolated. Each replica owns its own cache; failover may reach a cold cache. Use the API, console or `cetic appgw cache purge` for invalidation; there is no Terraform purge resource.
+
+## Migration to plan-managed cache (provider 8.0+)
+
+The selected `plan` now determines both cache dimensions. Keep `cache_enabled`
+and the route cache policies; remove the **assignments** `cache_size_mb = ...`
+and `cache_max_object_kb = ...` from the resource configuration. References
+such as `ccp_application_gateway.web.cache_size_mb` remain valid outputs.
+
+Upgrade your provider constraint to `>= 8.0.0` once that version is released,
+run `terraform init -upgrade`, then review `terraform plan`. Existing state
+keys and types are retained: no resource replacement, state removal or import
+is required for this change. A plan change updates dimensions in place.
+The provider reads the profile from the API and never calculates its own sizes.
+
+Coordinate this upgrade before deploying the plan-managed API. Provider 7.3
+sends its own default dimensions even if they are omitted from HCL; when those
+values differ from the new server profile, Terraform can report an inconsistent
+result or persistent drift. Do not work around that with `ignore_changes` or
+by repeatedly applying the old configuration. The new provider also requires
+the plan-managed API for automatic resizing; an older API still returns its
+legacy requested budget.
+
+## Number of instances
+
+`replica_count` is optional and defaults to `2` (high availability). Set it to
+`1` for an environment that accepts interruption when its only instance is
+unavailable or under maintenance. The capacity plan remains independent of
+this choice; capacity and cache budgets are per instance.
+
+The value is immutable after creation. Changing it forces replacement of the
+resource, including when reverting from `1` to the default. Existing resources
+continue to use `2`. Set the matching value when importing a single instance.
+The platform catalog defines independent prices for one and two instances.
+Each amount already covers the selected mode; the provider does not multiply
+it by the instance count.
+
+Requires a platform implementing cetic-cloud-platform#1748. Upgrade the
+platform before requesting the new mode. The provider can be installed first
+while keeping the historical value `2`. An older platform may ignore the
+field: if the returned mode differs, creation fails explicitly and preserves
+the created ID in Terraform state so the resource is not orphaned.
+
+The HTTP cache is an optional paid feature. `cache_enabled` remains mutable
+and defaults to `false`. Its surcharge is published under `appgw_cache` for
+the selected plan and instance count; enabling it opts into the published
+surcharge. Use the platform estimator for the combined price. An unavailable
+cache tariff must be configured on the platform before enabling the option.
