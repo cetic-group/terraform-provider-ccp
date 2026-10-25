@@ -4,6 +4,21 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased — plan-managed Application Gateway cache
+
+### Breaking
+
+- `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
+  computed-only outputs. Remove their HCL assignments when upgrading to the
+  next major provider version (8.0.0). The plan selected on the gateway now
+  determines both values; `cache_enabled` and route policies remain writable.
+- Requests no longer send dimensions or client-side defaults. Existing state
+  keys and types are preserved, and a plan change does not replace the gateway.
+- Resource and data source read the server profile without a local plan table.
+  Coordinate the provider upgrade before rollout of the plan-managed API;
+  provider 7.3 can report inconsistent results with that API. See the resource
+  migration guide. No release is published by this change.
+
 ## v7.3.0 (2026-10-25)
 
 Requires the platform API released on 2026-10-25 (HTTP cache of application

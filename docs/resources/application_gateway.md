@@ -109,8 +109,6 @@ resource "ccp_application_gateway" "web" {
 ### Optional
 
 - `cache_enabled` (Boolean, Optional) — Enables the gateway HTTP cache. Default `false`; also enable caching on individual routes.
-- `cache_size_mb` (Number, Optional) — Requested shared budget in MiB (default `64`). Plan limits: small 64, medium 256, large 1024, custom 64. The requested value is preserved after a downgrade.
-- `cache_max_object_kb` (Number, Optional) — Maximum object size in KiB, 1–1024 (default `512`).
 
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Set to attach, remove to detach.
 - `vip_address` - (Optional, Forces new resource) Private IPv4 address of the gateway in the VNet, in canonical dotted form (`10.0.1.200`). When omitted, the platform picks a free address and exports it. Set it to pin the address: reserve it first with `ccp_vnet_ip_reservation` (a reservation of your own organization is accepted). The API rejects an address outside the VNet or below the start of the network's address range, an address reserved for the network itself (network, gateway `.1`, broadcast), or one already in use — including the address block reserved for the nodes of a Kubernetes cluster on the same VNet, and an address reserved by another organization on a shared network.
@@ -130,8 +128,10 @@ resource "ccp_application_gateway" "web" {
 
 ## Attributes Reference
 
+- `cache_size_mb` (Number) — Cache budget assigned by the selected plan, in MiB; shared across routes. Read-only.
+- `cache_max_object_kb` (Number) — Maximum object size assigned by the selected plan, in KiB. Read-only.
 - `cache_size_limit_mb` (Number) — Current plan limit in MiB.
-- `cache_effective_size_mb` (Number) — Effective budget after applying the plan limit. Read-only; do not copy it into `cache_size_mb`.
+- `cache_effective_size_mb` (Number) — Cache budget assigned by the selected plan. Read-only.
 
 In addition to all arguments above, the following attributes are exported:
 
@@ -157,3 +157,24 @@ terraform import ccp_application_gateway.web <appgw_id>
 ## HTTP cache safety
 
 Requires a platform version implementing cetic-cloud-platform#1733. Only public GET 200 responses populate the cache; HEAD may read a cached GET. Authorization, session cookies, Set-Cookie, private, no-store and no-cache bypass it. Unsupported Vary fields (including Accept-Language) bypass caching. Host, path, query string, route and gateway are isolated. Each replica owns its own cache; failover may reach a cold cache. Use the API, console or `cetic appgw cache purge` for invalidation; there is no Terraform purge resource.
+
+## Migration to plan-managed cache (provider 8.0+)
+
+The selected `plan` now determines both cache dimensions. Keep `cache_enabled`
+and the route cache policies; remove the **assignments** `cache_size_mb = ...`
+and `cache_max_object_kb = ...` from the resource configuration. References
+such as `ccp_application_gateway.web.cache_size_mb` remain valid outputs.
+
+Upgrade your provider constraint to `>= 8.0.0` once that version is released,
+run `terraform init -upgrade`, then review `terraform plan`. Existing state
+keys and types are retained: no resource replacement, state removal or import
+is required for this change. A plan change updates dimensions in place.
+The provider reads the profile from the API and never calculates its own sizes.
+
+Coordinate this upgrade before deploying the plan-managed API. Provider 7.3
+sends its own default dimensions even if they are omitted from HCL; when those
+values differ from the new server profile, Terraform can report an inconsistent
+result or persistent drift. Do not work around that with `ignore_changes` or
+by repeatedly applying the old configuration. The new provider also requires
+the plan-managed API for automatic resizing; an older API still returns its
+legacy requested budget.
