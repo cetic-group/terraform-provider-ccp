@@ -344,7 +344,9 @@ this choice; capacity and cache budgets are per instance.
 The value is immutable after creation. Changing it forces replacement of the
 resource, including when reverting from `1` to the default. Existing resources
 continue to use `2`. Set the matching value when importing a single instance.
-This provider does not calculate a reduced price for single-instance mode.
+The platform catalog defines independent prices for one and two instances.
+Each amount already covers the selected mode; the provider does not multiply
+it by the instance count.
 
 Requires a platform implementing cetic-cloud-platform#1748. Upgrade the
 platform before requesting the new mode. The provider can be installed first

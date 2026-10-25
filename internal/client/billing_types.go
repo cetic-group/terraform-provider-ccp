@@ -7,19 +7,20 @@ import "time"
 // ─── Pricing (read-only) ─────────────────────────────────────────────────
 
 type Pricing struct {
-	ID                             string  `json:"id"`
-	ResourceType                   string  `json:"resource_type"`
-	Plan                           *string `json:"plan,omitempty"`
-	HourlyPriceCents               int     `json:"hourly_price_cents"`
-	MonthlyPriceEUR                float64 `json:"monthly_price_eur"`
-	YearlyPriceEUR                 float64 `json:"yearly_price_eur"`
-	Currency                       string  `json:"currency"`
-	Description                    *string `json:"description,omitempty"`
-	IsFree                         bool    `json:"is_free"`
-	BillingDimension               string  `json:"billing_dimension"`
-	StoppedDiskPriceCentsPerGBHour *int    `json:"stopped_disk_price_cents_per_gb_hour,omitempty"`
-	MonthlyCommitDiscountPct       int     `json:"monthly_commit_discount_pct"`
-	YearlyCommitDiscountPct        int     `json:"yearly_commit_discount_pct"`
+	ReplicaCount                   *int64   `json:"replica_count"`
+	ID                             string   `json:"id"`
+	ResourceType                   string   `json:"resource_type"`
+	Plan                           *string  `json:"plan,omitempty"`
+	HourlyPriceCents               float64  `json:"hourly_price_cents"`
+	MonthlyPriceEUR                *float64 `json:"monthly_price_eur"`
+	YearlyPriceEUR                 *float64 `json:"yearly_price_eur"`
+	Currency                       string   `json:"currency"`
+	Description                    *string  `json:"description,omitempty"`
+	IsFree                         bool     `json:"is_free"`
+	BillingDimension               string   `json:"billing_dimension"`
+	StoppedDiskPriceCentsPerGBHour *int     `json:"stopped_disk_price_cents_per_gb_hour,omitempty"`
+	MonthlyCommitDiscountPct       int      `json:"monthly_commit_discount_pct"`
+	YearlyCommitDiscountPct        int      `json:"yearly_commit_discount_pct"`
 }
 
 // ─── Tenant Budgets (CRUD) ────────────────────────────────────────────────

@@ -91,7 +91,7 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 		MarkdownDescription: "Look up an existing CETIC Cloud Application Gateway by `id` or by `(name, region)`. " +
 			"Exactly one of those discriminators must be provided.",
 		Attributes: map[string]schema.Attribute{
-			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the HTTP cache. Disabled by default.", Computed: true},
+			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Whether the paid HTTP cache option is enabled.", Computed: true},
 			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Cache budget in MiB assigned by the selected plan; shared across routes.", Computed: true},
 			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB assigned by the selected plan.", Computed: true},
 			"cache_size_limit_mb":     schema.Int64Attribute{MarkdownDescription: "Cache size limit of the current plan, in MiB.", Computed: true},

@@ -27,7 +27,20 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Creation detects older platforms that ignore the requested mode and keeps
   the created ID in state. Reading historical two-instance resources remains
   compatible. Deploy a platform implementing cetic-cloud-platform#1748 before
-  requesting single-instance mode. No price reduction is inferred.
+  requesting single-instance mode. Prices are selected from the live catalog.
+
+- `data.ccp_pricing` exposes and filters `replica_count` and supports
+  `appgw_cache` tariffs. Base prices and cache surcharges already cover the
+  selected single-instance or high-availability mode; no multiplier is applied.
+- The HTTP cache remains opt-in and mutable. The platform catalog defines its
+  optional surcharge independently from the gateway base rate.
+
+### Fixed
+
+- `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
+  complete pricing response. Periodic prices returned as `null` remain null,
+  rather than appearing as free zero amounts; explicit zero prices are kept.
+  HCL consumers must handle nullable periodic estimates before arithmetic.
 
 ## v7.3.0 (2026-10-25)
 

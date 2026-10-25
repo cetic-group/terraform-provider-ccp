@@ -94,7 +94,7 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"~> **Provisioning is asynchronous.** The provider polls until status is `active` " +
 			"(typically 3-5 minutes for the initial create).",
 		Attributes: map[string]schema.Attribute{
-			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the HTTP cache. Disabled by default.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
+			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the paid HTTP cache option. Disabled by default; the platform catalog sets its surcharge for the selected instance count.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
 			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Cache budget in MiB assigned by the selected plan; shared across routes.", Computed: true},
 			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB assigned by the selected plan.", Computed: true},
 			"cache_size_limit_mb":     schema.Int64Attribute{MarkdownDescription: "Cache size limit of the current plan, in MiB.", Computed: true},

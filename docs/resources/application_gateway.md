@@ -190,10 +190,18 @@ this choice; capacity and cache budgets are per instance.
 The value is immutable after creation. Changing it forces replacement of the
 resource, including when reverting from `1` to the default. Existing resources
 continue to use `2`. Set the matching value when importing a single instance.
-This provider does not calculate a reduced price for single-instance mode.
+The platform catalog defines independent prices for one and two instances.
+Each amount already covers the selected mode; the provider does not multiply
+it by the instance count.
 
 Requires a platform implementing cetic-cloud-platform#1748. Upgrade the
 platform before requesting the new mode. The provider can be installed first
 while keeping the historical value `2`. An older platform may ignore the
 field: if the returned mode differs, creation fails explicitly and preserves
 the created ID in Terraform state so the resource is not orphaned.
+
+The HTTP cache is an optional paid feature. `cache_enabled` remains mutable
+and defaults to `false`. Its surcharge is published under `appgw_cache` for
+the selected plan and instance count; enabling it opts into the published
+surcharge. Use the platform estimator for the combined price. An unavailable
+cache tariff must be configured on the platform before enabling the option.
