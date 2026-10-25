@@ -28,4 +28,5 @@ data "ccp_db_pg_instance" "app" {
 - `replicas`, `storage_gb`, `cpu_millicores`, `memory_mb`
 - `error_message` (nullable)
 - `tags`
+- `extensions_available`, `allowed_extensions`, `preload_libraries`, `cron_database` (nullable: the initial database), `extensions_status` (`applied` or `pending`) — see [`ccp_db_pg_instance`](../resources/db_pg_instance.md#extensions)
 - `public_ip_id`, `public_ip_address` (nullable)

@@ -898,6 +898,40 @@ type DbPgInstance struct {
 	Tags            []string `json:"tags"`
 	PublicIPID      *string  `json:"public_ip_id,omitempty"`
 	PublicIPAddress *string  `json:"public_ip_address,omitempty"`
+	// Extensions. `ExtensionsAvailable` is false until support enables
+	// extensions on the instance; until then the settings cannot be changed.
+	ExtensionsAvailable bool     `json:"extensions_available"`
+	AllowedExtensions   []string `json:"allowed_extensions"`
+	PreloadLibraries    []string `json:"preload_libraries"`
+	CronDatabase        *string  `json:"cron_database,omitempty"`
+	// "pending" until the instance runs with the requested settings.
+	ExtensionsStatus string `json:"extensions_status"`
+}
+
+// DbPgExtensionsUpdateRequest is the body of PATCH /v1/db/pg/{id}/extensions.
+// A nil field is left unchanged; a non-nil empty slice clears the list.
+type DbPgExtensionsUpdateRequest struct {
+	AllowedExtensions *[]string `json:"allowed_extensions,omitempty"`
+	PreloadLibraries  *[]string `json:"preload_libraries,omitempty"`
+	CronDatabase      *string   `json:"cron_database,omitempty"`
+}
+
+// DbPgExtension is one entry of the extension catalog.
+type DbPgExtension struct {
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	RequiresPreload bool     `json:"requires_preload"`
+	Requires        []string `json:"requires"`
+	SingleDatabase  bool     `json:"single_database"`
+}
+
+// DbPgExtensionCatalog lists the extensions that can be allowed on an
+// instance of a major version, and those that need no authorization.
+type DbPgExtensionCatalog struct {
+	Version          int             `json:"version"`
+	Extensions       []DbPgExtension `json:"extensions"`
+	PreloadLibraries []string        `json:"preload_libraries"`
+	DirectExtensions []string        `json:"direct_extensions"`
 }
 
 type DbPgInstanceCreateRequest struct {

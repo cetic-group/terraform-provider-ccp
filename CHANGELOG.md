@@ -4,6 +4,33 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- **`ccp_db_pg_instance`: PostgreSQL extensions.** `allowed_extensions`,
+  `preload_libraries` and `cron_database` are updated in place;
+  `extensions_available` and `extensions_status` are read-only. The settings
+  are checked at plan time against the catalog of the instance's major
+  version (missing dependency, library to preload, extension that needs no
+  authorization, `cron_database` without `pg_cron`). `terraform apply` waits
+  until the instance runs with the new settings. Removing an extension still
+  installed in a database fails with the platform's message. Extensions must
+  first be enabled on the instance by support: settings given at creation do
+  not fail it, a warning is raised and the next apply retries.
+- **`data.ccp_db_pg_extensions`**: extension catalog of a major version
+  (`extensions`, `preload_libraries`, `direct_extensions`).
+- **`data.ccp_db_pg_instance`**: exposes the extension settings.
+
+### Fixed
+
+- **`ccp_db_pg_instance.engine_version`** no longer becomes unknown when
+  another attribute changes. It forces replacement, so an in-place change of
+  the instance would have planned its destruction.
+- **`ccp_db_pg_instance`**: `replicas`, `tags`, `endpoint_port`,
+  `cpu_millicores` and `memory_mb` keep their value in a plan instead of
+  showing "known after apply".
+
 ## v7.2.0 (2026-10-20)
 
 ### Added

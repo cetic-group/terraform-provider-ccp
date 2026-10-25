@@ -1173,6 +1173,27 @@ func (c *Client) DeleteDbPg(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/db/pg/"+id, nil, nil)
 }
 
+// UpdateDbPgExtensions changes the extensions allowed on an instance and the
+// libraries it preloads. The change is applied asynchronously: the returned
+// instance reports `extensions_status = "pending"` until it is in effect.
+func (c *Client) UpdateDbPgExtensions(ctx context.Context, id string, req DbPgExtensionsUpdateRequest) (*DbPgInstance, error) {
+	var out DbPgInstance
+	if err := c.do(ctx, http.MethodPatch, "/v1/db/pg/"+id+"/extensions", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetDbPgExtensionCatalog returns the extension catalog of a major version.
+func (c *Client) GetDbPgExtensionCatalog(ctx context.Context, version int) (*DbPgExtensionCatalog, error) {
+	var out DbPgExtensionCatalog
+	path := fmt.Sprintf("/v1/db/pg/extensions?version=%d", version)
+	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ─── DB Valkey ──────────────────────────────────────────────────────────────
 
 func (c *Client) ListDbValkey(ctx context.Context) ([]DbValkeyInstance, error) {

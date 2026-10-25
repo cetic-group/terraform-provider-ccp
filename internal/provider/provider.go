@@ -19,6 +19,7 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbengineversions"
 	dsdbferretdbinstance "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbferretdbinstance"
 	dsdbmysqlinstance "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbmysqlinstance"
+	"github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbpgextensions"
 	dsdbpginstance "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbpginstance"
 	"github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbplans"
 	dsdbvalkeyinstance "github.com/cetic-group/terraform-provider-ccp/internal/datasources/dbvalkeyinstance"
@@ -306,6 +307,7 @@ func (p *ccpProvider) DataSources(_ context.Context) []func() datasource.DataSou
 		dsk8snodepool.New,
 		// Database
 		dsdbpginstance.New,
+		dbpgextensions.New,
 		dsdbmysqlinstance.New,
 		dsdbvalkeyinstance.New,
 		dsdbferretdbinstance.New,

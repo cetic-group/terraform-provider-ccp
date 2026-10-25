@@ -1,8 +1,8 @@
 // Package dbpginstance implements the ccp_db_pg_instance Terraform resource.
 //
-// Instance PostgreSQL managée (CloudNativePG sur le cluster K8s tenant).
-// Provisioning asynchrone (5-10 min) — Create poll jusqu'à status=active.
-// Pas d'Update (toutes les modifs forcent un replace en v1).
+// Instance PostgreSQL managée. Provisioning asynchrone — Create poll jusqu'à
+// status=active. Seuls les réglages d'extensions se modifient en place
+// (extensions.go) ; le reste force un replace ou est refusé en Update.
 package dbpginstance
 
 import (
@@ -11,10 +11,15 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -23,6 +28,7 @@ var (
 	_ resource.Resource                = (*dbpgResource)(nil)
 	_ resource.ResourceWithConfigure   = (*dbpgResource)(nil)
 	_ resource.ResourceWithImportState = (*dbpgResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*dbpgResource)(nil)
 )
 
 func New() resource.Resource { return &dbpgResource{} }
@@ -48,6 +54,12 @@ type dbpgResourceModel struct {
 	CPUMillicores  types.Int64  `tfsdk:"cpu_millicores"`
 	MemoryMB       types.Int64  `tfsdk:"memory_mb"`
 	Tags           types.List   `tfsdk:"tags"`
+	// Extensions (extensions.go).
+	ExtensionsAvailable types.Bool   `tfsdk:"extensions_available"`
+	AllowedExtensions   types.Set    `tfsdk:"allowed_extensions"`
+	PreloadLibraries    types.Set    `tfsdk:"preload_libraries"`
+	CronDatabase        types.String `tfsdk:"cron_database"`
+	ExtensionsStatus    types.String `tfsdk:"extensions_status"`
 }
 
 func (r *dbpgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -56,9 +68,10 @@ func (r *dbpgResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "CETIC Cloud managed PostgreSQL instance (DBaaS, Phase 5). Backed by " +
-			"CloudNativePG in the tenant's K8s cluster. Provisioning is async (~5-10 min). All " +
-			"attributes force replacement — to scale, recreate the instance.",
+		MarkdownDescription: "CETIC Cloud managed PostgreSQL instance. Provisioning is async " +
+			"(~5-10 min). Extension settings (`allowed_extensions`, `preload_libraries`, " +
+			"`cron_database`) are updated in place; the other attributes cannot change — " +
+			"to scale, recreate the instance.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -92,6 +105,7 @@ func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "1 (dev) ou 3 (prod, HA). Forces replacement.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"tier": schema.StringAttribute{
 				Computed:      true,
@@ -101,7 +115,14 @@ func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "Major version (default '16'). Versions exposées sont gérées via le backoffice CETIC.",
 				Optional:            true,
 				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				// UseStateForUnknown AVANT RequiresReplace : sans lui, une valeur
+				// omise redevient inconnue dès qu'un autre attribut change, et
+				// RequiresReplace propose de recréer l'instance — une simple
+				// modification d'extensions détruirait la base.
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"status": schema.StringAttribute{
 				Computed:      true,
@@ -112,7 +133,8 @@ func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"endpoint_port": schema.Int64Attribute{
-				Computed: true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"admin_username": schema.StringAttribute{
 				Computed:      true,
@@ -122,12 +144,61 @@ func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"cpu_millicores": schema.Int64Attribute{Computed: true},
-			"memory_mb":      schema.Int64Attribute{Computed: true},
+			"cpu_millicores": schema.Int64Attribute{
+				Computed:      true,
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"memory_mb": schema.Int64Attribute{
+				Computed:      true,
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
 			"tags": schema.ListAttribute{
-				ElementType: types.StringType,
-				Optional:    true,
-				Computed:    true,
+				ElementType:   types.StringType,
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+			},
+			"extensions_available": schema.BoolAttribute{
+				MarkdownDescription: "Whether extensions can be allowed on this instance. They must " +
+					"first be enabled on the instance by support; until then, extension settings " +
+					"cannot change.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"allowed_extensions": schema.SetAttribute{
+				MarkdownDescription: "Extensions from the catalog (`ccp_db_pg_extensions`) that the " +
+					"database owner may then create with `CREATE EXTENSION`. List the extensions " +
+					"they depend on as well. Extensions that need no authorization (see " +
+					"`direct_extensions` of the catalog) are not listed here. Removing an " +
+					"extension is refused while it is installed in a database: drop it first. " +
+					"Omitted: left unchanged; `[]`: none allowed.",
+				ElementType:   types.StringType,
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"preload_libraries": schema.SetAttribute{
+				MarkdownDescription: "Libraries loaded at startup, required by some extensions " +
+					"(`pg_cron`, `pg_stat_statements`). Changing this list restarts the instance, " +
+					"one replica at a time. Omitted: left unchanged; `[]`: none.",
+				ElementType:   types.StringType,
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"cron_database": schema.StringAttribute{
+				MarkdownDescription: "Database in which `pg_cron` runs scheduled jobs. Requires " +
+					"`pg_cron` in `preload_libraries`. Defaults to the instance's initial database. " +
+					"Omitted: left unchanged.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"extensions_status": schema.StringAttribute{
+				MarkdownDescription: "`applied` when the instance runs with its extension settings, " +
+					"`pending` while a change is being applied. `terraform apply` waits for " +
+					"`applied`.",
+				Computed: true,
 			},
 		},
 	}
@@ -185,6 +256,30 @@ func setState(ctx context.Context, m *dbpgResourceModel, p *client.DbPgInstance)
 	m.MemoryMB = types.Int64Value(int64(p.MemoryMB))
 	tags, _ := types.ListValueFrom(ctx, types.StringType, p.Tags)
 	m.Tags = tags
+	m.ExtensionsAvailable = types.BoolValue(p.ExtensionsAvailable)
+	allowed, _ := types.SetValueFrom(ctx, types.StringType, nonNil(p.AllowedExtensions))
+	m.AllowedExtensions = allowed
+	preload, _ := types.SetValueFrom(ctx, types.StringType, nonNil(p.PreloadLibraries))
+	m.PreloadLibraries = preload
+	if p.CronDatabase != nil {
+		m.CronDatabase = types.StringValue(*p.CronDatabase)
+	} else {
+		m.CronDatabase = types.StringNull()
+	}
+	status := p.ExtensionsStatus
+	if status == "" {
+		status = "applied"
+	}
+	m.ExtensionsStatus = types.StringValue(status)
+}
+
+// nonNil maps a missing list to an empty set rather than null, so that an
+// explicit `[]` in the configuration matches the state.
+func nonNil(v []string) []string {
+	if v == nil {
+		return []string{}
+	}
+	return v
 }
 
 func (r *dbpgResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -238,7 +333,12 @@ func (r *dbpgResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError("PostgreSQL provisioning timed out or failed", err.Error())
 		return
 	}
+	planned := plan
+	final, keepPlanned := r.applyExtensionsOnCreate(ctx, planned, final, &resp.Diagnostics)
 	setState(ctx, &plan, final)
+	if keepPlanned {
+		keepPlannedExtensions(&plan, planned)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -261,9 +361,45 @@ func (r *dbpgResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (r *dbpgResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError("Update not supported",
-		"All ccp_db_pg_instance attributes force replacement in v1.")
+func (r *dbpgResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state dbpgResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Only extension settings change in place. An unknown planned value is a
+	// computed attribute left to the platform, not a change.
+	changedOutside := func(p, s attr.Value) bool {
+		return !p.IsUnknown() && !p.Equal(s)
+	}
+	if !plan.StorageGB.Equal(state.StorageGB) ||
+		changedOutside(plan.Replicas, state.Replicas) ||
+		changedOutside(plan.Tags, state.Tags) {
+		resp.Diagnostics.AddError("Update not supported",
+			"Only allowed_extensions, preload_libraries and cron_database can change in place. "+
+				"Revert the other changes, or recreate the instance.")
+		return
+	}
+
+	id := state.ID.ValueString()
+	var final *client.DbPgInstance
+	var err error
+	if extReq, send := extensionRequest(ctx, plan, &state); send {
+		if _, err = r.client.UpdateDbPgExtensions(ctx, id, extReq); err != nil {
+			resp.Diagnostics.AddError("Failed to update PostgreSQL extensions", err.Error())
+			return
+		}
+		if final, err = waitExtensionsApplied(ctx, r.client, id); err != nil {
+			resp.Diagnostics.AddError("PostgreSQL extension settings not applied", err.Error())
+			return
+		}
+	} else if final, err = r.client.GetDbPg(ctx, id); err != nil {
+		resp.Diagnostics.AddError("Failed to read PostgreSQL instance", err.Error())
+		return
+	}
+	setState(ctx, &plan, final)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *dbpgResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
