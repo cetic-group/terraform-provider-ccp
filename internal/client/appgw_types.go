@@ -9,6 +9,7 @@ package client
 // ─── Application Gateway ─────────────────────────────────────────────────────
 
 type ApplicationGateway struct {
+	ReplicaCount          *int64   `json:"replica_count,omitempty"`
 	CacheEnabled          bool     `json:"cache_enabled"`
 	CacheSizeMB           int64    `json:"cache_size_mb"`
 	CacheMaxObjectKB      int64    `json:"cache_max_object_kb"`
@@ -50,6 +51,7 @@ type ApplicationGateway struct {
 }
 
 type ApplicationGatewayCreateRequest struct {
+	ReplicaCount          *int64   `json:"replica_count,omitempty"`
 	CacheEnabled          *bool    `json:"cache_enabled,omitempty"`
 	Name                  string   `json:"name"`
 	Region                string   `json:"region"`

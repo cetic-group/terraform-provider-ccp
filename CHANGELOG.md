@@ -19,6 +19,16 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   provider 7.3 can report inconsistent results with that API. See the resource
   migration guide. No release is published by this change.
 
+### Added
+
+- `replica_count` on `ccp_application_gateway` and `ccp_load_balancer`, and their
+  data sources: `1` without redundancy or `2` for high availability (default).
+  Changing the count forces replacement; capacity plans remain independent.
+- Creation detects older platforms that ignore the requested mode and keeps
+  the created ID in state. Reading historical two-instance resources remains
+  compatible. Deploy a platform implementing cetic-cloud-platform#1748 before
+  requesting single-instance mode. No price reduction is inferred.
+
 ## v7.3.0 (2026-10-25)
 
 Requires the platform API released on 2026-10-25 (HTTP cache of application

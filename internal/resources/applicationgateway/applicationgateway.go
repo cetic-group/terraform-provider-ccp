@@ -1,5 +1,5 @@
 // Package applicationgateway implements the ccp_application_gateway
-// Terraform resource — the L7 Application Gateway, a highly available
+// Terraform resource — the L7 Application Gateway, a managed
 // reverse proxy with TLS termination, SNI multi-cert, rate limiting and WAF presets.
 //
 // Listeners, target groups, target group members and routes are managed
@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -44,6 +45,7 @@ func New() resource.Resource { return &appgwResource{} }
 type appgwResource struct{ client *client.Client }
 
 type appgwResourceModel struct {
+	ReplicaCount          types.Int64  `tfsdk:"replica_count"`
 	CacheEnabled          types.Bool   `tfsdk:"cache_enabled"`
 	CacheSizeMB           types.Int64  `tfsdk:"cache_size_mb"`
 	CacheMaxObjectKB      types.Int64  `tfsdk:"cache_max_object_kb"`
@@ -113,6 +115,14 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"replica_count": schema.Int64Attribute{
+				MarkdownDescription: "Number of instances: 1 without redundancy or 2 for high availability (default). Independent of the capacity plan. Changing it replaces the resource.",
+				Optional:            true, Computed: true,
+				Default:       int64default.StaticInt64(2),
+				Validators:    []validator.Int64{int64validator.OneOf(1, 2)},
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+
 			"plan": schema.StringAttribute{
 				MarkdownDescription: "Capacity plan key, e.g. `appgw-small`, `appgw-medium`, `appgw-large`. " +
 					"Validated server-side against the live plan catalog (`compute_plans`, kind=`appgw`) — " +
@@ -286,6 +296,7 @@ func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwRe
 	m.Name = types.StringValue(gw.Name)
 	m.Region = types.StringValue(gw.Region)
 	m.Plan = types.StringValue(gw.Plan)
+	m.ReplicaCount = types.Int64Value(client.GatewayReplicaCount(gw.ReplicaCount))
 	// The API response (AppGwResponse) does NOT include vpc_id — never overwrite
 	// the configured/known value with an empty string, otherwise Terraform errors
 	// with "Provider produced inconsistent result after apply".
@@ -394,6 +405,11 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		VpcID:  plan.VpcID.ValueString(),
 		VnetID: plan.VnetID.ValueString(),
 	}
+	if !plan.ReplicaCount.IsNull() && !plan.ReplicaCount.IsUnknown() {
+		value := plan.ReplicaCount.ValueInt64()
+		createReq.ReplicaCount = &value
+	}
+
 	if !plan.CacheEnabled.IsNull() && !plan.CacheEnabled.IsUnknown() {
 		v := plan.CacheEnabled.ValueBool()
 		createReq.CacheEnabled = &v
@@ -447,6 +463,13 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	early.CustomErrorPage = types.StringNull() // pas encore posée : PATCH après provisioning
 	_ = applyToModel(ctx, created, &early)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+
+	if want := createReq.ReplicaCount; want != nil && client.GatewayReplicaCount(created.ReplicaCount) != *want {
+		resp.Diagnostics.AddAttributeError(path.Root("replica_count"), "replica_count not applied",
+			fmt.Sprintf("Requested %d instances but the platform returned %d. Update the platform before retrying. The created resource %s remains in state and will be replaced on the next apply.",
+				*want, client.GatewayReplicaCount(created.ReplicaCount), created.ID))
+		return
+	}
 
 	// A platform that predates `vip_address` ignores the field and picks its
 	// own address. Fail loudly instead of letting Terraform report an

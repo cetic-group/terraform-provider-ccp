@@ -47,6 +47,7 @@ type routeModel struct {
 }
 
 type appgwDSModel struct {
+	ReplicaCount          types.Int64        `tfsdk:"replica_count"`
 	CacheEnabled          types.Bool         `tfsdk:"cache_enabled"`
 	CacheSizeMB           types.Int64        `tfsdk:"cache_size_mb"`
 	CacheMaxObjectKB      types.Int64        `tfsdk:"cache_max_object_kb"`
@@ -107,6 +108,7 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Computed:            true,
 			},
 			"region":                    schema.StringAttribute{Optional: true, Computed: true},
+			"replica_count":             schema.Int64Attribute{Computed: true, MarkdownDescription: "Number of instances: 1 without redundancy or 2 for high availability."},
 			"plan":                      schema.StringAttribute{Computed: true},
 			"vpc_id":                    schema.StringAttribute{Computed: true},
 			"vpc_name":                  schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the VPC."},
@@ -238,6 +240,7 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	state := appgwDSModel{
+		ReplicaCount:      types.Int64Value(client.GatewayReplicaCount(found.ReplicaCount)),
 		ID:                types.StringValue(found.ID),
 		Name:              types.StringValue(found.Name),
 		Region:            types.StringValue(found.Region),

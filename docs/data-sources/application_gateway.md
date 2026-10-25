@@ -59,3 +59,9 @@ In addition to all arguments above:
 - `listeners` - List of `{id, hostname, acme_status, acme_challenge, acme_dns_provider, acme_last_renewal_at}`.
 - `target_groups` - List of `{id, name, algorithm}`.
 - `routes` - List of `{id, listener_id, priority, path_match, path_match_type, target_group_id}`.
+
+### Availability
+
+`replica_count` (Number, read-only) is `1` without redundancy or `2` for high
+availability. A platform version predating this field only supports two
+instances; its response is read as `2`.

@@ -9,7 +9,7 @@ description: |-
 
 Manages a CETIC Cloud **Application Gateway** (`ccp-appgw`) — a fully managed L7 HTTP/HTTPS reverse proxy that terminates TLS, multiplexes hostnames via SNI, applies per-route policies (rate limit, IP allow/deny, CORS, basic auth, WAF) and load-balances to a pool of backends.
 
-Each gateway is highly available with a floating virtual IP and automatic failover. Listeners, routes and target groups are declared as separate resources to keep per-route HCL edits idempotent:
+By default each gateway uses two instances with a floating virtual IP and automatic failover. Set `replica_count = 1` for a single instance without redundancy. Listeners, routes and target groups are declared as separate resources to keep per-route HCL edits idempotent:
 
 - [`ccp_appgw_listener`](appgw_listener.md) — one hostname (and Let's Encrypt cert) per listener
 - [`ccp_appgw_target_group`](appgw_target_group.md) — a pool of backends with algorithm + health check
@@ -103,6 +103,7 @@ resource "ccp_application_gateway" "web" {
 - `name` - (Required) Human-readable name of the gateway (1-100 chars).
 - `region` - (Required, Forces new resource) Region code (`RNN`, `PAR`, `ABJ`).
 - `plan` - (Required) Capacity plan key, e.g. `appgw-small`, `appgw-medium`, `appgw-large`. Validated server-side against the live plan catalog — backoffice-defined plans are accepted without a provider upgrade.
+- `replica_count` (Number, Optional) — `1` without redundancy or `2` for high availability (default). Changing it forces replacement.
 - `vpc_id` - (Required, Forces new resource) UUID of the VPC the gateway is provisioned in.
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet the gateway VIP is hosted on. Backends declared via target group members must be reachable from this VNet.
 
@@ -178,3 +179,21 @@ result or persistent drift. Do not work around that with `ignore_changes` or
 by repeatedly applying the old configuration. The new provider also requires
 the plan-managed API for automatic resizing; an older API still returns its
 legacy requested budget.
+
+## Number of instances
+
+`replica_count` is optional and defaults to `2` (high availability). Set it to
+`1` for an environment that accepts interruption when its only instance is
+unavailable or under maintenance. The capacity plan remains independent of
+this choice; capacity and cache budgets are per instance.
+
+The value is immutable after creation. Changing it forces replacement of the
+resource, including when reverting from `1` to the default. Existing resources
+continue to use `2`. Set the matching value when importing a single instance.
+This provider does not calculate a reduced price for single-instance mode.
+
+Requires a platform implementing cetic-cloud-platform#1748. Upgrade the
+platform before requesting the new mode. The provider can be installed first
+while keeping the historical value `2`. An older platform may ignore the
+field: if the returned mode differs, creation fails explicitly and preserves
+the created ID in Terraform state so the resource is not orphaned.
