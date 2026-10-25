@@ -43,6 +43,12 @@ type pgDSModel struct {
 	Tags            types.List   `tfsdk:"tags"`
 	PublicIPID      types.String `tfsdk:"public_ip_id"`
 	PublicIPAddress types.String `tfsdk:"public_ip_address"`
+	// Extensions.
+	ExtensionsAvailable types.Bool   `tfsdk:"extensions_available"`
+	AllowedExtensions   types.List   `tfsdk:"allowed_extensions"`
+	PreloadLibraries    types.List   `tfsdk:"preload_libraries"`
+	CronDatabase        types.String `tfsdk:"cron_database"`
+	ExtensionsStatus    types.String `tfsdk:"extensions_status"`
 }
 
 func (d *pgDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -75,6 +81,28 @@ func (d *pgDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, res
 			"tags":              schema.ListAttribute{ElementType: types.StringType, Computed: true},
 			"public_ip_id":      schema.StringAttribute{Computed: true},
 			"public_ip_address": schema.StringAttribute{Computed: true},
+			"extensions_available": schema.BoolAttribute{
+				MarkdownDescription: "Whether extensions can be allowed on this instance.",
+				Computed:            true,
+			},
+			"allowed_extensions": schema.ListAttribute{
+				MarkdownDescription: "Extensions the database owner may create with `CREATE EXTENSION`.",
+				ElementType:         types.StringType,
+				Computed:            true,
+			},
+			"preload_libraries": schema.ListAttribute{
+				MarkdownDescription: "Libraries loaded at startup.",
+				ElementType:         types.StringType,
+				Computed:            true,
+			},
+			"cron_database": schema.StringAttribute{
+				MarkdownDescription: "Database in which `pg_cron` runs scheduled jobs (null: the initial database).",
+				Computed:            true,
+			},
+			"extensions_status": schema.StringAttribute{
+				MarkdownDescription: "`applied` or `pending` while a change is being applied.",
+				Computed:            true,
+			},
 		},
 	}
 }
@@ -169,8 +197,24 @@ func (d *pgDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	}
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags
+	state.ExtensionsAvailable = types.BoolValue(found.ExtensionsAvailable)
+	state.AllowedExtensions, _ = types.ListValueFrom(ctx, types.StringType, orEmpty(found.AllowedExtensions))
+	state.PreloadLibraries, _ = types.ListValueFrom(ctx, types.StringType, orEmpty(found.PreloadLibraries))
+	setStrPtr(&state.CronDatabase, found.CronDatabase)
+	status := found.ExtensionsStatus
+	if status == "" {
+		status = "applied"
+	}
+	state.ExtensionsStatus = types.StringValue(status)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func orEmpty(v []string) []string {
+	if v == nil {
+		return []string{}
+	}
+	return v
 }
 
 func setStrPtr(dst *types.String, src *string) {
