@@ -104,6 +104,136 @@ func TestPolicyConvergenceRequiresAllExpectedReplicasAndRevocation(t *testing.T)
 		})
 	}
 }
+
+func legacyPolicyGateway() map[string]any {
+	return map[string]any{
+		"id": "g", "status": "active", "replica_count": 2, "access_policy_generation": 0,
+		"l4_policy": map[string]any{}, "l7_policy": map[string]any{}, "client_ip_policy": map[string]any{},
+		"listeners":            []any{map[string]any{"id": "l", "l7_policy": map[string]any{}}},
+		"routes":               []any{map[string]any{"id": "r", "l7_policy": map[string]any{}}},
+		"access_policy_status": map[string]any{"generation": 0, "state": "applied", "replicas": map[string]any{}},
+	}
+}
+
+func TestPolicyConvergenceGenerationZeroRequiresExplicitEmptyDocuments(t *testing.T) {
+	for _, scenario := range []string{
+		"empty-children", "existing-children", "single", "requested-one", "effective-one",
+		"missing-generation", "missing-status-generation", "status-generation-one", "pending",
+		"missing-replicas", "null-replicas", "nonempty-replicas", "deleting", "error",
+		"missing-l4", "null-l4", "disabled-l4", "unknown-l4", "missing-l7", "null-l7", "disabled-l7",
+		"missing-client-ip", "null-client-ip", "peer-client-ip", "missing-listeners", "null-listeners",
+		"missing-routes", "null-routes", "missing-listener-policy", "null-listener-policy",
+		"nonempty-listener-policy", "missing-route-policy", "null-route-policy", "nonempty-route-policy",
+	} {
+		t.Run(scenario, func(t *testing.T) {
+			gw := legacyPolicyGateway()
+			state := gw["access_policy_status"].(map[string]any)
+			generation := int64(0)
+			wantReady := scenario == "empty-children" || scenario == "existing-children" || scenario == "single"
+			switch scenario {
+			case "empty-children":
+				gw["listeners"], gw["routes"] = []any{}, []any{}
+			case "single":
+				gw["replica_count"] = 1
+			case "requested-one":
+				generation = 1
+			case "effective-one":
+				gw["access_policy_generation"], state["generation"] = 1, 1
+			case "missing-generation":
+				delete(gw, "access_policy_generation")
+			case "missing-status-generation":
+				delete(state, "generation")
+			case "status-generation-one":
+				state["generation"] = 1
+			case "pending":
+				state["state"] = "pending"
+			case "missing-replicas":
+				delete(state, "replicas")
+			case "null-replicas":
+				state["replicas"] = nil
+			case "nonempty-replicas":
+				state["replicas"] = map[string]any{"primary": map[string]any{"generation": 0, "state": "pending"}}
+			case "deleting", "error":
+				gw["status"] = scenario
+			case "missing-l4", "null-l4", "disabled-l4", "unknown-l4", "missing-l7", "null-l7", "disabled-l7", "missing-client-ip", "null-client-ip", "peer-client-ip":
+				field := "l4_policy"
+				if strings.HasSuffix(scenario, "l7") {
+					field = "l7_policy"
+				} else if strings.HasSuffix(scenario, "client-ip") {
+					field = "client_ip_policy"
+				}
+				switch {
+				case strings.HasPrefix(scenario, "missing"):
+					delete(gw, field)
+				case strings.HasPrefix(scenario, "null"):
+					gw[field] = nil
+				case strings.HasPrefix(scenario, "disabled"):
+					gw[field] = map[string]any{"enabled": false}
+				case strings.HasPrefix(scenario, "unknown"):
+					gw[field] = map[string]any{"unknown": true}
+				default:
+					gw[field] = map[string]any{"mode": "peer"}
+				}
+			case "missing-listeners", "null-listeners", "missing-routes", "null-routes":
+				parts := strings.SplitN(scenario, "-", 2)
+				if parts[0] == "missing" {
+					delete(gw, parts[1])
+				} else {
+					gw[parts[1]] = nil
+				}
+			case "missing-listener-policy", "null-listener-policy", "nonempty-listener-policy", "missing-route-policy", "null-route-policy", "nonempty-route-policy":
+				parts := strings.Split(scenario, "-")
+				child := gw[parts[1]+"s"].([]any)[0].(map[string]any)
+				if parts[0] == "missing" {
+					delete(child, "l7_policy")
+				} else if parts[0] == "null" {
+					child["l7_policy"] = nil
+				} else {
+					child["l7_policy"] = map[string]any{"enabled": false}
+				}
+			}
+			srv := testutil.NewTestServer(t, testutil.Routes{{Method: "GET", Path: "/v1/app-gateways/g", Body: gw}})
+			defer srv.Close()
+			_, err := New(srv.URL, "test", "test").WaitAppGWAccessPolicy(context.Background(), "g", generation, 10*time.Millisecond)
+			if (err == nil) != wantReady {
+				t.Fatalf("ready=%v, want %v: %v", err == nil, wantReady, err)
+			}
+		})
+	}
+}
+
+func TestPolicyResetWithFeatureDisabledConvergesWithoutPublication(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/platform/capabilities", Body: map[string]any{"appgw_security_policy_versions": []int{1}, "appgw_security_policies_enabled": false}},
+		{Method: "GET", Path: "/v1/app-gateways/g", Body: legacyPolicyGateway()},
+		{Method: "PATCH", Path: "/v1/app-gateways/g/listeners/l", Body: map[string]any{"id": "l", "l7_policy": map[string]any{}, "security_revision": 0}},
+		{Method: "GET", Path: "/v1/app-gateways/g", Body: legacyPolicyGateway()},
+	})
+	defer srv.Close()
+	c := New(srv.URL, "test", "test")
+	listener, err := c.UpdateAppGWListener(context.Background(), "g", "l", AppGWListenerUpdateRequest{L7Policy: &AppGWL7Policy{}})
+	if err != nil || listener.SecurityRevision == nil || *listener.SecurityRevision != 0 {
+		t.Fatalf("no-op reset not accepted: listener=%+v err=%v", listener, err)
+	}
+	if _, err := c.WaitAppGWAccessPolicy(context.Background(), "g", *listener.SecurityRevision, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	var sent map[string]json.RawMessage
+	_ = json.Unmarshal(srv.Calls()[2].Body, &sent)
+	if len(srv.Calls()) != 4 || string(sent["l7_policy"]) != "{}" || string(sent["security_revision"]) != "0" {
+		t.Fatal("reset must keep an explicit empty document and use the committed generation zero")
+	}
+}
+
+func TestPolicyConvergenceGenerationZeroKeepsAdditionalReadinessGate(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{{Method: "GET", Path: "/v1/app-gateways/g", Body: legacyPolicyGateway()}})
+	defer srv.Close()
+	_, err := New(srv.URL, "test", "test").waitAppGWAccessPolicy(context.Background(), "g", 0, 10*time.Millisecond, func(*ApplicationGateway) bool { return false })
+	if err == nil {
+		t.Fatal("no-op must not bypass the caller's additional readiness condition")
+	}
+}
+
 func TestPolicyErrorsNeverEchoHeaderValues(t *testing.T) {
 	for _, code := range []int{403, 409, 422, 500} {
 		err := AppGWPolicyError(&APIError{StatusCode: code, Detail: "customer-token-sensitive"})

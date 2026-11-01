@@ -182,12 +182,58 @@ func (c *Client) UpdateAppGWListener(ctx context.Context, appgwID, listenerID st
 func (c *Client) WaitAppGWAccessPolicy(ctx context.Context, id string, generation int64, timeout time.Duration) (*ApplicationGateway, error) {
 	return c.waitAppGWAccessPolicy(ctx, id, generation, timeout, nil)
 }
+
+// An explicit reset can leave an untouched gateway at generation zero during
+// rollout. Such a no-op has no replica publication to wait for. Inspect the wire
+// documents: typed policies omit false/empty fields and discard unknown fields,
+// so marshaling them back could incorrectly turn a nonempty document into {}.
+func appGWLegacyPolicyNoop(raw json.RawMessage) bool {
+	type child struct {
+		L7Policy json.RawMessage `json:"l7_policy"`
+	}
+	var response struct {
+		L4Policy       json.RawMessage `json:"l4_policy"`
+		L7Policy       json.RawMessage `json:"l7_policy"`
+		ClientIPPolicy json.RawMessage `json:"client_ip_policy"`
+		Listeners      []child         `json:"listeners"`
+		Routes         []child         `json:"routes"`
+		Status         struct {
+			Generation *int64          `json:"generation"`
+			Replicas   json.RawMessage `json:"replicas"`
+		} `json:"access_policy_status"`
+	}
+	if json.Unmarshal(raw, &response) != nil || response.Status.Generation == nil || *response.Status.Generation != 0 || response.Listeners == nil || response.Routes == nil {
+		return false
+	}
+	emptyObject := func(document json.RawMessage) bool {
+		var object map[string]json.RawMessage
+		return json.Unmarshal(document, &object) == nil && object != nil && len(object) == 0
+	}
+	for _, document := range []json.RawMessage{response.L4Policy, response.L7Policy, response.ClientIPPolicy, response.Status.Replicas} {
+		if !emptyObject(document) {
+			return false
+		}
+	}
+	for _, children := range [][]child{response.Listeners, response.Routes} {
+		for _, item := range children {
+			if !emptyObject(item.L7Policy) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (c *Client) waitAppGWAccessPolicy(ctx context.Context, id string, generation int64, timeout time.Duration, extraReady func(*ApplicationGateway) bool) (*ApplicationGateway, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	for {
-		gw, err := c.GetApplicationGateway(ctx, id)
-		if err != nil {
+		var raw json.RawMessage
+		if err := c.do(ctx, http.MethodGet, "/v1/app-gateways/"+id, nil, &raw); err != nil {
+			return nil, AppGWPolicyError(err)
+		}
+		gw := &ApplicationGateway{}
+		if err := json.Unmarshal(raw, gw); err != nil {
 			return nil, AppGWPolicyError(err)
 		}
 		state := gw.AccessPolicyStatus
@@ -202,11 +248,14 @@ func (c *Client) waitAppGWAccessPolicy(ctx context.Context, id string, generatio
 			replica, ok := state.Replicas[role]
 			ready = ready && ok && replica.State == "applied" && replica.Generation == state.Generation && replica.RevocationComplete
 		}
-		if ready && (extraReady == nil || extraReady(gw)) {
-			return gw, nil
+		if generation == 0 && *gw.AccessPolicyGeneration == 0 && state.State == "applied" && appGWLegacyPolicyNoop(raw) {
+			ready = true
 		}
 		if gw.Status == AppGWStatusDeleting || gw.Status == AppGWStatusError {
 			return gw, errors.New("gateway cannot confirm the requested access policy")
+		}
+		if ready && (extraReady == nil || extraReady(gw)) {
+			return gw, nil
 		}
 		select {
 		case <-ctx.Done():
