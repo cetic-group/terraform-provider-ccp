@@ -15,6 +15,15 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   before, so a concurrent change is refused instead of overwritten. Requires a
   platform API that exposes bucket CORS.
 
+### Fixed
+
+- **`ccp_appgw_route`: `cache_bypass_cookies` no longer shows "known after
+  apply" on every plan.** The attribute is optional and computed but kept no
+  state when unconfigured, so any plan touching another field marked it
+  unknown, and the following update sent an empty list to the platform,
+  erasing the stored cookie list. It now keeps its state value unless set in
+  the configuration (#104).
+
 ## v7.3.0 (2026-10-25)
 
 Requires the platform API released on 2026-10-25 (HTTP cache of application
