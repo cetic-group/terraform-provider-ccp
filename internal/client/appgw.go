@@ -34,16 +34,44 @@ func (c *Client) GetApplicationGateway(ctx context.Context, id string) (*Applica
 }
 
 func (c *Client) CreateApplicationGateway(ctx context.Context, req ApplicationGatewayCreateRequest) (*ApplicationGateway, error) {
+	if req.L4Policy != nil || req.L7Policy != nil || req.ClientIPPolicy != nil {
+		if err := c.RequireAppGWPolicies(ctx, appGWPoliciesNonEmpty(req.L4Policy, req.L7Policy, req.ClientIPPolicy)); err != nil {
+			return nil, err
+		}
+	}
+
 	var out ApplicationGateway
 	if err := c.do(ctx, http.MethodPost, "/v1/app-gateways", req, &out); err != nil {
+		if req.L4Policy != nil || req.L7Policy != nil || req.ClientIPPolicy != nil {
+			return nil, AppGWPolicyError(err)
+		}
 		return nil, err
 	}
 	return &out, nil
 }
 
 func (c *Client) UpdateApplicationGateway(ctx context.Context, id string, req ApplicationGatewayUpdateRequest) (*ApplicationGateway, error) {
+	if req.L4Policy != nil || req.L7Policy != nil || req.ClientIPPolicy != nil {
+		unlock, revision, err := c.policyWrite(ctx, id, appGWPoliciesNonEmpty(req.L4Policy, req.L7Policy, req.ClientIPPolicy))
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+		req.SecurityRevision = &revision
+	}
+
+	if !(req.L4Policy != nil || req.L7Policy != nil || req.ClientIPPolicy != nil) {
+		unlock, err := c.gatewayMutationLock(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+	}
 	var out ApplicationGateway
 	if err := c.do(ctx, http.MethodPatch, "/v1/app-gateways/"+id, req, &out); err != nil {
+		if req.L4Policy != nil || req.L7Policy != nil || req.ClientIPPolicy != nil {
+			return nil, AppGWPolicyError(err)
+		}
 		return nil, err
 	}
 	return &out, nil
@@ -96,15 +124,34 @@ func (c *Client) GetAppGWListener(ctx context.Context, appgwID, listenerID strin
 }
 
 func (c *Client) CreateAppGWListener(ctx context.Context, appgwID string, req AppGWListenerCreateRequest) (*AppGWListener, error) {
+	if req.L7Policy != nil {
+		unlock, revision, err := c.policyWrite(ctx, appgwID, appGWPoliciesNonEmpty(req.L7Policy))
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+		req.SecurityRevision = &revision
+	}
+
+	if !(req.L7Policy != nil) {
+		unlock, err := c.gatewayMutationLock(ctx, appgwID)
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+	}
 	var out AppGWListener
 	if err := c.do(ctx, http.MethodPost, "/v1/app-gateways/"+appgwID+"/listeners", req, &out); err != nil {
+		if req.L7Policy != nil {
+			return nil, AppGWPolicyError(err)
+		}
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) DeleteAppGWListener(ctx context.Context, appgwID, listenerID string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/app-gateways/"+appgwID+"/listeners/"+listenerID, nil, nil)
+func (c *Client) DeleteAppGWListener(ctx context.Context, appgwID, listenerID string, knownRevision ...int64) error {
+	return c.deleteAppGWChild(ctx, appgwID, listenerID, "listeners", knownRevision)
 }
 
 // RotateAppGWListenerCert pose un nouveau certificat client sur un listener
@@ -244,21 +291,59 @@ func (c *Client) GetAppGWRoute(ctx context.Context, appgwID, routeID string) (*A
 }
 
 func (c *Client) CreateAppGWRoute(ctx context.Context, appgwID string, req AppGWRouteCreateRequest) (*AppGWRoute, error) {
+	if req.L7Policy != nil {
+		unlock, revision, err := c.policyWrite(ctx, appgwID, appGWPoliciesNonEmpty(req.L7Policy))
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+		req.SecurityRevision = &revision
+	}
+
+	if !(req.L7Policy != nil) {
+		unlock, err := c.gatewayMutationLock(ctx, appgwID)
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+	}
 	var out AppGWRoute
 	if err := c.do(ctx, http.MethodPost, "/v1/app-gateways/"+appgwID+"/routes", req, &out); err != nil {
+		if req.L7Policy != nil {
+			return nil, AppGWPolicyError(err)
+		}
 		return nil, err
 	}
 	return &out, nil
 }
 
 func (c *Client) UpdateAppGWRoute(ctx context.Context, appgwID, routeID string, req AppGWRouteUpdateRequest) (*AppGWRoute, error) {
+	if req.L7Policy != nil {
+		unlock, revision, err := c.policyWrite(ctx, appgwID, appGWPoliciesNonEmpty(req.L7Policy))
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+		req.SecurityRevision = &revision
+	}
+
+	if !(req.L7Policy != nil) {
+		unlock, err := c.gatewayMutationLock(ctx, appgwID)
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+	}
 	var out AppGWRoute
 	if err := c.do(ctx, http.MethodPatch, "/v1/app-gateways/"+appgwID+"/routes/"+routeID, req, &out); err != nil {
+		if req.L7Policy != nil {
+			return nil, AppGWPolicyError(err)
+		}
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) DeleteAppGWRoute(ctx context.Context, appgwID, routeID string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/app-gateways/"+appgwID+"/routes/"+routeID, nil, nil)
+func (c *Client) DeleteAppGWRoute(ctx context.Context, appgwID, routeID string, knownRevision ...int64) error {
+	return c.deleteAppGWChild(ctx, appgwID, routeID, "routes", knownRevision)
 }

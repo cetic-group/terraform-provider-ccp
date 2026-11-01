@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -24,7 +25,8 @@ const (
 
 func customModel(cert, key string) listenerResourceModel {
 	return listenerResourceModel{
-		ID: types.StringValue(lsID), AppGWID: types.StringValue(gwID),
+		L7Policy: types.ObjectNull(appgwpolicy.L7Type().AttrTypes),
+		ID:       types.StringValue(lsID), AppGWID: types.StringValue(gwID),
 		Hostname: types.StringValue("shop.example.com"), AcmeChallenge: types.StringValue("custom"),
 		AcmeDNSProvider: types.StringNull(), AcmeDNSCredentials: types.MapNull(types.StringType),
 		AcmeStatus: types.StringValue("issued"), AcmeLastRenewalAt: types.StringNull(),

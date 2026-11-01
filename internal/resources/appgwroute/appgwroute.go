@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -57,6 +58,8 @@ type basicAuthUserModel struct {
 }
 
 type routeResourceModel struct {
+	L7Policy           types.Object         `tfsdk:"l7_policy"`
+	SecurityRevision   types.Int64          `tfsdk:"security_revision"`
 	CacheMode          types.String         `tfsdk:"cache_mode"`
 	CacheDefaultTTLS   types.Int64          `tfsdk:"cache_default_ttl_s"`
 	CacheMaxTTLS       types.Int64          `tfsdk:"cache_max_ttl_s"`
@@ -100,6 +103,8 @@ func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"keep your state backend secure. The platform never returns plaintext back: the server hashes the values " +
 			"into a Secret Manager entry (`basic_auth_secret_ref`).",
 		Attributes: map[string]schema.Attribute{
+			"l7_policy":            appgwpolicy.L7Schema(),
+			"security_revision":    schema.Int64Attribute{Computed: true, MarkdownDescription: "Current gateway-wide access policy revision. Used for concurrency control."},
 			"cache_mode":           schema.StringAttribute{MarkdownDescription: "Cache policy: off, respect origin directives, or force a fallback lifetime.", Computed: true, Optional: true, Default: stringdefault.StaticString("off"), Validators: []validator.String{stringvalidator.OneOf("off", "respect", "force")}},
 			"cache_default_ttl_s":  schema.Int64Attribute{MarkdownDescription: "Fallback lifetime in force mode, in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(60), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
 			"cache_max_ttl_s":      schema.Int64Attribute{MarkdownDescription: "Maximum lifetime in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(3600), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
@@ -363,6 +368,8 @@ func apiBasicAuthUsers(in []basicAuthUserModel) []client.AppGWBasicAuthUser {
 // so the caller must preserve the plan-side list before invoking this
 // (mirrors the secret.applySecretToModel pattern).
 func applyToModel(ctx context.Context, rt *client.AppGWRoute, m *routeResourceModel) {
+	m.L7Policy = appgwpolicy.FromL7(m.L7Policy, rt.L7Policy)
+	m.SecurityRevision = types.Int64PointerValue(rt.SecurityRevision)
 	if rt.CacheMode == "" {
 		rt.CacheMode = "off"
 	}
@@ -519,6 +526,18 @@ func (r *routeResource) Create(ctx context.Context, req resource.CreateRequest, 
 	createReq.RequestHeaders = stringMapFromMap(ctx, plan.RequestHeaders)
 	createReq.ResponseHeaders = stringMapFromMap(ctx, plan.ResponseHeaders)
 
+	cfgPolicy := appgwpolicy.Configuration(ctx, req.Config, "l7_policy", &resp.Diagnostics)
+	if appgwpolicy.Configured(cfgPolicy) {
+		var err error
+		createReq.L7Policy, err = appgwpolicy.L7(plan.L7Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, err) {
+			return
+		}
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	created, err := r.client.CreateAppGWRoute(ctx, plan.AppGWID.ValueString(), createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create AppGW route", err.Error())
@@ -531,6 +550,27 @@ func (r *routeResource) Create(ctx context.Context, req resource.CreateRequest, 
 	applyToModel(ctx, created, &plan)
 	plan.BasicAuthUsers = users
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if createReq.L7Policy != nil || (created.SecurityRevision != nil && *created.SecurityRevision > 0) {
+		if createReq.L7Policy != nil && !appgwpolicy.Confirm(createReq.L7Policy, created.L7Policy, &resp.Diagnostics) {
+			return
+		}
+		final := appgwpolicy.Wait(ctx, r.client, created.AppGWID, created.SecurityRevision, &resp.Diagnostics)
+		if final == nil {
+			return
+		}
+		for _, route := range final.Routes {
+			if route.ID == created.ID {
+				if createReq.L7Policy != nil && !appgwpolicy.Confirm(createReq.L7Policy, route.L7Policy, &resp.Diagnostics) {
+					return
+				}
+				applyToModel(ctx, &route, &plan)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+				return
+			}
+		}
+		resp.Diagnostics.AddError("Access policy not confirmed", "The resource was not returned after policy application.")
+	}
+
 }
 
 func (r *routeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -562,6 +602,22 @@ func (r *routeResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 	var upd client.AppGWRouteUpdateRequest
+	var desiredPolicy *client.AppGWL7Policy
+	cfgPolicy := appgwpolicy.Configuration(ctx, req.Config, "l7_policy", &resp.Diagnostics)
+	if appgwpolicy.Configured(cfgPolicy) {
+		var err error
+		desiredPolicy, err = appgwpolicy.L7(plan.L7Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, err) {
+			return
+		}
+	}
+	if appgwpolicy.Changed(cfgPolicy, plan.L7Policy, state.L7Policy) {
+		upd.L7Policy = desiredPolicy
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	if !plan.CacheMode.Equal(state.CacheMode) {
 		v := plan.CacheMode.ValueString()
 		upd.CacheMode = &v
@@ -715,6 +771,28 @@ func (r *routeResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	applyToModel(ctx, got, &plan)
 	plan.BasicAuthUsers = users
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if desiredPolicy != nil || (got.SecurityRevision != nil && *got.SecurityRevision > 0) {
+		if desiredPolicy != nil && !appgwpolicy.Confirm(desiredPolicy, got.L7Policy, &resp.Diagnostics) {
+			return
+		}
+		final := appgwpolicy.Wait(ctx, r.client, got.AppGWID, got.SecurityRevision, &resp.Diagnostics)
+		if final == nil {
+			return
+		}
+		for _, route := range final.Routes {
+			if route.ID == got.ID {
+				if desiredPolicy != nil && !appgwpolicy.Confirm(desiredPolicy, route.L7Policy, &resp.Diagnostics) {
+					return
+				}
+				applyToModel(ctx, &route, &plan)
+				plan.BasicAuthUsers = users
+				resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+				return
+			}
+		}
+		resp.Diagnostics.AddError("Access policy not confirmed", "The route was not returned after policy application.")
+	}
+
 }
 
 func headerMatchesChanged(a, b []headerMatchModel) bool {
@@ -747,7 +825,7 @@ func (r *routeResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteAppGWRoute(ctx, state.AppGWID.ValueString(), state.ID.ValueString()); err != nil {
+	if err := r.client.DeleteAppGWRoute(ctx, state.AppGWID.ValueString(), state.ID.ValueString(), state.SecurityRevision.ValueInt64()); err != nil {
 		if client.IsNotFound(err) {
 			return
 		}

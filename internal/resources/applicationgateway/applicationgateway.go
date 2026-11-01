@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/errorpage"
@@ -45,6 +46,11 @@ func New() resource.Resource { return &appgwResource{} }
 type appgwResource struct{ client *client.Client }
 
 type appgwResourceModel struct {
+	L7Policy              types.Object `tfsdk:"l7_policy"`
+	SecurityRevision      types.Int64  `tfsdk:"security_revision"`
+	L4Policy              types.Object `tfsdk:"l4_policy"`
+	ClientIPPolicy        types.Object `tfsdk:"client_ip_policy"`
+	AccessPolicyState     types.String `tfsdk:"access_policy_state"`
 	ReplicaCount          types.Int64  `tfsdk:"replica_count"`
 	CacheEnabled          types.Bool   `tfsdk:"cache_enabled"`
 	CacheSizeMB           types.Int64  `tfsdk:"cache_size_mb"`
@@ -94,6 +100,11 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"~> **Provisioning is asynchronous.** The provider polls until status is `active` " +
 			"(typically 3-5 minutes for the initial create).",
 		Attributes: map[string]schema.Attribute{
+			"l7_policy":               appgwpolicy.L7Schema(),
+			"security_revision":       schema.Int64Attribute{Computed: true, MarkdownDescription: "Current gateway-wide access policy revision. Used for concurrency control."},
+			"l4_policy":               appgwpolicy.L4Schema(),
+			"client_ip_policy":        appgwpolicy.ClientIPSchema(),
+			"access_policy_state":     schema.StringAttribute{Computed: true, MarkdownDescription: "Public convergence state: pending, partial, applied or unknown. An active resource alone does not confirm policy application."},
 			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the paid HTTP cache option. Disabled by default; the platform catalog sets its surcharge for the selected instance count.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
 			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Cache budget in MiB assigned by the selected plan; shared across routes.", Computed: true},
 			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB assigned by the selected plan.", Computed: true},
@@ -287,6 +298,14 @@ func (r *appgwResource) Configure(_ context.Context, req resource.ConfigureReque
 // CALLERS must preserve any plan-side intent (e.g. tags lists that the
 // API normalised) BEFORE invoking this helper — see provider pitfall #3.
 func applyToModel(ctx context.Context, gw *client.ApplicationGateway, m *appgwResourceModel) []string {
+	m.L7Policy = appgwpolicy.FromL7(m.L7Policy, gw.L7Policy)
+	m.SecurityRevision = types.Int64PointerValue(gw.SecurityRevision)
+	m.L4Policy = appgwpolicy.FromL4(m.L4Policy, gw.L4Policy)
+	m.ClientIPPolicy = appgwpolicy.FromClientIP(m.ClientIPPolicy, gw.ClientIPPolicy)
+	m.AccessPolicyState = types.StringNull()
+	if gw.AccessPolicyStatus != nil {
+		m.AccessPolicyState = types.StringValue(gw.AccessPolicyStatus.State)
+	}
 	m.CacheEnabled = types.BoolValue(gw.CacheEnabled)
 	m.CacheSizeMB = types.Int64Value(gw.CacheSizeMB)
 	m.CacheMaxObjectKB = types.Int64Value(gw.CacheMaxObjectKB)
@@ -446,6 +465,33 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	createReq.GlobalDenyCIDRs = stringsFromList(ctx, plan.GlobalDenyCIDRs)
 	createReq.Tags = stringsFromList(ctx, plan.Tags)
 
+	var policyErr error
+	cfgL4 := appgwpolicy.Configuration(ctx, req.Config, "l4_policy", &resp.Diagnostics)
+	cfgL7 := appgwpolicy.Configuration(ctx, req.Config, "l7_policy", &resp.Diagnostics)
+	cfgIP := appgwpolicy.Configuration(ctx, req.Config, "client_ip_policy", &resp.Diagnostics)
+	if appgwpolicy.Configured(cfgL4) {
+		createReq.L4Policy, policyErr = appgwpolicy.L4(plan.L4Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, policyErr) {
+			return
+		}
+	}
+	if appgwpolicy.Configured(cfgL7) {
+		createReq.L7Policy, policyErr = appgwpolicy.L7(plan.L7Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, policyErr) {
+			return
+		}
+	}
+	if appgwpolicy.Configured(cfgIP) {
+		createReq.ClientIPPolicy, policyErr = appgwpolicy.ClientIP(plan.ClientIPPolicy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, policyErr) {
+			return
+		}
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	hasPolicy := createReq.L4Policy != nil || createReq.L7Policy != nil || createReq.ClientIPPolicy != nil
+
 	created, err := r.client.CreateApplicationGateway(ctx, createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create Application Gateway", err.Error())
@@ -489,6 +535,9 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	if hasPolicy && !appgwpolicy.GatewayConfirmed(createReq.L4Policy, createReq.L7Policy, createReq.ClientIPPolicy, created, &resp.Diagnostics) {
+		return
+	}
 	final, err := pollUntilReady(ctx, r.client, created.ID, 10*time.Minute)
 	if err != nil {
 		resp.Diagnostics.AddError("Application Gateway provisioning failed", err.Error())
@@ -504,6 +553,13 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		}
 		if final, err = pollUntilReady(ctx, r.client, created.ID, 5*time.Minute); err != nil {
 			resp.Diagnostics.AddError("Application Gateway update did not stabilize", err.Error())
+			return
+		}
+	}
+
+	if hasPolicy || (created.SecurityRevision != nil && *created.SecurityRevision > 0) {
+		final = appgwpolicy.Wait(ctx, r.client, created.ID, created.SecurityRevision, &resp.Diagnostics)
+		if !appgwpolicy.GatewayConfirmed(createReq.L4Policy, createReq.L7Policy, createReq.ClientIPPolicy, final, &resp.Diagnostics) {
 			return
 		}
 	}
@@ -549,7 +605,47 @@ func (r *appgwResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	// 1. PATCH mutable fields
 	var upd client.ApplicationGatewayUpdateRequest
-	patchNeeded := false
+	var policyErr error
+	var desiredL4 *client.AppGWL4Policy
+	var desiredL7 *client.AppGWL7Policy
+	var desiredIP *client.AppGWClientIPPolicy
+	cfgL4 := appgwpolicy.Configuration(ctx, req.Config, "l4_policy", &resp.Diagnostics)
+	cfgL7 := appgwpolicy.Configuration(ctx, req.Config, "l7_policy", &resp.Diagnostics)
+	cfgIP := appgwpolicy.Configuration(ctx, req.Config, "client_ip_policy", &resp.Diagnostics)
+	if appgwpolicy.Configured(cfgL4) {
+		desiredL4, policyErr = appgwpolicy.L4(plan.L4Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, policyErr) {
+			return
+		}
+		if appgwpolicy.Changed(cfgL4, plan.L4Policy, state.L4Policy) {
+			upd.L4Policy = desiredL4
+		}
+	}
+	if appgwpolicy.Configured(cfgL7) {
+		desiredL7, policyErr = appgwpolicy.L7(plan.L7Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, policyErr) {
+			return
+		}
+		if appgwpolicy.Changed(cfgL7, plan.L7Policy, state.L7Policy) {
+			upd.L7Policy = desiredL7
+		}
+	}
+	if appgwpolicy.Configured(cfgIP) {
+		desiredIP, policyErr = appgwpolicy.ClientIP(plan.ClientIPPolicy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, policyErr) {
+			return
+		}
+		if appgwpolicy.Changed(cfgIP, plan.ClientIPPolicy, state.ClientIPPolicy) {
+			upd.ClientIPPolicy = desiredIP
+		}
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	hasPolicy := upd.L4Policy != nil || upd.L7Policy != nil || upd.ClientIPPolicy != nil
+	hasManagedPolicy := desiredL4 != nil || desiredL7 != nil || desiredIP != nil
+	var policyRevision *int64
+	patchNeeded := hasPolicy
 	if !plan.CacheEnabled.Equal(state.CacheEnabled) {
 		v := plan.CacheEnabled.ValueBool()
 		upd.CacheEnabled = &v
@@ -625,9 +721,19 @@ func (r *appgwResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		patchNeeded = true
 	}
 	if patchNeeded {
-		if _, err := r.client.UpdateApplicationGateway(ctx, id, upd); err != nil {
+		updated, err := r.client.UpdateApplicationGateway(ctx, id, upd)
+		if err != nil {
 			resp.Diagnostics.AddError("Failed to update Application Gateway", err.Error())
 			return
+		}
+		if hasManagedPolicy || (updated.SecurityRevision != nil && *updated.SecurityRevision > 0) {
+			policyRevision = updated.SecurityRevision
+			early := plan
+			_ = applyToModel(ctx, updated, &early)
+			resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+			if !appgwpolicy.GatewayConfirmed(desiredL4, desiredL7, desiredIP, updated, &resp.Diagnostics) {
+				return
+			}
 		}
 	}
 
@@ -652,6 +758,16 @@ func (r *appgwResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		resp.Diagnostics.AddError("Application Gateway update did not stabilize", err.Error())
 		return
 	}
+	if hasManagedPolicy || (policyRevision != nil && *policyRevision > 0) || (final.SecurityRevision != nil && *final.SecurityRevision > 0) {
+		if policyRevision == nil {
+			policyRevision = final.SecurityRevision
+		}
+		final = appgwpolicy.Wait(ctx, r.client, id, policyRevision, &resp.Diagnostics)
+		if !appgwpolicy.GatewayConfirmed(desiredL4, desiredL7, desiredIP, final, &resp.Diagnostics) {
+			return
+		}
+	}
+
 	warnings := applyToModel(ctx, final, &plan)
 	for _, w := range warnings {
 		resp.Diagnostics.AddWarning("State conversion warning", w)

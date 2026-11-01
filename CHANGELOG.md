@@ -4,6 +4,27 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased — Application Gateway access policies (8.1.0)
+
+### Added
+
+- Typed `l4_policy`, `l7_policy`, and `client_ip_policy` on Application Gateways;
+  `l7_policy` on listeners and routes, updated in place. Keyed policy/rule maps,
+  independent protected paths, IP/method/header criteria and mandatory headers.
+- Read-only policy revision and gateway application state, including policies
+  in the Application Gateway data source.
+- Optional/computed ownership: omission preserves imported remote protection;
+  explicit `{}` resets it; removing an attribute relinquishes management.
+- Capability checks, per-gateway write serialization, revision conflict
+  handling and confirmation on every expected replica, including child removal.
+  A newer generation is accepted only if managed fields still match.
+- Plan-time bounded-value validation and redacted policy request errors.
+- CI tests and vet for pull requests and pushes to `develop` and `main`.
+
+Requires provider 8.1.0 **once released**, after the 8.0.0 cache migration below,
+plus a platform advertising access policy version 1. This change publishes no
+provider version or tag.
+
 ## Unreleased — plan-managed Application Gateway cache
 
 ### Breaking

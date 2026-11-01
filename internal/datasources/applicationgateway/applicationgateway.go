@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -23,6 +24,7 @@ func New() datasource.DataSource { return &appgwDataSource{} }
 type appgwDataSource struct{ client *client.Client }
 
 type listenerModel struct {
+	L7Policy          types.Object `tfsdk:"l7_policy"`
 	ID                types.String `tfsdk:"id"`
 	Hostname          types.String `tfsdk:"hostname"`
 	AcmeStatus        types.String `tfsdk:"acme_status"`
@@ -38,6 +40,7 @@ type targetGroupModel struct {
 }
 
 type routeModel struct {
+	L7Policy      types.Object `tfsdk:"l7_policy"`
 	ID            types.String `tfsdk:"id"`
 	ListenerID    types.String `tfsdk:"listener_id"`
 	Priority      types.Int64  `tfsdk:"priority"`
@@ -47,6 +50,11 @@ type routeModel struct {
 }
 
 type appgwDSModel struct {
+	L4Policy              types.Object       `tfsdk:"l4_policy"`
+	L7Policy              types.Object       `tfsdk:"l7_policy"`
+	ClientIPPolicy        types.Object       `tfsdk:"client_ip_policy"`
+	SecurityRevision      types.Int64        `tfsdk:"security_revision"`
+	AccessPolicyState     types.String       `tfsdk:"access_policy_state"`
 	ReplicaCount          types.Int64        `tfsdk:"replica_count"`
 	CacheEnabled          types.Bool         `tfsdk:"cache_enabled"`
 	CacheSizeMB           types.Int64        `tfsdk:"cache_size_mb"`
@@ -91,6 +99,11 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 		MarkdownDescription: "Look up an existing CETIC Cloud Application Gateway by `id` or by `(name, region)`. " +
 			"Exactly one of those discriminators must be provided.",
 		Attributes: map[string]schema.Attribute{
+			"l4_policy":               schema.ObjectAttribute{Computed: true, AttributeTypes: appgwpolicy.L4Type().AttrTypes, MarkdownDescription: "TCP connection restrictions."},
+			"l7_policy":               schema.ObjectAttribute{Computed: true, AttributeTypes: appgwpolicy.L7Type().AttrTypes, MarkdownDescription: "HTTP policies with stable map identifiers."},
+			"client_ip_policy":        schema.ObjectAttribute{Computed: true, AttributeTypes: appgwpolicy.ClientIPType().AttrTypes, MarkdownDescription: "Trusted proxy configuration for new HTTP policies."},
+			"security_revision":       schema.Int64Attribute{Computed: true, MarkdownDescription: "Gateway-wide access policy revision."},
+			"access_policy_state":     schema.StringAttribute{Computed: true, MarkdownDescription: "Policy application state: pending, partial, applied or unknown."},
 			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Whether the paid HTTP cache option is enabled.", Computed: true},
 			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Cache budget in MiB assigned by the selected plan; shared across routes.", Computed: true},
 			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB assigned by the selected plan.", Computed: true},
@@ -135,6 +148,7 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
+						"l7_policy":            schema.ObjectAttribute{Computed: true, AttributeTypes: appgwpolicy.L7Type().AttrTypes, MarkdownDescription: "HTTP access policy attached to this resource."},
 						"id":                   schema.StringAttribute{Computed: true},
 						"hostname":             schema.StringAttribute{Computed: true},
 						"acme_status":          schema.StringAttribute{Computed: true},
@@ -160,6 +174,7 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
+						"l7_policy":       schema.ObjectAttribute{Computed: true, AttributeTypes: appgwpolicy.L7Type().AttrTypes, MarkdownDescription: "HTTP access policy attached to this resource."},
 						"id":              schema.StringAttribute{Computed: true},
 						"listener_id":     schema.StringAttribute{Computed: true},
 						"priority":        schema.Int64Attribute{Computed: true},
@@ -257,6 +272,14 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		VnetName:          nullableStr(found.VnetName),
 		VnetCIDR:          nullableStr(found.VnetCIDR),
 	}
+	state.L4Policy = appgwpolicy.FromL4(types.ObjectNull(appgwpolicy.L4Type().AttrTypes), found.L4Policy)
+	state.L7Policy = appgwpolicy.FromL7(types.ObjectNull(appgwpolicy.L7Type().AttrTypes), found.L7Policy)
+	state.ClientIPPolicy = appgwpolicy.FromClientIP(types.ObjectNull(appgwpolicy.ClientIPType().AttrTypes), found.ClientIPPolicy)
+	state.SecurityRevision = types.Int64PointerValue(found.SecurityRevision)
+	state.AccessPolicyState = types.StringNull()
+	if found.AccessPolicyStatus != nil {
+		state.AccessPolicyState = types.StringValue(found.AccessPolicyStatus.State)
+	}
 	state.CacheEnabled = types.BoolValue(found.CacheEnabled)
 	state.CacheSizeMB = types.Int64Value(found.CacheSizeMB)
 	state.CacheMaxObjectKB = types.Int64Value(found.CacheMaxObjectKB)
@@ -303,6 +326,7 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	// Listeners
 	for _, l := range found.Listeners {
 		lm := listenerModel{
+			L7Policy:   appgwpolicy.FromL7(types.ObjectNull(appgwpolicy.L7Type().AttrTypes), l.L7Policy),
 			ID:         types.StringValue(l.ID),
 			Hostname:   types.StringValue(l.Hostname),
 			AcmeStatus: types.StringValue(l.AcmeStatus),
@@ -333,6 +357,7 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 	for _, rt := range found.Routes {
 		rm := routeModel{
+			L7Policy:      appgwpolicy.FromL7(types.ObjectNull(appgwpolicy.L7Type().AttrTypes), rt.L7Policy),
 			ID:            types.StringValue(rt.ID),
 			ListenerID:    types.StringValue(rt.ListenerID),
 			Priority:      types.Int64Value(rt.Priority),

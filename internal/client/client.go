@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,10 +30,11 @@ const (
 
 // Client is the typed CETIC Cloud REST client.
 type Client struct {
-	endpoint   string
-	apiKey     string
-	httpClient *http.Client
-	userAgent  string
+	appgwPolicyLocks sync.Map
+	endpoint         string
+	apiKey           string
+	httpClient       *http.Client
+	userAgent        string
 }
 
 // New builds a Client. Endpoint should be the base URL without /v1 suffix
@@ -126,7 +128,7 @@ func PollUntilDeleted(ctx context.Context, timeout time.Duration, get func(conte
 
 // do issues a request and decodes the JSON response into out. If out is nil,
 // the body is discarded. Non-2xx returns *APIError.
-func (c *Client) do(ctx context.Context, method, path string, body any, out any) error {
+func (c *Client) do(ctx context.Context, method, path string, body any, out any, responseHeaders ...*http.Header) error {
 	var bodyReader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -157,6 +159,11 @@ func (c *Client) do(ctx context.Context, method, path string, body any, out any)
 		return fmt.Errorf("%s %s: %w", method, path, err)
 	}
 	defer resp.Body.Close()
+	for _, headers := range responseHeaders {
+		if headers != nil {
+			*headers = resp.Header.Clone()
+		}
+	}
 
 	if resp.StatusCode >= 400 {
 		return parseAPIError(resp, method, path)

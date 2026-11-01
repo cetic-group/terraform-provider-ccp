@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -19,6 +20,7 @@ import (
 func gwModel(id string, page types.String) appgwResourceModel {
 	empty := types.ListValueMust(types.StringType, nil)
 	return appgwResourceModel{
+		L7Policy: types.ObjectNull(appgwpolicy.L7Type().AttrTypes), L4Policy: types.ObjectNull(appgwpolicy.L4Type().AttrTypes), ClientIPPolicy: types.ObjectNull(appgwpolicy.ClientIPType().AttrTypes),
 		ID: types.StringValue(id), Name: types.StringValue("web-appgw"), Region: types.StringValue("RNN"),
 		Plan: types.StringValue("appgw-medium"), VpcID: types.StringValue("vpc-1"), VnetID: types.StringValue("vnet-1"),
 		VpcName: types.StringNull(), VnetName: types.StringNull(), VnetCIDR: types.StringNull(),
