@@ -71,6 +71,7 @@ type objectBucketResourceModel struct {
 	Region       types.String `tfsdk:"region"`
 	IsPublic     types.Bool   `tfsdk:"is_public"`
 	CorsRule     types.List   `tfsdk:"cors_rule"`
+	CorsRevision types.String `tfsdk:"cors_revision"`
 	Tags         types.List   `tfsdk:"tags"`
 	EndpointURL  types.String `tfsdk:"endpoint_url"`
 	SizeBytes    types.Int64  `tfsdk:"size_bytes"`
@@ -114,6 +115,7 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			"cors_rule": corsRuleBlock(),
 		},
 		Attributes: map[string]schema.Attribute{
+			"cors_revision": corsRevisionAttribute(),
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the bucket.",
 				Computed:            true,
@@ -420,6 +422,9 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 			return
 		}
 		state.CorsRule = list
+		state.CorsRevision = revisionValue(cors.Revision)
+	} else {
+		state.CorsRevision = types.StringNull()
 	}
 
 	// Refresh credentials only when the bucket is `active` — in any other
@@ -512,6 +517,8 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 	// configuration made from the console or the CLI (or an imported bucket) is
 	// never deleted by an unrelated change. Removing every block of a bucket that
 	// had some deletes them.
+	var corsRevision types.String
+	corsWritten := false
 	updateCors := func() bool {
 		if corsRuleCount(plan.CorsRule) == 0 && corsRuleCount(state.CorsRule) == 0 {
 			return true
@@ -524,11 +531,14 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 		if resp.Diagnostics.HasError() {
 			return false
 		}
-		if err := r.writeCors(ctx, id, rules); err != nil {
+		rev, err := r.writeCors(ctx, id, rules, state.CorsRevision.ValueString())
+		if err != nil {
 			resp.Diagnostics.AddError("Failed to update CORS rules",
 				fmt.Sprintf("CETIC Cloud refused the CORS rules of bucket %s: %s", id, err.Error()))
 			return false
 		}
+		corsRevision = revisionValue(rev)
+		corsWritten = true
 		return true
 	}
 
@@ -538,6 +548,14 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	} else if !updateVisibility() || !updateCors() {
 		return
+	}
+
+	// The revision is a computed attribute: known after apply, always. It is the
+	// one returned by the write when there was one, otherwise the previous one.
+	if corsWritten {
+		plan.CorsRevision = corsRevision
+	} else {
+		plan.CorsRevision = state.CorsRevision
 	}
 
 	// Re-fetch and project onto state.

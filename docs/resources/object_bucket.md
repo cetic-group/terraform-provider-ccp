@@ -79,7 +79,7 @@ A bucket accepts up to 100 rules in the schema; the platform applies its own, us
 - **Without any `cors_rule` block, CORS is not managed.** A configuration set from the console or the CLI — including on an imported bucket — is left untouched by any change of this resource. Removing every block of a bucket that had some deletes its rules.
 - **A refusal at creation does not replace the bucket.** If the platform refuses the rules while the bucket is being created, Terraform keeps the bucket, reports a warning, and the rules stay planned: fix the block and apply again.
 - **Rules are applied to the bucket when the apply returns.** If the platform saved them but could not apply them, the next refresh reports a warning with the reason; the platform retries on its own. A change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan.
-- **Concurrent changes.** Each write sends the revision read just before it, so a change made by someone else *during* the apply is refused instead of overwritten (run `terraform apply` again). A change made between your `plan` and your `apply` is not detected.
+- **Concurrent changes.** Each write sends the revision recorded in the state at the last refresh (`cors_revision`), so a change made by someone else after your `plan` — including between the `plan` and the `apply` of a saved plan — is refused instead of overwritten: run `terraform plan` again to see it. A state created before this attribute existed has no revision yet; the first write then reads the current one just before writing, and records it.
 - **Making a bucket private** while removing its `*` rule in the same apply works: the rules are written before the visibility.
 
 ## Attributes Reference
@@ -87,6 +87,7 @@ A bucket accepts up to 100 rules in the schema; the platform applies its own, us
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the bucket.
+- `cors_revision` - Revision of the CORS rules as of the last refresh or write; null when no `cors_rule` block is managed. Used internally to refuse a write when the rules changed elsewhere in the meantime.
 - `endpoint_url` - S3 endpoint URL for this region (e.g. `https://s3-rnn.cloud.cetic-group.com`). Use this as the `endpoint_url` in your S3 client configuration.
 - `access_key` - S3 access key. **Sensitive.** Null when the API key running Terraform is not allowed to read it — see the note below.
 - `secret_key` - S3 secret key paired with `access_key`. **Sensitive.** Same nullability rule.

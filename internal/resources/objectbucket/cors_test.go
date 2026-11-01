@@ -78,7 +78,7 @@ func TestWriteCors_SendsRevision(t *testing.T) {
 	})
 	defer srv.Close()
 	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
-	if err := r.writeCors(context.Background(), "b-1", sampleRules()); err != nil {
+	if _, err := r.writeCors(context.Background(), "b-1", sampleRules(), ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -91,7 +91,7 @@ func TestWriteCors_EmptyDeletesWithRevision(t *testing.T) {
 	})
 	defer srv.Close()
 	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
-	if err := r.writeCors(context.Background(), "b-1", nil); err != nil {
+	if _, err := r.writeCors(context.Background(), "b-1", nil, ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -103,7 +103,7 @@ func TestWriteCors_NothingToDelete(t *testing.T) {
 	})
 	defer srv.Close()
 	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
-	if err := r.writeCors(context.Background(), "b-1", nil); err != nil {
+	if _, err := r.writeCors(context.Background(), "b-1", nil, ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -117,7 +117,7 @@ func TestWriteCors_ConflictSurfaces(t *testing.T) {
 	})
 	defer srv.Close()
 	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
-	err := r.writeCors(context.Background(), "b-1", sampleRules())
+	_, err := r.writeCors(context.Background(), "b-1", sampleRules(), "")
 	if err == nil || !client.IsConflict(err) {
 		t.Fatalf("want a conflict error, got %v", err)
 	}

@@ -11,8 +11,9 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
   (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
   `max_age_seconds`, `description`). Without any block CORS is left untouched;
-  removing every block deletes the rules. Writes carry the revision read just
-  before, so a change made during the apply is refused instead of overwritten.
+  removing every block deletes the rules. Writes carry the revision
+  recorded in the state (`cors_revision`, read-only), so a change made by
+  someone else after the plan is refused instead of overwritten.
   Values are validated at plan time against the platform's formats and limits
   (canonical origins, header names, 0–86400 s, 100 rules). A refusal while the
   bucket is created is a warning, not an error, so the bucket is never replaced.

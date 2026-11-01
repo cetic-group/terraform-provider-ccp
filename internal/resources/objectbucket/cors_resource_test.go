@@ -2,10 +2,12 @@ package objectbucket
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -28,7 +30,7 @@ func bucketBody(public bool) map[string]any {
 func model(public bool, rules types.List) objectBucketResourceModel {
 	return objectBucketResourceModel{
 		ID: types.StringValue(bucketID), Name: types.StringValue("acme"), Region: types.StringValue("RNN"),
-		IsPublic: types.BoolValue(public), CorsRule: rules, Tags: types.ListValueMust(types.StringType, []attr.Value{}),
+		IsPublic: types.BoolValue(public), CorsRule: rules, CorsRevision: types.StringNull(), Tags: types.ListValueMust(types.StringType, []attr.Value{}),
 		EndpointURL: types.StringNull(), SizeBytes: types.Int64Value(0), Status: types.StringValue("active"),
 		ErrorMessage: types.StringNull(), AccessKey: types.StringNull(), SecretKey: types.StringNull(),
 		CreatedAt: types.StringValue("2026-10-31T10:00:00Z"), UpdatedAt: types.StringValue("2026-10-31T10:00:00Z"),
@@ -257,5 +259,151 @@ func TestCorsHeaderPattern(t *testing.T) {
 		if corsHeaderPattern.MatchString(h) {
 			t.Errorf("%q should not match", h)
 		}
+	}
+}
+
+// ── Révision conservée dans l'état ──────────────────────────────────────────
+// Elle protège la fenêtre entre `plan` et `apply` : l'écriture envoie la révision
+// lue au dernier refresh, pas une lue à l'instant.
+
+func revisionOf(t *testing.T, resp resource.UpdateResponse) types.String {
+	t.Helper()
+	var v types.String
+	if d := resp.State.GetAttribute(context.Background(), path.Root("cors_revision"), &v); d.HasError() {
+		t.Fatal(d)
+	}
+	return v
+}
+
+func withRevision(m objectBucketResourceModel, rev string) objectBucketResourceModel {
+	m.CorsRevision = revisionValue(rev)
+	return m
+}
+
+func TestUpdate_SendsTheRevisionFromState_WithoutReadingFirst(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "PUT", Path: "/v1/buckets/" + bucketID + "/cors", Status: 200,
+			BodyFn: func(t *testing.T, body []byte) (int, any) {
+				var got map[string]any
+				if err := json.Unmarshal(body, &got); err != nil {
+					t.Fatal(err)
+				}
+				if got["expected_revision"] != "rev-state" {
+					t.Errorf("expected_revision = %v, want the one recorded in the state", got["expected_revision"])
+				}
+				return 200, map[string]any{"rules": got["rules"], "status": "applied", "revision": "rev-new"}
+			}},
+		{Method: "GET", Path: "/v1/buckets/" + bucketID, Status: 200, Body: bucketBody(false)},
+		credsRoute(),
+	})
+	defer srv.Close()
+	state := withRevision(model(false, oneRule(t, "https://a.example.com")), "rev-state")
+	plan := model(false, oneRule(t, "https://b.example.com"))
+	plan.CorsRevision = types.StringUnknown() // ce que le framework met à jour un changement
+	resp := runUpdate(t, srv, state, plan)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	for _, p := range paths(srv) {
+		if p == "GET /v1/buckets/"+bucketID+"/cors" {
+			t.Fatalf("no read before the write when the state holds a revision: %v", paths(srv))
+		}
+	}
+	if got := revisionOf(t, resp); got.IsUnknown() || got.ValueString() != "rev-new" {
+		t.Fatalf("state revision = %v, want rev-new", got)
+	}
+}
+
+// Quelqu'un a modifié les règles depuis le dernier refresh : l'écriture est refusée,
+// rien n'est écrasé, et l'état garde l'ancienne révision.
+func TestUpdate_StaleRevisionIsRefused(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "PUT", Path: "/v1/buckets/" + bucketID + "/cors", Status: 409,
+			Body: map[string]any{"detail": "Les règles CORS ont changé depuis votre dernière lecture."}},
+	})
+	defer srv.Close()
+	state := withRevision(model(false, oneRule(t, "https://a.example.com")), "rev-state")
+	plan := model(false, oneRule(t, "https://b.example.com"))
+	resp := runUpdate(t, srv, state, plan)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a stale revision must fail the apply")
+	}
+	if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "ont changé") {
+		t.Fatalf("the reason must be shown: %v", resp.Diagnostics)
+	}
+}
+
+// Sans changement de CORS, l'attribut calculé reste connu et inchangé.
+func TestUpdate_WithoutCorsChange_KeepsTheRevisionKnown(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "PATCH", Path: "/v1/buckets/" + bucketID, Status: 200, Body: bucketBody(true)},
+		{Method: "GET", Path: "/v1/buckets/" + bucketID, Status: 200, Body: bucketBody(true)},
+		credsRoute(),
+	})
+	defer srv.Close()
+	rules := oneRule(t, "https://a.example.com")
+	state := withRevision(model(false, rules), "rev-state")
+	plan := model(true, rules)
+	plan.CorsRevision = types.StringUnknown()
+	resp := runUpdate(t, srv, state, plan)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	if got := revisionOf(t, resp); got.IsUnknown() || got.ValueString() != "rev-state" {
+		t.Fatalf("state revision = %v, want rev-state kept", got)
+	}
+}
+
+func TestUpdate_RemovingEveryBlock_DeletesWithTheStateRevision_AndClearsIt(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "DELETE", Path: "/v1/buckets/" + bucketID + "/cors", Status: 204},
+		{Method: "GET", Path: "/v1/buckets/" + bucketID, Status: 200, Body: bucketBody(false)},
+		credsRoute(),
+	})
+	defer srv.Close()
+	state := withRevision(model(false, oneRule(t, "https://a.example.com")), "rev-state")
+	plan := model(false, emptyCorsRules())
+	plan.CorsRevision = types.StringUnknown()
+	resp := runUpdate(t, srv, state, plan)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	for _, c := range srv.Calls() {
+		if c.Method == "DELETE" && c.Query != "expected_revision=rev-state" {
+			t.Fatalf("DELETE query = %q", c.Query)
+		}
+	}
+	if got := revisionOf(t, resp); got.IsUnknown() || !got.IsNull() {
+		t.Fatalf("state revision = %v, want null once no rule is managed", got)
+	}
+}
+
+// À la création, l'attribut calculé est connu quoi qu'il arrive.
+func TestApplyCorsOnCreate_RevisionIsAlwaysKnown(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/buckets/" + bucketID + "/cors", Status: 200,
+			Body: map[string]any{"rules": []any{}, "status": "none", "revision": "r0"}},
+		{Method: "PUT", Path: "/v1/buckets/" + bucketID + "/cors", Status: 200,
+			Body: map[string]any{"rules": []any{}, "status": "applied", "revision": "r1"}},
+	})
+	defer srv.Close()
+	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+
+	with := model(false, oneRule(t, "https://a.example.com"))
+	with.CorsRevision = types.StringUnknown()
+	if d := r.applyCorsOnCreate(context.Background(), bucketID, &with); d.HasError() {
+		t.Fatal(d)
+	}
+	if with.CorsRevision.IsUnknown() || with.CorsRevision.ValueString() != "r1" {
+		t.Fatalf("revision after a successful create = %v, want r1", with.CorsRevision)
+	}
+
+	without := model(false, emptyCorsRules())
+	without.CorsRevision = types.StringUnknown()
+	if d := r.applyCorsOnCreate(context.Background(), bucketID, &without); d.HasError() {
+		t.Fatal(d)
+	}
+	if without.CorsRevision.IsUnknown() || !without.CorsRevision.IsNull() {
+		t.Fatalf("revision without rules = %v, want null (known)", without.CorsRevision)
 	}
 }

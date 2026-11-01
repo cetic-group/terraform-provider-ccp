@@ -346,26 +346,59 @@ func corsRuleCount(l types.List) int {
 	return len(l.Elements())
 }
 
-// writeCors makes the bucket's rules equal to `rules`. The revision is read just
-// before the write so that a change made elsewhere between the two is refused
-// by the API (409) instead of silently overwritten.
-func (r *objectBucketResource) writeCors(ctx context.Context, id string, rules []client.BucketCorsRule) error {
-	// An empty `rules` deletes: callers must only ask for it when the practitioner
-	// had rules in the previous state (never to "clean" a bucket they do not manage).
-	cur, err := r.client.GetBucketCors(ctx, id)
-	if err != nil {
-		return fmt.Errorf("read current CORS rules: %w", err)
+// writeCors makes the bucket's rules equal to `rules` and returns the new
+// revision ("" when the rules were deleted).
+//
+// `expected` is the revision recorded in the state at the last refresh: the
+// platform refuses the write (409) if the rules changed since, so a change made
+// by someone else between `plan` and `apply` is never overwritten. When it is
+// empty (first write, or a state without revision) the current revision is read
+// just before the write, which only protects the instants in between.
+//
+// An empty `rules` deletes: callers must only ask for it when the practitioner
+// had rules in the previous state (never to "clean" a bucket they do not manage).
+func (r *objectBucketResource) writeCors(ctx context.Context, id string, rules []client.BucketCorsRule, expected string) (string, error) {
+	if expected == "" {
+		cur, err := r.client.GetBucketCors(ctx, id)
+		if err != nil {
+			return "", fmt.Errorf("read current CORS rules: %w", err)
+		}
+		if len(rules) == 0 && cur.Status == "none" {
+			return "", nil
+		}
+		expected = cur.Revision
 	}
 	if len(rules) == 0 {
-		if cur.Status == "none" {
-			return nil
-		}
-		return r.client.DeleteBucketCors(ctx, id, cur.Revision)
+		return "", r.client.DeleteBucketCors(ctx, id, expected)
 	}
-	_, err = r.client.PutBucketCors(ctx, id, client.BucketCorsUpdateRequest{
-		Rules: rules, ExpectedRevision: cur.Revision,
+	out, err := r.client.PutBucketCors(ctx, id, client.BucketCorsUpdateRequest{
+		Rules: rules, ExpectedRevision: expected,
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return out.Revision, nil
+}
+
+// revisionValue turns a revision into the state value: null when empty.
+func revisionValue(rev string) types.String {
+	if rev == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(rev)
+}
+
+// corsRevisionAttribute holds the revision of the CORS rules as of the last read
+// or write. It is sent back with the next write so that a change made elsewhere
+// in the meantime is refused instead of overwritten. Null while no `cors_rule`
+// is managed.
+func corsRevisionAttribute() schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: "Revision of the CORS rules as of the last refresh or write. Sent with the next " +
+			"write so that a change made elsewhere in the meantime is refused instead of overwritten. " +
+			"Null when no `cors_rule` block is managed.",
+		Computed: true,
+	}
 }
 
 // emptyCorsRules is the "no rule" value of the `cors_rule` block list.
@@ -382,6 +415,8 @@ func emptyCorsRules() types.List {
 // explains why, and the next plan shows the rules still to apply.
 func (r *objectBucketResource) applyCorsOnCreate(ctx context.Context, id string, plan *objectBucketResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
+	// A computed attribute must be known after apply, whatever happens below.
+	plan.CorsRevision = types.StringNull()
 	if corsRuleCount(plan.CorsRule) == 0 {
 		return diags
 	}
@@ -390,8 +425,13 @@ func (r *objectBucketResource) applyCorsOnCreate(ctx context.Context, id string,
 	if diags.HasError() {
 		return diags
 	}
-	if err := r.writeCors(ctx, id, rules); err != nil {
+	rev, err := r.writeCors(ctx, id, rules, "")
+	if err == nil {
+		plan.CorsRevision = revisionValue(rev)
+	}
+	if err != nil {
 		plan.CorsRule = emptyCorsRules()
+		plan.CorsRevision = types.StringNull()
 		diags.AddWarning("CORS rules were not applied",
 			fmt.Sprintf("Bucket %s was created, but the platform refused its CORS rules: %s\n\n"+
 				"The bucket is kept (it is not replaced). Fix the `cors_rule` block and run `terraform apply` "+
