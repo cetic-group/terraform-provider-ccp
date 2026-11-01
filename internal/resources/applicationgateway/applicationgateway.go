@@ -497,6 +497,7 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 		resp.Diagnostics.AddError("Failed to create Application Gateway", err.Error())
 		return
 	}
+	policyRevision := created.SecurityRevision
 
 	// The remote object exists from here on. Persist it before waiting: if
 	// provisioning fails, Terraform keeps the resource (tainted) and replaces it
@@ -547,18 +548,22 @@ func (r *appgwResource) Create(ctx context.Context, req resource.CreateRequest, 
 	// La page d'indisponibilité n'est pas acceptée à la création : elle part
 	// dans un PATCH une fois la passerelle en service.
 	if pv := errorpage.PatchValue(plan.CustomErrorPage, types.StringNull()); pv != nil {
-		if _, err := r.client.UpdateApplicationGateway(ctx, created.ID, client.ApplicationGatewayUpdateRequest{CustomErrorPageHTML: pv}); err != nil {
+		updated, err := r.client.UpdateApplicationGateway(ctx, created.ID, client.ApplicationGatewayUpdateRequest{CustomErrorPageHTML: pv})
+		if err != nil {
 			resp.Diagnostics.AddError("Failed to set the custom error page", err.Error())
 			return
 		}
+		// This second committed write advances a tracked gateway's generation.
+		// A lagging RO GET may still report the POST generation as applied.
+		policyRevision = updated.SecurityRevision
 		if final, err = pollUntilReady(ctx, r.client, created.ID, 5*time.Minute); err != nil {
 			resp.Diagnostics.AddError("Application Gateway update did not stabilize", err.Error())
 			return
 		}
 	}
 
-	if hasPolicy || (created.SecurityRevision != nil && *created.SecurityRevision > 0) {
-		final = appgwpolicy.Wait(ctx, r.client, created.ID, created.SecurityRevision, &resp.Diagnostics)
+	if hasPolicy || (created.SecurityRevision != nil && *created.SecurityRevision > 0) || (policyRevision != nil && *policyRevision > 0) {
+		final = appgwpolicy.Wait(ctx, r.client, created.ID, policyRevision, &resp.Diagnostics)
 		if !appgwpolicy.GatewayConfirmed(createReq.L4Policy, createReq.L7Policy, createReq.ClientIPPolicy, final, &resp.Diagnostics) {
 			return
 		}

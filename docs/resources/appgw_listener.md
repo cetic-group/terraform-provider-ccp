@@ -137,8 +137,9 @@ remain available when new policy activation is disabled.
   users do not set it. Concurrent changes return a conflict: refresh and review
   the plan before applying again. Conflicts are not retried automatically.
 
-The aggregate limit is 64 rules and header requirements across the gateway,
-listeners and routes. Applicable policies intersect. A local allow cannot
+The aggregate limit is 64 allow and deny rules across the gateway,
+listeners and routes. Mandatory header requirements have a separate limit of
+eight per policy. Applicable policies intersect. A local allow cannot
 bypass an inherited deny, legacy network restrictions or authentication.
 Header checks are access filters, not a substitute for authentication; avoid
 storing credentials in conditions. Terraform state contains policy values.

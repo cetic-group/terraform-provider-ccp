@@ -187,7 +187,6 @@ func ValidateL7(p *client.AppGWL7Policy) error {
 				return fmt.Errorf("rule and requirement identifiers must be valid and unique within their policy")
 			}
 			keys[key] = true
-			total++
 			return nil
 		}
 		for _, header := range policy.RequiredHeaders {
@@ -203,6 +202,7 @@ func ValidateL7(p *client.AppGWL7Policy) error {
 				if err := addKey(rule.Key); err != nil {
 					return err
 				}
+				total++
 				m := rule.Match
 				criteria := m.SourceCIDRs != nil || m.Path != nil || m.Methods != nil || m.Headers != nil
 				if (m.MatchAll != nil && *m.MatchAll) == criteria || (m.MatchAll != nil && !*m.MatchAll) {
@@ -243,7 +243,7 @@ func ValidateL7(p *client.AppGWL7Policy) error {
 		}
 	}
 	if total > 64 {
-		return fmt.Errorf("at most 64 rules and requirements are supported per gateway, including its children")
+		return fmt.Errorf("at most 64 allow and deny rules are supported per gateway, including its children")
 	}
 	return nil
 }
@@ -288,7 +288,7 @@ func CanonicalPath(value string) (string, error) {
 		return invalid()
 	}
 	result := out.String()
-	if strings.Contains(result, "//") {
+	if len(result) > 4096 || strings.Contains(result, "//") {
 		return invalid()
 	}
 	for _, part := range strings.Split(result, "/") {
