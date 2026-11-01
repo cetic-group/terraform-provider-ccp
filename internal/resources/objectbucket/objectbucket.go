@@ -45,9 +45,10 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ resource.Resource                = (*objectBucketResource)(nil)
-	_ resource.ResourceWithConfigure   = (*objectBucketResource)(nil)
-	_ resource.ResourceWithImportState = (*objectBucketResource)(nil)
+	_ resource.Resource                   = (*objectBucketResource)(nil)
+	_ resource.ResourceWithConfigure      = (*objectBucketResource)(nil)
+	_ resource.ResourceWithImportState    = (*objectBucketResource)(nil)
+	_ resource.ResourceWithValidateConfig = (*objectBucketResource)(nil)
 )
 
 // New returns a freshly-constructed ccp_object_bucket resource.
@@ -340,17 +341,11 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	// CORS rules, once the bucket is active. A failure keeps the bucket in
-	// state (it exists) and reports the error; the next apply retries.
-	if corsRuleCount(plan.CorsRule) > 0 {
-		rules, d := corsRulesFromPlan(ctx, plan.CorsRule)
-		resp.Diagnostics.Append(d...)
-		if !resp.Diagnostics.HasError() {
-			if err := r.writeCors(ctx, created.ID, rules); err != nil {
-				resp.Diagnostics.AddError("Failed to apply CORS rules",
-					fmt.Sprintf("Bucket %s was created but its CORS rules were refused: %s", created.ID, err.Error()))
-			}
-		}
+	// CORS rules, once the bucket is active. A refusal never taints the bucket
+	// (see applyCorsOnCreate): the state keeps the truth and a warning explains.
+	resp.Diagnostics.Append(r.applyCorsOnCreate(ctx, created.ID, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Fetch credentials. The bucket is `active` per the poll above, so the API
@@ -416,6 +411,9 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 				fmt.Sprintf("CETIC Cloud API error for id %s: %s", got.ID, err.Error()))
 			return
 		}
+		if title, detail, warn := corsStatusWarning(got.ID, cors); warn {
+			resp.Diagnostics.AddWarning(title, detail)
+		}
 		list, d := corsRulesToState(ctx, cors.Rules)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
@@ -480,8 +478,14 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	// is_public — synchronous PATCH.
-	if !plan.IsPublic.Equal(state.IsPublic) {
+	// Two writes can depend on each other: the platform refuses to make a bucket
+	// private while a rule with the origin `*` remains. Going public → private
+	// therefore writes the CORS rules first; every other change keeps the
+	// visibility first (a `*` rule needs the bucket to be public already).
+	updateVisibility := func() bool {
+		if plan.IsPublic.Equal(state.IsPublic) {
+			return true
+		}
 		newVal := plan.IsPublic.ValueBool()
 		if _, err := r.client.UpdateObjectBucket(ctx, id, client.ObjectBucketUpdateRequest{
 			IsPublic: &newVal,
@@ -492,28 +496,48 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 					fmt.Sprintf("CETIC Cloud rejected the PATCH for bucket %s: %s",
 						id, err.Error()),
 				)
-				return
+				return false
 			}
 			resp.Diagnostics.AddError(
 				"Failed to update object bucket",
 				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 			)
-			return
+			return false
 		}
+		return true
 	}
 
-	// CORS rules: apply when they changed; removing every block deletes them.
-	if !plan.CorsRule.Equal(state.CorsRule) {
+	// CORS rules, only when the practitioner manages some: a bucket whose state
+	// has no rule and whose configuration has none is left alone, so a
+	// configuration made from the console or the CLI (or an imported bucket) is
+	// never deleted by an unrelated change. Removing every block of a bucket that
+	// had some deletes them.
+	updateCors := func() bool {
+		if corsRuleCount(plan.CorsRule) == 0 && corsRuleCount(state.CorsRule) == 0 {
+			return true
+		}
+		if plan.CorsRule.Equal(state.CorsRule) {
+			return true
+		}
 		rules, d := corsRulesFromPlan(ctx, plan.CorsRule)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
-			return
+			return false
 		}
 		if err := r.writeCors(ctx, id, rules); err != nil {
 			resp.Diagnostics.AddError("Failed to update CORS rules",
 				fmt.Sprintf("CETIC Cloud refused the CORS rules of bucket %s: %s", id, err.Error()))
+			return false
+		}
+		return true
+	}
+
+	if state.IsPublic.ValueBool() && !plan.IsPublic.ValueBool() {
+		if !updateCors() || !updateVisibility() {
 			return
 		}
+	} else if !updateVisibility() || !updateCors() {
+		return
 	}
 
 	// Re-fetch and project onto state.

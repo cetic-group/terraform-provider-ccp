@@ -12,8 +12,11 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
   `max_age_seconds`, `description`). Without any block CORS is left untouched;
   removing every block deletes the rules. Writes carry the revision read just
-  before, so a concurrent change is refused instead of overwritten. Requires a
-  platform API that exposes bucket CORS.
+  before, so a change made during the apply is refused instead of overwritten.
+  Values are validated at plan time against the platform's formats and limits
+  (canonical origins, header names, 0–86400 s, 100 rules). A refusal while the
+  bucket is created is a warning, not an error, so the bucket is never replaced.
+  Requires a platform API that exposes bucket CORS.
 
 ### Fixed
 
@@ -22,7 +25,9 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   state when unconfigured, so any plan touching another field marked it
   unknown, and the following update sent an empty list to the platform,
   erasing the stored cookie list. It now keeps its state value unless set in
-  the configuration (#104).
+  the configuration (#104). Behaviour to know: removing the attribute from the
+  configuration now keeps the current list; write `cache_bypass_cookies = []`
+  to empty it.
 
 ## v7.3.0 (2026-10-25)
 

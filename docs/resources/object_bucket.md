@@ -65,14 +65,22 @@ output "assets_endpoint" {
 ### Blocks
 
 - `cors_rule` - (Optional, repeatable) A CORS rule, applied in the order written. Without any `cors_rule` block, CORS is **not managed** by this resource: a configuration made from the console or the CLI is left untouched. Removing every block of a bucket that had some deletes its rules.
-  - `allowed_origins` - (Required) Set of origins, e.g. `https://app.example.com`. A single subdomain wildcard (`https://*.example.com`) may be accepted depending on platform settings; a bare `*` is only valid on a public bucket.
-  - `allowed_methods` - (Required) Set among `GET`, `PUT`, `POST`, `DELETE`, `HEAD`.
-  - `allowed_headers` - (Optional) Set of request headers the browser may send, e.g. `Content-Type`. Prefer an explicit list over `*`.
-  - `expose_headers` - (Optional) Set of response headers exposed to the page, e.g. `ETag`.
-  - `max_age_seconds` - (Optional) How long the browser may cache the preflight answer. Default `3600`.
-  - `description` - (Optional) Free-form label.
+  - `allowed_origins` - (Required) Set of 1–20 origins, e.g. `https://app.example.com`. Write them in the form the platform stores: **lowercase scheme and host, no path, no trailing slash, no default port** (`:443` for `https`, `:80` for `http`) — otherwise validation refuses the value and gives the expected form. A single subdomain wildcard (`https://*.example.com`) is accepted only if the platform allows it. A bare `*` is only valid on a public bucket (`is_public = true`), alone in its rule and without `PUT`, `POST` or `DELETE`.
+  - `allowed_methods` - (Required) Set among `GET`, `PUT`, `POST`, `DELETE`, `HEAD`. The platform may restrict this list.
+  - `allowed_headers` - (Optional) Set of up to 20 request headers the browser may send, e.g. `Content-Type`. `*` is only accepted at the end of a name (`*` alone, or `x-amz-meta-*`). Two names that differ only by case are refused. Defaults to an empty set. Prefer an explicit list over `*`.
+  - `expose_headers` - (Optional) Set of up to 20 response headers exposed to the page, e.g. `ETag`. Same format rules. Defaults to an empty set.
+  - `max_age_seconds` - (Optional) How long the browser may cache the preflight answer, `0`–`86400`. Default `3600`.
+  - `description` - (Optional) Free-form label, 1–200 characters, no leading or trailing space.
 
-The platform applies its own limits (number of rules, allowed methods, `localhost` origins, wildcards); a refused rule is reported at apply time. Rules are written asynchronously and checked against the bucket on a regular basis, so a change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan. Two writers that change the rules at the same moment cannot overwrite each other: the second one is refused and `terraform apply` can simply be run again.
+A bucket accepts up to 100 rules in the schema; the platform applies its own, usually lower, limit (20 by default) and may refuse `localhost` origins or wildcards. Limits that depend only on the configuration are reported at `terraform validate` / `plan`; those that depend on the platform settings are reported at apply time.
+
+### Behaviour to know
+
+- **Without any `cors_rule` block, CORS is not managed.** A configuration set from the console or the CLI — including on an imported bucket — is left untouched by any change of this resource. Removing every block of a bucket that had some deletes its rules.
+- **A refusal at creation does not replace the bucket.** If the platform refuses the rules while the bucket is being created, Terraform keeps the bucket, reports a warning, and the rules stay planned: fix the block and apply again.
+- **Rules are applied to the bucket when the apply returns.** If the platform saved them but could not apply them, the next refresh reports a warning with the reason; the platform retries on its own. A change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan.
+- **Concurrent changes.** Each write sends the revision read just before it, so a change made by someone else *during* the apply is refused instead of overwritten (run `terraform apply` again). A change made between your `plan` and your `apply` is not detected.
+- **Making a bucket private** while removing its `*` rule in the same apply works: the rules are written before the visibility.
 
 ## Attributes Reference
 
