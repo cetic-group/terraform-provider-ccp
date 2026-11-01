@@ -26,6 +26,26 @@ resource "ccp_object_bucket" "backups" {
   tags   = ["backups", "private"]
 }
 
+# Direct uploads from a web page: the browser may PUT to the bucket from
+# these origins only.
+resource "ccp_object_bucket" "uploads" {
+  name   = "acme-user-uploads"
+  region = "RNN"
+
+  cors_rule {
+    allowed_origins = ["https://app.example.com", "https://admin.example.com"]
+    allowed_methods = ["PUT", "POST"]
+    allowed_headers = ["Content-Type"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3600
+  }
+
+  cors_rule {
+    allowed_origins = ["https://app.example.com"]
+    allowed_methods = ["GET", "HEAD"]
+  }
+}
+
 output "assets_endpoint" {
   value = ccp_object_bucket.assets.endpoint_url
 }
@@ -41,6 +61,18 @@ output "assets_endpoint" {
 ### Optional
 
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
+
+### Blocks
+
+- `cors_rule` - (Optional, repeatable) A CORS rule, applied in the order written. Without any `cors_rule` block, CORS is **not managed** by this resource: a configuration made from the console or the CLI is left untouched. Removing every block of a bucket that had some deletes its rules.
+  - `allowed_origins` - (Required) Set of origins, e.g. `https://app.example.com`. A single subdomain wildcard (`https://*.example.com`) may be accepted depending on platform settings; a bare `*` is only valid on a public bucket.
+  - `allowed_methods` - (Required) Set among `GET`, `PUT`, `POST`, `DELETE`, `HEAD`.
+  - `allowed_headers` - (Optional) Set of request headers the browser may send, e.g. `Content-Type`. Prefer an explicit list over `*`.
+  - `expose_headers` - (Optional) Set of response headers exposed to the page, e.g. `ETag`.
+  - `max_age_seconds` - (Optional) How long the browser may cache the preflight answer. Default `3600`.
+  - `description` - (Optional) Free-form label.
+
+The platform applies its own limits (number of rules, allowed methods, `localhost` origins, wildcards); a refused rule is reported at apply time. Rules are written asynchronously and checked against the bucket on a regular basis, so a change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan. Two writers that change the rules at the same moment cannot overwrite each other: the second one is refused and `terraform apply` can simply be run again.
 
 ## Attributes Reference
 

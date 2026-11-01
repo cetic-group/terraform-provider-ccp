@@ -4,6 +4,17 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
+  (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
+  `max_age_seconds`, `description`). Without any block CORS is left untouched;
+  removing every block deletes the rules. Writes carry the revision read just
+  before, so a concurrent change is refused instead of overwritten. Requires a
+  platform API that exposes bucket CORS.
+
 ## v7.3.0 (2026-10-25)
 
 Requires the platform API released on 2026-10-25 (HTTP cache of application

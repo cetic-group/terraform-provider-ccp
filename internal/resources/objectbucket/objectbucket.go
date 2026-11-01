@@ -69,6 +69,7 @@ type objectBucketResourceModel struct {
 	Name         types.String `tfsdk:"name"`
 	Region       types.String `tfsdk:"region"`
 	IsPublic     types.Bool   `tfsdk:"is_public"`
+	CorsRule     types.List   `tfsdk:"cors_rule"`
 	Tags         types.List   `tfsdk:"tags"`
 	EndpointURL  types.String `tfsdk:"endpoint_url"`
 	SizeBytes    types.Int64  `tfsdk:"size_bytes"`
@@ -108,6 +109,9 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			"names must follow S3 DNS rules (lowercase, 3–63 chars). The " +
 			"`is_public` flag is mutable in place; `name`, `region`, and " +
 			"`tags` force replacement.",
+		Blocks: map[string]schema.Block{
+			"cors_rule": corsRuleBlock(),
+		},
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the bucket.",
@@ -336,6 +340,19 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// CORS rules, once the bucket is active. A failure keeps the bucket in
+	// state (it exists) and reports the error; the next apply retries.
+	if corsRuleCount(plan.CorsRule) > 0 {
+		rules, d := corsRulesFromPlan(ctx, plan.CorsRule)
+		resp.Diagnostics.Append(d...)
+		if !resp.Diagnostics.HasError() {
+			if err := r.writeCors(ctx, created.ID, rules); err != nil {
+				resp.Diagnostics.AddError("Failed to apply CORS rules",
+					fmt.Sprintf("Bucket %s was created but its CORS rules were refused: %s", created.ID, err.Error()))
+			}
+		}
+	}
+
 	// Fetch credentials. The bucket is `active` per the poll above, so the API
 	// should hand them out — but a `write`-scoped key is denied by design.
 	//
@@ -387,6 +404,24 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// CORS drift: only when the practitioner manages rules here. Without any
+	// `cors_rule` the resource ignores CORS, so a configuration made elsewhere
+	// is never reported as a difference to remove.
+	if corsRuleCount(state.CorsRule) > 0 {
+		cors, err := r.client.GetBucketCors(ctx, got.ID)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read object bucket CORS rules",
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", got.ID, err.Error()))
+			return
+		}
+		list, d := corsRulesToState(ctx, cors.Rules)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.CorsRule = list
 	}
 
 	// Refresh credentials only when the bucket is `active` — in any other
@@ -463,6 +498,20 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 				"Failed to update object bucket",
 				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()),
 			)
+			return
+		}
+	}
+
+	// CORS rules: apply when they changed; removing every block deletes them.
+	if !plan.CorsRule.Equal(state.CorsRule) {
+		rules, d := corsRulesFromPlan(ctx, plan.CorsRule)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if err := r.writeCors(ctx, id, rules); err != nil {
+			resp.Diagnostics.AddError("Failed to update CORS rules",
+				fmt.Sprintf("CETIC Cloud refused the CORS rules of bucket %s: %s", id, err.Error()))
 			return
 		}
 	}
