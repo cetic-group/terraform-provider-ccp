@@ -4,6 +4,32 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
+  (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
+  `max_age_seconds`, `description`). Without any block CORS is left untouched;
+  removing every block deletes the rules. Writes carry the revision
+  recorded in the state (`cors_revision`, read-only), so a change made by
+  someone else after the plan is refused instead of overwritten.
+  Values are validated at plan time against the platform's formats and limits
+  (canonical origins, header names, 0–86400 s, 100 rules). A refusal while the
+  bucket is created is a warning, not an error, so the bucket is never replaced.
+  Requires a platform API that exposes bucket CORS.
+
+### Fixed
+
+- **`ccp_appgw_route`: `cache_bypass_cookies` no longer shows "known after
+  apply" on every plan.** The attribute is optional and computed but kept no
+  state when unconfigured, so any plan touching another field marked it
+  unknown, and the following update sent an empty list to the platform,
+  erasing the stored cookie list. It now keeps its state value unless set in
+  the configuration (#104). Behaviour to know: removing the attribute from the
+  configuration now keeps the current list; write `cache_bypass_cookies = []`
+  to empty it.
+
 ## v7.3.0 (2026-10-25)
 
 Requires the platform API released on 2026-10-25 (HTTP cache of application
