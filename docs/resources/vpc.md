@@ -39,18 +39,18 @@ resource "ccp_vnet" "data" {
 If `cidr` is omitted, the platform auto-allocates a `/16` private block; the
 chosen block is then exported as a computed attribute.
 
-### Dedicated egress IP
+### Internet egress IP
 
-By default, the `snat = true` VNets of a VPC reach the internet through the
-platform's shared egress. With `dedicated_egress_ip = true`, the platform picks
-a public IP for the VPC and its outbound traffic leaves through it, so partners
-that filter by source address can allow that single IP.
+As soon as a VNet of the VPC has `snat = true`, the platform assigns the VPC
+its own public egress IP: the outbound internet traffic of its `snat = true`
+VNets leaves through it, so partners that filter by source address can allow
+this single IP. There is nothing to configure: the IP is not an argument of
+`ccp_vpc`.
 
 ```hcl
 resource "ccp_vpc" "main" {
-  name                = "production"
-  region              = "RNN"
-  dedicated_egress_ip = true
+  name   = "production"
+  region = "RNN"
 }
 
 resource "ccp_vnet" "web" {
@@ -65,23 +65,21 @@ output "egress_ip" {
 }
 ```
 
--> **Note:** The IP is reserved as soon as the VPC is created
-(`egress_ip_status = "allocated"`), and served (`attached`) once the VPC has a
-`snat = true` VNet. A later `terraform refresh` or `plan` shows the new status.
+-> **Note:** `egress_ip` shows up on `ccp_vpc` at the refresh that follows the
+creation of the first `ccp_vnet` with `snat = true` (the next `terraform plan`,
+`apply` or `refresh`), not in the apply that creates the VNet. The provider
+does not wait for it.
 
-The attribute is updated in place, without replacing the VPC. When it is
-enabled, the provider waits (up to 10 minutes) for the IP to be `attached`, or
-`allocated` if the VPC has no `snat = true` VNet yet. When it is set back to
-`false` (or removed from the configuration), the provider waits until the
-platform has proven the IP is no longer used: until then the `egress_*`
-attributes stay filled with the `detaching` status, then they become `null`.
-An `error` status fails the update; at creation it is a warning, so the VPC is
-not replaced, and the platform retries on its own.
-
-The IP counts against the `max_public_ips` quota. The platform refuses the
-request with HTTP 422 when the feature is not offered or the VPC is not an EVPN
-VPC, with HTTP 409 when the VPC is not active, no public IP is free, or a
-previous removal is still running, and with HTTP 429 when the quota is reached.
+The IP stays the same as long as at least one VNet of the VPC has
+`snat = true`. When the last one goes away (VNet deleted or switched to
+`snat = false`, VPC deleted), the platform removes it and gives it back: the
+`egress_*` attributes become `null`. A new `snat = true` VNet gets a new IP.
+It does not count against the `max_public_ips` quota, and it is read-only
+through the public IP API (it cannot be renamed, attached, detached or
+released).
+If no public IP is free in the region, creating a `snat = true` VNet (or
+switching one to `snat = true`) fails with HTTP 409 and nothing is created.
+Internet egress is reserved for EVPN VPCs.
 
 ## Argument Reference
 
@@ -94,7 +92,6 @@ previous removal is still running, and with HTTP 429 when the quota is reached.
 
 - `cidr` - (Optional, Computed, Forces new resource) Private address block of the VPC (RFC1918, mask `/16` to `/24`, e.g. `10.1.0.0/16`). Auto-allocated by the platform when omitted. VNets created inside the VPC must be sub-ranges of this block. Immutable after creation — changing it forces replacement.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each). Example: `["env:prod", "team:infra"]`.
-- `dedicated_egress_ip` - (Optional) Route the internet traffic of the VPC's `snat = true` VNets through a dedicated public IP picked by the platform. Defaults to `false`. Updated in place. See [Dedicated egress IP](#dedicated-egress-ip).
 
 ## Attributes Reference
 
@@ -103,10 +100,10 @@ In addition to all arguments above, the following attributes are exported:
 - `id` - The UUID of the VPC.
 - `cidr` - The private address block of the VPC (the auto-allocated block when not set explicitly; `null` on legacy VPCs predating the field).
 - `status` - Current status of the VPC. Possible values: `pending`, `active`, `error`.
+- `egress_ip` - Internet egress public IP of the VPC, assigned by the platform. `null` while no VNet of the VPC has `snat = true`. See [Internet egress IP](#internet-egress-ip).
+- `egress_ip_type` - Kind of the egress IP: `edge`, `firewall` or `nat`. `null` without egress IP.
+- `egress_ip_status` - Status of the egress IP: `allocated` (reserved, not yet in service), `attaching`, `attached` (in service), `detaching` or `error`. `null` without egress IP.
 - `created_at` - Timestamp of creation (RFC3339).
-- `egress_ip` - Dedicated egress public IP of the VPC. `null` while no IP is linked.
-- `egress_ip_type` - Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` while no IP is linked.
-- `egress_ip_status` - Status of the dedicated egress IP: `allocated` (reserved, served once the VPC has a `snat = true` VNet), `attaching`, `attached` (in service), `detaching` or `error`. `null` while no IP is linked.
 
 ## Import
 

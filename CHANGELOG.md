@@ -8,16 +8,15 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **`ccp_vpc`: dedicated egress IP.** `dedicated_egress_ip` (default `false`)
-  makes the `snat = true` VNets of the VPC reach the internet through a public
-  IP picked by the platform; it is updated in place, without replacing the VPC.
-  Read-only `egress_ip`, `egress_ip_type` and `egress_ip_status` describe the
-  IP (`null` while none is linked), also exposed by the `ccp_vpc` data source.
-  Enabling waits for the IP to be `attached` (or `allocated` while the VPC has
-  no `snat = true` VNet); disabling waits until the platform has proven the
-  removal. An `error` status fails an update and is a warning at creation, so
-  the VPC is never replaced for it. The IP counts against the `max_public_ips`
-  quota. Requires a platform API that exposes the dedicated egress IP
+- **`ccp_vpc`: internet egress IP.** Read-only `egress_ip`, `egress_ip_type`
+  and `egress_ip_status`, also exposed by the `ccp_vpc` data source. The
+  platform assigns the VPC its own egress public IP as soon as one of its
+  VNets has `snat = true`, and gives it back when the last one goes away, so
+  the attributes show up (or become `null`) at the next refresh; the provider
+  does not wait for them. They are plain computed values, without
+  `UseStateForUnknown`. The IP does not count against `max_public_ips`. A
+  `snat = true` VNet is refused with HTTP 409 when no public IP is free in the
+  region. Requires a platform API that exposes the egress IP
   (cetic-cloud-platform#1734).
 
 - **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block

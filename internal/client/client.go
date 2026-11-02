@@ -394,16 +394,6 @@ func (c *Client) CreateVPC(ctx context.Context, req VPCCreateRequest) (*VPC, err
 	return &out, nil
 }
 
-// UpdateVPC changes a VPC in place (PATCH /v1/vpcs/{id}). Only the non-nil
-// fields of req are sent.
-func (c *Client) UpdateVPC(ctx context.Context, id string, req VPCUpdateRequest) (*VPC, error) {
-	var out VPC
-	if err := c.do(ctx, http.MethodPatch, "/v1/vpcs/"+id, req, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
 func (c *Client) DeleteVPC(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/vpcs/"+id, nil, nil)
 }

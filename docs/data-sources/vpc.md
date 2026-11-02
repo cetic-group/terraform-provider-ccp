@@ -47,7 +47,6 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `status` — `active`, `deleting`, or `error`.
 - `tags` — Free-form tags.
 - `created_at` — RFC 3339 creation timestamp.
-- `dedicated_egress_ip` — Whether the VPC asks for a dedicated egress public IP.
-- `egress_ip` — Dedicated egress public IP of the VPC (`null` while no IP is linked).
-- `egress_ip_type` — `edge`, `firewall` or `nat` (`null` while no IP is linked).
-- `egress_ip_status` — `allocated`, `attaching`, `attached`, `detaching` or `error` (`null` while no IP is linked).
+- `egress_ip` — Internet egress public IP of the VPC, assigned by the platform as soon as a VNet has `snat = true` (`null` otherwise).
+- `egress_ip_type` — `edge`, `firewall` or `nat` (`null` without egress IP).
+- `egress_ip_status` — `allocated`, `attaching`, `attached`, `detaching` or `error` (`null` without egress IP).

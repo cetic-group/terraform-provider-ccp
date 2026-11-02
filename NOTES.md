@@ -15,7 +15,7 @@ Internal notes for contributors. Audience: the next dev picking this up.
 - `ccp_org_member` — Invite + role management (admin / member / viewer).
 
 **Network**
-- `ccp_vpc` — Create / Read / Update (`dedicated_egress_ip`) / Delete. Async, polls until `active`.
+- `ccp_vpc` — Create / Read / Delete. Async, polls until `active`.
 - `ccp_vnet` — Create / Read / Update (`name`, `snat`) / Delete. Async.
 - `ccp_vnet_firewall_rule` — Per-VNet rules. Position-ordered.
 - `ccp_vnet_ip_reservation` — Reserve a single IP or a range (`ip` + `range_end`).

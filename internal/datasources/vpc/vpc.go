@@ -31,10 +31,9 @@ type vpcDSModel struct {
 	Tags      types.List   `tfsdk:"tags"`
 	CreatedAt types.String `tfsdk:"created_at"`
 
-	DedicatedEgressIP types.Bool   `tfsdk:"dedicated_egress_ip"`
-	EgressIP          types.String `tfsdk:"egress_ip"`
-	EgressIPType      types.String `tfsdk:"egress_ip_type"`
-	EgressIPStatus    types.String `tfsdk:"egress_ip_status"`
+	EgressIP       types.String `tfsdk:"egress_ip"`
+	EgressIPType   types.String `tfsdk:"egress_ip_type"`
+	EgressIPStatus types.String `tfsdk:"egress_ip_status"`
 }
 
 func (d *vpcDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -64,22 +63,17 @@ func (d *vpcDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 			"status":     schema.StringAttribute{Computed: true},
 			"tags":       schema.ListAttribute{ElementType: types.StringType, Computed: true},
 			"created_at": schema.StringAttribute{Computed: true},
-			"dedicated_egress_ip": schema.BoolAttribute{
-				MarkdownDescription: "Whether the VPC asks for a dedicated egress public IP.",
-				Computed:            true,
-			},
 			"egress_ip": schema.StringAttribute{
-				MarkdownDescription: "Dedicated egress public IP of the VPC. `null` while no IP is linked.",
+				MarkdownDescription: "Internet egress public IP of the VPC, assigned by the platform as soon as a VNet of the VPC has `snat = true` (to give to partners that filter by source address). `null` while the VPC has no egress IP. Shows up at the refresh that follows the creation of the first `ccp_vnet` with `snat = true`.",
 				Computed:            true,
 			},
 			"egress_ip_type": schema.StringAttribute{
-				MarkdownDescription: "Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` while no IP is linked.",
+				MarkdownDescription: "Kind of the egress IP: `edge`, `firewall` or `nat`. `null` while the VPC has no egress IP.",
 				Computed:            true,
 			},
 			"egress_ip_status": schema.StringAttribute{
-				MarkdownDescription: "Status of the dedicated egress IP: `allocated`, `attaching`, `attached`, " +
-					"`detaching` or `error`. `null` while no IP is linked.",
-				Computed: true,
+				MarkdownDescription: "Status of the egress IP: `allocated` (reserved, not yet in service), `attaching`, `attached` (in service), `detaching` or `error`. `null` while the VPC has no egress IP.",
+				Computed:            true,
 			},
 		},
 	}
@@ -162,10 +156,9 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		Status:    types.StringValue(found.Status),
 		CreatedAt: types.StringValue(found.CreatedAt.Format(time.RFC3339)),
 
-		DedicatedEgressIP: types.BoolValue(found.DedicatedEgressIP),
-		EgressIP:          types.StringPointerValue(found.EgressIP),
-		EgressIPType:      types.StringPointerValue(found.EgressIPType),
-		EgressIPStatus:    types.StringPointerValue(found.EgressIPStatus),
+		EgressIP:       types.StringPointerValue(found.EgressIP),
+		EgressIPType:   types.StringPointerValue(found.EgressIPType),
+		EgressIPStatus: types.StringPointerValue(found.EgressIPStatus),
 	}
 	if found.CIDR != nil {
 		state.Cidr = types.StringValue(*found.CIDR)
