@@ -30,6 +30,11 @@ type vpcDSModel struct {
 	Status    types.String `tfsdk:"status"`
 	Tags      types.List   `tfsdk:"tags"`
 	CreatedAt types.String `tfsdk:"created_at"`
+
+	DedicatedEgressIP types.Bool   `tfsdk:"dedicated_egress_ip"`
+	EgressIP          types.String `tfsdk:"egress_ip"`
+	EgressIPType      types.String `tfsdk:"egress_ip_type"`
+	EgressIPStatus    types.String `tfsdk:"egress_ip_status"`
 }
 
 func (d *vpcDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -59,6 +64,23 @@ func (d *vpcDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 			"status":     schema.StringAttribute{Computed: true},
 			"tags":       schema.ListAttribute{ElementType: types.StringType, Computed: true},
 			"created_at": schema.StringAttribute{Computed: true},
+			"dedicated_egress_ip": schema.BoolAttribute{
+				MarkdownDescription: "Whether the VPC asks for a dedicated egress public IP.",
+				Computed:            true,
+			},
+			"egress_ip": schema.StringAttribute{
+				MarkdownDescription: "Dedicated egress public IP of the VPC. `null` while no IP is linked.",
+				Computed:            true,
+			},
+			"egress_ip_type": schema.StringAttribute{
+				MarkdownDescription: "Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` while no IP is linked.",
+				Computed:            true,
+			},
+			"egress_ip_status": schema.StringAttribute{
+				MarkdownDescription: "Status of the dedicated egress IP: `allocated`, `attaching`, `attached`, " +
+					"`detaching` or `error`. `null` while no IP is linked.",
+				Computed: true,
+			},
 		},
 	}
 }
@@ -139,6 +161,11 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		Region:    types.StringValue(found.Region),
 		Status:    types.StringValue(found.Status),
 		CreatedAt: types.StringValue(found.CreatedAt.Format(time.RFC3339)),
+
+		DedicatedEgressIP: types.BoolValue(found.DedicatedEgressIP),
+		EgressIP:          types.StringPointerValue(found.EgressIP),
+		EgressIPType:      types.StringPointerValue(found.EgressIPType),
+		EgressIPStatus:    types.StringPointerValue(found.EgressIPStatus),
 	}
 	if found.CIDR != nil {
 		state.Cidr = types.StringValue(*found.CIDR)

@@ -41,6 +41,14 @@ type VPC struct {
 	Status    string    `json:"status"`
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
+	// Dedicated egress IP (cetic-cloud-platform#1734). DedicatedEgressIP is
+	// the DESIRED state; the next three fields describe the linked IP and are
+	// null while no IP is linked to the VPC. A removal (false) keeps the IP
+	// visible as `detaching` until the platform has proven it is gone.
+	DedicatedEgressIP bool    `json:"dedicated_egress_ip"`
+	EgressIP          *string `json:"egress_ip"`
+	EgressIPType      *string `json:"egress_ip_type"`
+	EgressIPStatus    *string `json:"egress_ip_status"`
 }
 
 type VPCCreateRequest struct {
@@ -49,7 +57,25 @@ type VPCCreateRequest struct {
 	// CIDR is optional — when nil the platform auto-allocates a /16.
 	CIDR *string  `json:"cidr,omitempty"`
 	Tags []string `json:"tags,omitempty"`
+	// DedicatedEgressIP asks for a dedicated public egress IP, picked by the
+	// platform. Omitted when false (the API default).
+	DedicatedEgressIP bool `json:"dedicated_egress_ip,omitempty"`
 }
+
+// VPCUpdateRequest — PATCH /v1/vpcs/{id}. A nil field is left out of the
+// body, so the API keeps its current value.
+type VPCUpdateRequest struct {
+	DedicatedEgressIP *bool `json:"dedicated_egress_ip,omitempty"`
+}
+
+// Statuses of a VPC's dedicated egress IP (`egress_ip_status`).
+const (
+	EgressIPStatusAllocated = "allocated"
+	EgressIPStatusAttaching = "attaching"
+	EgressIPStatusAttached  = "attached"
+	EgressIPStatusDetaching = "detaching"
+	EgressIPStatusError     = "error"
+)
 
 // VNet represents a VNet resource (nested under VPC). Status: active | deleting | error.
 type VNet struct {
