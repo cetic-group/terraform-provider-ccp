@@ -327,13 +327,9 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		// other client errors carry a French detail message we want to
 		// surface verbatim — most of these are user actionable.
 		if client.IsConflict(err) {
-			var snat *bool
-			if createReq.SNAT {
-				snat = &createReq.SNAT
-			}
 			resp.Diagnostics.AddError(
 				"VNet creation conflicts with an existing resource",
-				fmt.Sprintf("CETIC Cloud rejected the create call: %s.%s", err.Error(), vnetConflictHint(snat)),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
 			)
 			return
 		}
@@ -518,9 +514,9 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if hasChange {
 		if _, err := r.client.UpdateVNet(ctx, vpcID, id, updateReq); err != nil {
 			// 409 on a snat change: `false` is rejected while routed public
-			// IPs are still attached, `true` when no public IP is free for the
-			// VPC egress IP (cetic-cloud-platform#1734). Surface the API detail
-			// with the hint matching the requested direction.
+			// IPs are still attached. `true` never needs a public IP since
+			// cetic-cloud-platform#1734 (shared egress by default, the
+			// dedicated IP is an option of the VPC): no hint then.
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"VNet update conflicts with current state",
@@ -710,17 +706,16 @@ func stringPtrOrNil(s types.String) *string {
 	return &v
 }
 
-// vnetConflictHint completes a 409 on a VNet write with the likely cause of
-// the requested `snat` value (nil: snat not part of the request).
+// vnetConflictHint completes a 409 on a VNet update with the likely cause of
+// the requested `snat` value (nil: snat not part of the request). Only
+// `snat = false` has a known cause (routed public IPs still attached). A
+// `snat = true` VNet takes no public IP: the internet egress is shared unless
+// the VPC has `dedicated_egress_ip = true`, whose IP is assigned when the
+// option is turned on (cetic-cloud-platform#1734), so no IP-related hint.
 func vnetConflictHint(snat *bool) string {
-	switch {
-	case snat == nil:
+	if snat == nil || *snat {
 		return ""
-	case *snat:
-		return " With `snat = true` the platform also reserves the internet egress " +
-			"public IP of the VPC: a 409 can mean that no public IP is free in the region."
-	default:
-		return " For `snat = false`, ensure no routed public IPs remain attached " +
-			"to instances in this VNet before retrying."
 	}
+	return " For `snat = false`, ensure no routed public IPs remain attached " +
+		"to instances in this VNet before retrying."
 }
