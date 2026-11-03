@@ -47,6 +47,6 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `status` — `active`, `deleting`, or `error`.
 - `tags` — Free-form tags.
 - `created_at` — RFC 3339 creation timestamp.
-- `egress_ip` — Internet egress public IP of the VPC, assigned by the platform as soon as a VNet has `snat = true` (`null` otherwise).
+- `egress_ip` — Internet egress public IP of the VPC, assigned by the platform as soon as a VNet has `snat = true` (`null` otherwise). Add `depends_on` on the first `snat = true` `ccp_vnet` to read it in the apply that creates that VNet (see [Internet egress IP](../resources/vpc.md#internet-egress-ip)).
 - `egress_ip_type` — `edge`, `firewall` or `nat` (`null` without egress IP).
 - `egress_ip_status` — `allocated`, `attaching`, `attached`, `detaching` or `error` (`null` without egress IP).

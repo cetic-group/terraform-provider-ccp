@@ -70,6 +70,23 @@ creation of the first `ccp_vnet` with `snat = true` (the next `terraform plan`,
 `apply` or `refresh`), not in the apply that creates the VNet. The provider
 does not wait for it.
 
+To get the IP in the same apply (to hand it to a partner or put it in a
+firewall rule), read it through the [`ccp_vpc` data source](../data-sources/vpc.md)
+with a dependency on the VNet: the platform reserves the IP while it creates
+the first `snat = true` VNet, so the data source sees it as soon as the VNet
+exists (its status may still be `allocated` or `attaching`).
+
+```hcl
+data "ccp_vpc" "main" {
+  id         = ccp_vpc.main.id
+  depends_on = [ccp_vnet.web]
+}
+
+output "egress_ip" {
+  value = data.ccp_vpc.main.egress_ip
+}
+```
+
 The IP stays the same as long as at least one VNet of the VPC has
 `snat = true`. When the last one goes away (VNet deleted or switched to
 `snat = false`, VPC deleted), the platform removes it and gives it back: the
