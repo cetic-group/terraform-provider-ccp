@@ -149,6 +149,14 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		}
 	}
 
+	state := stateFromVPC(ctx, found)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// stateFromVPC projects the API representation onto the data source model.
+// The egress_* attributes (cetic-cloud-platform#1734) are null while the VPC
+// has no internet egress IP.
+func stateFromVPC(ctx context.Context, found *client.VPC) vpcDSModel {
 	state := vpcDSModel{
 		ID:        types.StringValue(found.ID),
 		Name:      types.StringValue(found.Name),
@@ -167,6 +175,5 @@ func (d *vpcDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	}
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	return state
 }
