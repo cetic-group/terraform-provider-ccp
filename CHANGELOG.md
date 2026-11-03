@@ -8,18 +8,24 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **`ccp_vpc`: internet egress IP.** Read-only `egress_ip`, `egress_ip_type`
-  and `egress_ip_status`, also exposed by the `ccp_vpc` data source. The
-  platform assigns the VPC its own egress public IP as soon as one of its
-  VNets has `snat = true`, and gives it back when the last one goes away, so
-  the attributes show up (or become `null`) at the next refresh; the provider
-  does not wait for them. The data source with `depends_on` on the VNet reads
-  the IP in the same apply. They are plain computed values, without
-  `UseStateForUnknown`. The IP does not count against `max_public_ips`. A
-  `snat = true` VNet is refused with HTTP 409 when no public IP is free in the
-  region; the `ccp_vnet` 409 message now points to that cause when
-  `snat = true` was requested. Requires a platform API that exposes the egress IP
-  (cetic-cloud-platform#1734).
+- **`ccp_vpc`: dedicated egress IP (option).** New `dedicated_egress_ip`
+  argument (default `false`), updated in place through `PATCH /v1/vpcs/{id}`
+  (`ccp_vpc` has an in-place update for the first time; `name`, `region`,
+  `cidr` and `tags` still force replacement). `false`: the VPC uses the shared
+  internet egress of the platform, where outbound TCP port 25 is blocked.
+  `true`: the platform assigns the VPC its own public egress IP within the
+  apply and keeps it as long as the option stays on; it is billed as a public
+  IP and does not count against `max_public_ips`. **Turning the option off, or
+  removing the attribute, gives the IP back to the pool immediately**, with no
+  grace period: it may go to another customer, and turning the option on again
+  gives a different IP. Read-only `egress_ip`, `egress_ip_type` and
+  `egress_ip_status` describe the IP (`null` without it); they keep their state
+  value in plans unless `dedicated_egress_ip` changes. The `ccp_vpc` data
+  source exposes `dedicated_egress_ip` and the three attributes. HTTP 409 (no
+  free public IP, VPC not active) and 422 (option not offered, VPC not EVPN)
+  come with an explanation; nothing is changed. Requires a platform API that
+  supports the option: an older one is reported as such instead of a
+  Terraform inconsistency error (cetic-cloud-platform#1734).
 
 - **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
   (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
@@ -42,6 +48,13 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the configuration (#104). Behaviour to know: removing the attribute from the
   configuration now keeps the current list; write `cache_bypass_cookies = []`
   to empty it.
+
+- **`ccp_vpc`: `cidr` and `tags` no longer force a replacement on an in-place
+  update.** Their `RequiresReplace` ran before `UseStateForUnknown`: once
+  `dedicated_egress_ip` made an update possible, an omitted `cidr` or `tags`
+  became unknown in the plan and Terraform would have replaced the VPC (and
+  everything in it) to turn the option on. The state value is now kept first
+  (cetic-cloud-platform#1734).
 
 ## v7.3.0 (2026-10-25)
 
