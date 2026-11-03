@@ -41,9 +41,13 @@ type VPC struct {
 	Status    string    `json:"status"`
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
-	// Internet egress IP (cetic-cloud-platform#1734), READ-ONLY: assigned by
-	// the platform as soon as a VNet of the VPC has `snat = true`, given back
-	// when none has it anymore. Null while the VPC has no egress IP.
+	// Dedicated egress IP option (cetic-cloud-platform#1734). False (the
+	// default): the VPC uses the platform's shared internet egress. True: the
+	// platform assigns the VPC its own public egress IP, kept as long as the
+	// option stays on and given back to the pool as soon as it is turned off.
+	DedicatedEgressIP bool `json:"dedicated_egress_ip"`
+	// READ-ONLY description of the linked egress IP. Null while the VPC has
+	// none; a just-disabled IP may still show as `detaching`.
 	EgressIP       *string `json:"egress_ip"`
 	EgressIPType   *string `json:"egress_ip_type"`
 	EgressIPStatus *string `json:"egress_ip_status"`
@@ -55,6 +59,16 @@ type VPCCreateRequest struct {
 	// CIDR is optional — when nil the platform auto-allocates a /16.
 	CIDR *string  `json:"cidr,omitempty"`
 	Tags []string `json:"tags,omitempty"`
+	// DedicatedEgressIP asks for a dedicated public egress IP (#1734). Always
+	// sent: `false` is the API default, sending it keeps the intent explicit.
+	DedicatedEgressIP bool `json:"dedicated_egress_ip"`
+}
+
+// VPCUpdateRequest — PATCH /v1/vpcs/{id}. A nil field is left out of the
+// body and the API keeps its current value. Only `dedicated_egress_ip` is
+// changed in place by the provider: `name` and `tags` force replacement.
+type VPCUpdateRequest struct {
+	DedicatedEgressIP *bool `json:"dedicated_egress_ip,omitempty"`
 }
 
 // VNet represents a VNet resource (nested under VPC). Status: active | deleting | error.

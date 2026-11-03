@@ -1,16 +1,21 @@
 // Package vpc implements the ccp_vpc Terraform resource.
 //
 // A VPC in CETIC Cloud is an isolated private network (its gateway is
-// provisioned lazily on first VNet creation). The API exposes no PATCH
-// endpoint, so every user-settable attribute (`name`, `region`, `tags`) forces
-// replacement on change.
+// provisioned lazily on first VNet creation). `name`, `region`, `cidr` and
+// `tags` force replacement on change. Only `dedicated_egress_ip` is updated in
+// place, through PATCH /v1/vpcs/{id}, and Update sends that field alone.
 //
-// Internet egress IP (cetic-cloud-platform#1734): `egress_ip`,
-// `egress_ip_type` and `egress_ip_status` are read-only. The platform assigns
-// the IP when the first `snat = true` VNet appears and gives it back when the
-// last one goes away, so it changes outside of this resource: the attributes
-// are plain Computed WITHOUT UseStateForUnknown (which would freeze a value
-// that may appear or disappear) and nothing waits for them.
+// Internet egress (cetic-cloud-platform#1734, decision of 2026-11-03):
+// `dedicated_egress_ip` is an option, false by default. False: the VPC uses
+// the shared egress of the platform (no IP of its own, outbound TCP 25
+// blocked). True: the platform assigns the VPC a dedicated public egress IP
+// synchronously (POST or PATCH), kept as long as the option stays on; turning
+// it off gives the IP back to the pool immediately, without any grace period.
+// `egress_ip`, `egress_ip_type` and `egress_ip_status` are read-only: they keep
+// their state value in the plan unless `dedicated_egress_ip` changes, in which
+// case they are unknown (see useStateUnlessEgressChanges). The provider does
+// not wait for the IP to be in service (`attached`): the address is known as
+// soon as the platform answers, and the status converges at the next refresh.
 //
 // Provisioning is asynchronous: POST /v1/vpcs returns 201 immediately but the
 // network may still be propagating. Status transitions are
@@ -46,6 +51,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -83,6 +89,8 @@ type vpcResourceModel struct {
 	Status    types.String `tfsdk:"status"`
 	CreatedAt types.String `tfsdk:"created_at"`
 
+	DedicatedEgressIP types.Bool `tfsdk:"dedicated_egress_ip"`
+
 	EgressIP       types.String `tfsdk:"egress_ip"`
 	EgressIPType   types.String `tfsdk:"egress_ip_type"`
 	EgressIPStatus types.String `tfsdk:"egress_ip_status"`
@@ -113,9 +121,9 @@ func (r *vpcResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud VPC. A VPC is a regional layer-3 boundary " +
-			"(an isolated private network with an optional per-VPC NAT gateway). The API has no " +
-			"in-place update endpoint, so any change to `name`, `region`, or `tags` forces " +
-			"replacement. Creation is asynchronous: the provider polls until the VPC reaches " +
+			"(an isolated private network with an optional per-VPC NAT gateway). Any change to " +
+			"`name`, `region`, `cidr` or `tags` forces replacement; `dedicated_egress_ip` is " +
+			"updated in place. Creation is asynchronous: the provider polls until the VPC reaches " +
 			"the `active` state (or up to 90 seconds).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -156,9 +164,12 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"sub-ranges of this block. Immutable after creation — changing it forces replacement.",
 				Optional: true,
 				Computed: true,
+				// UseStateForUnknown FIRST: on an in-place update (dedicated
+				// egress IP) the framework marks an omitted Optional+Computed
+				// value unknown, and RequiresReplace would then replace the VPC.
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"tags": schema.ListAttribute{
@@ -167,9 +178,10 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
+				// Same order as `cidr`: UseStateForUnknown before RequiresReplace.
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplace(),
 					listplanmodifier.UseStateForUnknown(),
+					listplanmodifier.RequiresReplace(),
 				},
 			},
 			"status": schema.StringAttribute{
@@ -187,19 +199,43 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			// #1734 — read-only, set by the platform from the VNets: no plan
-			// modifier (see the package comment).
+			// #1734 — an explicit `false` default, not Optional+Computed alone:
+			// without it, removing the attribute from the configuration would
+			// keep the state value (true) forever instead of turning it off.
+			// No RequiresReplace: PATCH /v1/vpcs/{id} changes it in place.
+			"dedicated_egress_ip": schema.BoolAttribute{
+				MarkdownDescription: "Give the VPC its own dedicated public egress IP. `false` (default): " +
+					"the `snat = true` VNets of the VPC use the shared internet egress of the platform " +
+					"(outbound TCP port 25 blocked). `true`: the platform assigns a public IP, kept as " +
+					"long as the option stays on; billed as a public IP, outside the `max_public_ips` " +
+					"quota. Updated in place. **Setting it back to `false` (or removing it) gives the " +
+					"IP back to the pool immediately**: it may be assigned to another customer, and " +
+					"turning the option on again gives a different IP. EVPN VPCs only.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+			},
+			// #1734 — read-only; kept from state unless the option changes.
 			"egress_ip": schema.StringAttribute{
-				MarkdownDescription: "Internet egress public IP of the VPC, assigned by the platform as soon as a VNet of the VPC has `snat = true` (to give to partners that filter by source address). `null` while the VPC has no egress IP. Shows up at the refresh that follows the creation of the first `ccp_vnet` with `snat = true`.",
+				MarkdownDescription: "Dedicated egress public IP of the VPC (to give to partners that filter by source address). `null` while `dedicated_egress_ip` is `false` (shared egress) or while no IP could be assigned yet.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					useStateUnlessEgressChanges(),
+				},
 			},
 			"egress_ip_type": schema.StringAttribute{
-				MarkdownDescription: "Kind of the egress IP: `edge`, `firewall` or `nat`. `null` while the VPC has no egress IP.",
+				MarkdownDescription: "Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` without dedicated egress IP.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					useStateUnlessEgressChanges(),
+				},
 			},
 			"egress_ip_status": schema.StringAttribute{
-				MarkdownDescription: "Status of the egress IP: `allocated` (reserved, not yet in service), `attaching`, `attached` (in service), `detaching` or `error`. `null` while the VPC has no egress IP.",
+				MarkdownDescription: "Status of the dedicated egress IP: `allocated` (reserved, not yet in service: no `snat = true` VNet or gateway not ready), `attaching`, `attached` (in service), `detaching` (going back to the pool after the option was turned off) or `error`. `null` without dedicated egress IP.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					useStateUnlessEgressChanges(),
+				},
 			},
 		},
 	}
@@ -243,26 +279,30 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		cidr = plan.Cidr.ValueStringPointer()
 	}
 
+	wantEgress := plan.DedicatedEgressIP.ValueBool()
 	created, err := r.client.CreateVPC(ctx, client.VPCCreateRequest{
-		Name:   plan.Name.ValueString(),
-		Region: plan.Region.ValueString(),
-		CIDR:   cidr,
-		Tags:   tags,
+		Name:              plan.Name.ValueString(),
+		Region:            plan.Region.ValueString(),
+		CIDR:              cidr,
+		Tags:              tags,
+		DedicatedEgressIP: wantEgress,
 	})
 	if err != nil {
-		// 409 (e.g. name collision) and 503 (no capacity available in the
-		// region) both arrive with a detail message we want to surface
-		// verbatim — the API speaks French and the messages are user-facing.
+		// 409 (CIDR already used, no free egress IP), 422 (dedicated egress
+		// not offered) and 503 (no capacity available in the region) all
+		// arrive with a detail message we want to surface verbatim — the API
+		// speaks French and the messages are user-facing. The platform picks
+		// the egress IP before writing anything: a refusal leaves no VPC.
 		if client.IsConflict(err) {
 			resp.Diagnostics.AddError(
-				"VPC creation conflicts with an existing resource",
-				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
+				"VPC creation refused (conflict)",
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s.%s", err.Error(), egressRefusalHint(err, wantEgress)),
 			)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Failed to create VPC",
-			fmt.Sprintf("CETIC Cloud API error: %s", err.Error()),
+			fmt.Sprintf("CETIC Cloud API error: %s.%s", err.Error(), egressRefusalHint(err, wantEgress)),
 		)
 		return
 	}
@@ -338,6 +378,18 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+
+	// An API predating #1734 ignores the field and creates a VPC on the
+	// shared egress: say so instead of letting Terraform fail on an
+	// inconsistent result. The VPC stays in state (tainted).
+	if wantEgress && !final.DedicatedEgressIP {
+		resp.Diagnostics.AddError(
+			"Dedicated egress IP not supported by the platform",
+			fmt.Sprintf("VPC %s was created but the CETIC Cloud API did not record "+
+				"`dedicated_egress_ip = true`. The platform API is probably older than "+
+				"this feature: upgrade it, or remove `dedicated_egress_ip`.", final.ID),
+		)
+	}
 }
 
 func (r *vpcResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -372,16 +424,95 @@ func (r *vpcResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update is a no-op: every user-settable attribute carries RequiresReplace,
-// so the framework will replace the resource via destroy + create rather than
-// call Update. We still emit a diagnostic if it is somehow invoked, since
-// reaching this branch would mean the schema and implementation drifted.
-func (r *vpcResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError(
-		"VPC has no in-place updates",
-		"ccp_vpc has no mutable attributes; all changes force replacement. "+
-			"This should not happen with all-RequiresReplace fields — please report this as a provider bug.",
-	)
+// Update only handles `dedicated_egress_ip`: every other user-settable
+// attribute carries RequiresReplace. The PATCH body carries that field alone
+// (buildVPCUpdate), and only when it changes. The platform assigns or
+// releases the IP within the request; nothing is awaited afterwards.
+func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state vpcResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	id := state.ID.ValueString()
+	patch, changed := buildVPCUpdate(plan, state)
+
+	var final *client.VPC
+	if !changed {
+		// Nothing the API can change in place: refresh and keep the state.
+		got, err := r.client.GetVPC(ctx, id)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read VPC",
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()))
+			return
+		}
+		final = got
+	} else {
+		want := *patch.DedicatedEgressIP
+		patched, err := r.client.UpdateVPC(ctx, id, patch)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to change the dedicated egress IP of the VPC",
+				fmt.Sprintf("CETIC Cloud rejected `dedicated_egress_ip = %t` for VPC %s: %s.%s",
+					want, id, err.Error(), egressRefusalHint(err, want)),
+			)
+			return
+		}
+		if patched.DedicatedEgressIP != want {
+			resp.Diagnostics.AddError(
+				"Dedicated egress IP not supported by the platform",
+				fmt.Sprintf("The CETIC Cloud API did not record `dedicated_egress_ip = %t` for VPC %s. "+
+					"The platform API is probably older than this feature.", want, id),
+			)
+			return
+		}
+		final = patched
+	}
+
+	resp.Diagnostics.Append(applyVPCToModel(ctx, final, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// buildVPCUpdate returns the PATCH body for the attributes updated in place,
+// and whether anything changed. Only `dedicated_egress_ip` is sent, and only
+// when the plan differs from the state: `name` and `tags` force replacement,
+// so they never reach Update with a different value.
+func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool) {
+	var req client.VPCUpdateRequest
+	if plan.DedicatedEgressIP.IsUnknown() || plan.DedicatedEgressIP.IsNull() ||
+		plan.DedicatedEgressIP.Equal(state.DedicatedEgressIP) {
+		return req, false
+	}
+	want := plan.DedicatedEgressIP.ValueBool()
+	req.DedicatedEgressIP = &want
+	return req, true
+}
+
+// egressRefusalHint completes the API detail of a refused VPC write with what
+// it means for the dedicated egress IP (cetic-cloud-platform#1734). `want` is
+// the requested `dedicated_egress_ip`; nothing is added when it is false
+// (turning the option off is never refused for lack of IP).
+func egressRefusalHint(err error, want bool) string {
+	if !want {
+		return ""
+	}
+	switch {
+	case client.IsConflict(err):
+		return " With `dedicated_egress_ip = true`, a 409 means that no public IP is free " +
+			"in the region (or that the VPC is not active): nothing was changed and the VPC " +
+			"keeps the shared egress of the platform. Retry later, or contact support."
+	case client.IsUnprocessable(err):
+		return " The dedicated egress IP is not offered on this installation, or the VPC is " +
+			"not an EVPN VPC (create a new VPC to get one): nothing was changed and the VPC " +
+			"keeps the shared egress of the platform."
+	default:
+		return ""
+	}
 }
 
 func (r *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -494,6 +625,7 @@ func applyVPCToModel(ctx context.Context, src *client.VPC, dst *vpcResourceModel
 		dst.Cidr = types.StringNull()
 	}
 
+	dst.DedicatedEgressIP = types.BoolValue(src.DedicatedEgressIP)
 	dst.EgressIP = types.StringPointerValue(src.EgressIP)
 	dst.EgressIPType = types.StringPointerValue(src.EgressIPType)
 	dst.EgressIPStatus = types.StringPointerValue(src.EgressIPStatus)

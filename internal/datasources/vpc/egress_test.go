@@ -9,8 +9,9 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 )
 
-// cetic-cloud-platform#1734 : le contrat JSON de `VpcResponse` (egress_ip,
-// egress_ip_type, egress_ip_status, null sans IP de sortie) est décodé depuis
+// cetic-cloud-platform#1734 : le contrat JSON de `VpcResponse`
+// (dedicated_egress_ip, egress_ip, egress_ip_type, egress_ip_status, null sans
+// IP de sortie dédiée) est décodé depuis
 // une vraie réponse HTTP, puis projeté sur le modèle du data source. Un tag
 // JSON mal orthographié ou un mapping oublié fait échouer ces tests.
 
@@ -21,7 +22,9 @@ func withEgress(base map[string]any, ip, typ, status any) map[string]any {
 
 func TestEgressDecodedFromGetAndList(t *testing.T) {
 	avec := withEgress(fixture("vpc-1", "prod", "RNN"), "203.0.113.5", "edge", "attached")
+	avec["dedicated_egress_ip"] = true
 	sans := withEgress(fixture("vpc-2", "dev", "RNN"), nil, nil, nil)
+	sans["dedicated_egress_ip"] = false
 	srv := testutil.NewTestServer(t, testutil.Routes{
 		{Method: "GET", Path: "/v1/vpcs/vpc-1", Status: http.StatusOK, Body: avec},
 		{Method: "GET", Path: "/v1/vpcs", Status: http.StatusOK, Body: []map[string]any{avec, sans}},
@@ -51,12 +54,23 @@ func TestEgressDecodedFromGetAndList(t *testing.T) {
 		t.Errorf("vpc-2: null attendu sans IP de sortie, reçu %v %v %v", v.EgressIP, v.EgressIPType, v.EgressIPStatus)
 	}
 
+	if !got.DedicatedEgressIP || !list[0].DedicatedEgressIP || list[1].DedicatedEgressIP {
+		t.Errorf("dedicated_egress_ip mal décodé: %v %v %v", got.DedicatedEgressIP,
+			list[0].DedicatedEgressIP, list[1].DedicatedEgressIP)
+	}
+
 	m := stateFromVPC(context.Background(), got)
+	if !m.DedicatedEgressIP.ValueBool() {
+		t.Errorf("data source: dedicated_egress_ip = true attendu, reçu %v", m.DedicatedEgressIP)
+	}
 	if m.EgressIP.ValueString() != "203.0.113.5" || m.EgressIPType.ValueString() != "edge" ||
 		m.EgressIPStatus.ValueString() != "attached" {
 		t.Errorf("data source: egress mal recopié: %v %v %v", m.EgressIP, m.EgressIPType, m.EgressIPStatus)
 	}
 	m = stateFromVPC(context.Background(), &list[1])
+	if m.DedicatedEgressIP.IsNull() || m.DedicatedEgressIP.ValueBool() {
+		t.Errorf("data source: dedicated_egress_ip = false (non null) attendu, reçu %v", m.DedicatedEgressIP)
+	}
 	if !m.EgressIP.IsNull() || !m.EgressIPType.IsNull() || !m.EgressIPStatus.IsNull() {
 		t.Errorf("data source: null attendu sans IP de sortie, reçu %v %v %v", m.EgressIP, m.EgressIPType, m.EgressIPStatus)
 	}
