@@ -327,9 +327,13 @@ func (r *vnetResource) Create(ctx context.Context, req resource.CreateRequest, r
 		// other client errors carry a French detail message we want to
 		// surface verbatim — most of these are user actionable.
 		if client.IsConflict(err) {
+			var snat *bool
+			if createReq.SNAT {
+				snat = &createReq.SNAT
+			}
 			resp.Diagnostics.AddError(
 				"VNet creation conflicts with an existing resource",
-				fmt.Sprintf("CETIC Cloud rejected the create call: %s", err.Error()),
+				fmt.Sprintf("CETIC Cloud rejected the create call: %s.%s", err.Error(), vnetConflictHint(snat)),
 			)
 			return
 		}
@@ -513,15 +517,15 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	if hasChange {
 		if _, err := r.client.UpdateVNet(ctx, vpcID, id, updateReq); err != nil {
-			// 409 most commonly means "snat=false rejected because routed
-			// public IPs are still attached" — surface the API detail so the
-			// user knows what to detach.
+			// 409 on a snat change: `false` is rejected while routed public
+			// IPs are still attached, `true` when no public IP is free for the
+			// VPC egress IP (cetic-cloud-platform#1734). Surface the API detail
+			// with the hint matching the requested direction.
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"VNet update conflicts with current state",
-					fmt.Sprintf("CETIC Cloud rejected the update for vnet %s: %s. "+
-						"For `snat=false`, ensure no routed public IPs remain attached "+
-						"to instances in this VNet before retrying.", id, err.Error()),
+					fmt.Sprintf("CETIC Cloud rejected the update for vnet %s: %s.%s",
+						id, err.Error(), vnetConflictHint(updateReq.SNAT)),
 				)
 				return
 			}
@@ -704,4 +708,19 @@ func stringPtrOrNil(s types.String) *string {
 	}
 	v := s.ValueString()
 	return &v
+}
+
+// vnetConflictHint completes a 409 on a VNet write with the likely cause of
+// the requested `snat` value (nil: snat not part of the request).
+func vnetConflictHint(snat *bool) string {
+	switch {
+	case snat == nil:
+		return ""
+	case *snat:
+		return " With `snat = true` the platform also reserves the internet egress " +
+			"public IP of the VPC: a 409 can mean that no public IP is free in the region."
+	default:
+		return " For `snat = false`, ensure no routed public IPs remain attached " +
+			"to instances in this VNet before retrying."
+	}
 }
