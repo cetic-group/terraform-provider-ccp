@@ -6,6 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## v7.4.0 (2026-11-04)
+
 ### Added
 
 - **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
