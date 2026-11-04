@@ -86,9 +86,9 @@ terraform import ccp_appgw_listener.api <appgw_id>/<listener_id>
 
 ~> **Note:** `acme_dns_credentials` is write-only and is not recoverable on import. If the imported listener uses a DNS-01 certificate, declaring `acme_dns_credentials` in your configuration after import will propose a replacement of the listener.
 
-## HTTP access policies (provider 8.0+)
+## HTTP access policies (provider 7.3.2+)
 
-Requires provider `>= 8.0.0` once released and a platform advertising
+Requires provider `>= 7.3.2` and a platform advertising
 `appgw_security_policy_versions = [1]`.
 The provider checks this capability before submitting a policy, including `{}`.
 An older server cannot silently ignore the configuration. Nonempty documents

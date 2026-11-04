@@ -66,7 +66,7 @@ In addition to all arguments above:
 availability. A platform version predating this field only supports two
 instances; its response is read as `2`.
 
-## Access policies (provider 8.0+)
+## Access policies (provider 7.3.2+)
 
 - `l4_policy` - Current typed TCP policy on ports 80 and 443.
 - `l7_policy` - Current HTTP policies, also included in each listener and route.
