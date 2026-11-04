@@ -65,3 +65,17 @@ In addition to all arguments above:
 `replica_count` (Number, read-only) is `1` without redundancy or `2` for high
 availability. A platform version predating this field only supports two
 instances; its response is read as `2`.
+
+## Access policies (provider 7.3.2+)
+
+- `l4_policy` - Current typed TCP policy on ports 80 and 443.
+- `l7_policy` - Current HTTP policies, also included in each listener and route.
+- `client_ip_policy` - Current peer/trusted-forwarded client address policy.
+- `security_revision` - Observed gateway-wide policy revision.
+- `access_policy_state` - Public application state (`pending`, `partial`,
+  `applied`, `unknown`), distinct from the gateway lifecycle status.
+
+Policy objects use the same keyed-map representation as the
+[`ccp_application_gateway` resource](../resources/application_gateway.md#http-access-policies-provider-81).
+A platform predating these fields returns null; the data source never assumes
+that an absent policy response means protection has been applied.

@@ -9,7 +9,10 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 **The next release is 7.3.2, a patch version that changes the expected
 configuration** (see Breaking). The plan-managed cache and single-instance
 gateways need the platform API of cetic-cloud-platform#1748, already in
-production.
+production. Application Gateway access policies need a platform advertising
+access policy version 1 (cetic-cloud-platform#1828), not yet confirmed in
+production: without it, configuring a policy fails at apply time and gateways
+without policies keep working.
 
 ### Breaking
 
@@ -44,6 +47,20 @@ production.
   selected single-instance or high-availability mode; no multiplier is applied.
 - The HTTP cache remains opt-in and mutable. The platform catalog defines its
   optional surcharge independently from the gateway base rate.
+- **Application Gateway access policies.** Typed `l4_policy`, `l7_policy`
+  and `client_ip_policy` on `ccp_application_gateway`; `l7_policy` on
+  `ccp_appgw_listener` and `ccp_appgw_route`, updated in place. Keyed
+  policy and rule maps, independent protected paths, IP, method and header
+  criteria, mandatory headers.
+- Read-only `security_revision` and `access_policy_state` on the gateway;
+  policies exposed by the `ccp_application_gateway` data source.
+- Ownership: omitting a policy preserves the remote one (including after
+  import); an explicit `{}` clears it; removing the attribute relinquishes
+  management without clearing it.
+- Capability check, per-gateway write serialization, revision conflict
+  handling and confirmation that every instance applied the policy, including
+  after a child resource is removed. Plan-time validation of bounded values;
+  policy request errors are redacted.
 
 ### Fixed
 

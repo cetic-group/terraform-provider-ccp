@@ -205,3 +205,130 @@ and defaults to `false`. Its surcharge is published under `appgw_cache` for
 the selected plan and instance count; enabling it opts into the published
 surcharge. Use the platform estimator for the combined price. An unavailable
 cache tariff must be configured on the platform before enabling the option.
+
+## HTTP access policies (provider 7.3.2+)
+
+Requires provider `>= 7.3.2` and a platform advertising
+`appgw_security_policy_versions = [1]`.
+The provider checks this capability before submitting a policy, including `{}`.
+An older server cannot silently ignore the configuration. Nonempty documents
+also require `appgw_security_policies_enabled = true`. Explicit `{}` resets
+remain available when new policy activation is disabled.
+
+- `l7_policy` - (Optional, Computed) HTTP access policies. Omit to preserve the
+  remote policy, including after import. Set `{}` explicitly to clear the local
+  policy. Removing the attribute relinquishes management without disabling
+  remote protection. Changing this object updates the resource in place.
+- `enabled` - (Optional, default `false`) Enable the policies in this object.
+- `policies` - (Optional) Map of at most eight policies, keyed by stable names.
+  Names begin with a lowercase letter and contain at most 32 lowercase letters,
+  digits, underscores or hyphens.
+- `scope` - (Optional) Independent protected request scope; omission covers all
+  requests reaching this owner. A route policy also covers the route's path
+  independently of its method/header routing selectors.
+- `path` - (Optional, inside a scope or rule match) Path condition evaluated on
+  the original request before rewrites. Ambiguous encodings are rejected.
+- `op` - (Required for a path or header condition) Paths: `exact` or
+  `segment_prefix` (`/admin` matches `/admin/users`, not `/administrator`).
+  Headers: `present`, `absent`, `non_empty`, `eq`, `in`.
+- `value` - (Required for a path condition) Path beginning with `/`.
+- `allow_rules` - (Optional) Map of rules, combined with OR. If nonempty, at
+  least one must match within the policy scope. Omission means no allow filter.
+- `deny_rules` - (Optional) Map of rules, combined with OR; a matching deny wins.
+- `match` - (Required in every rule) All supplied criteria combine with AND.
+- `source_cidrs` - (Optional) Nonempty list of IPv4/IPv6 addresses or networks,
+  at most 256 entries. Uses the gateway's `client_ip_policy` interpretation.
+- `methods` - (Optional) Nonempty list of at most 16 uppercase HTTP methods.
+- `headers` - (Optional) List of one to eight header conditions, combined with AND.
+- `match_all` - (Optional) Explicit unconditional rule: only `true`, without any
+  other criterion. It still applies only within the policy's independent scope.
+- `required_headers` - (Optional) Map of at most eight mandatory header conditions,
+  combined with AND independently of allow rules. A matching IP allow cannot
+  bypass a required header. Keys must be unique across this policy's allow,
+  deny and required-header maps.
+- `name` - (Required in a header condition) Case-insensitive HTTP header name,
+  at most 64 characters.
+- `values` - (Optional in a header condition) Case-sensitive exact ASCII scalars,
+  at most 16 values of 256 bytes. `eq` requires one; `in` requires one or more;
+  presence operations accept none. Empty values, commas and surrounding
+  whitespace are rejected. Examined duplicate headers are rejected too.
+- `security_revision` - (Computed) Gateway-wide revision observed for this
+  resource. The provider obtains the current revision for each policy write;
+  users do not set it. Concurrent changes return a conflict: refresh and review
+  the plan before applying again. Conflicts are not retried automatically.
+
+The aggregate limit is 64 allow and deny rules across the gateway,
+listeners and routes. Mandatory header requirements have a separate limit of
+eight per policy. Applicable policies intersect. A local allow cannot
+bypass an inherited deny, legacy network restrictions or authentication.
+Header checks are access filters, not a substitute for authentication; avoid
+storing credentials in conditions. Terraform state contains policy values.
+
+A hostname protected by any HTTP policy cannot contain regex routes. Header
+conditions also require `cache_mode = "off"` on every overlapping route,
+including when gateway caching is currently disabled. Disjoint scopes can
+keep caching. Update each conflicting route and reapply the desired parent
+policy; for a route's own policy, the cache change and policy can share a PATCH.
+The API validates the whole gateway, including sibling resources.
+
+Terraform waits for the accepted generation to be applied to every expected
+instance, with old connections revoked, and verifies that managed policy fields
+still match. A newer generation from an unrelated resource is accepted only
+when these conditions remain true. An `active` gateway or accepted PATCH alone
+is insufficient. Timeouts and conflicts keep the resource ID in state; refresh
+and inspect the configuration before retrying. Deleting a child on a gateway
+with tracked policies also waits for the committed deletion generation and
+absence of that child.
+
+### TCP filtering and client addresses
+
+- `l4_policy` - (Optional, Computed) Filter TCP peers on ports 80 and 443, before
+  HTTP and TLS. Omit to preserve, `{}` to clear, remove to relinquish management.
+- `tcp_80` - (Optional in `l4_policy`) Restrictions for TCP port 80.
+- `tcp_443` - (Optional in `l4_policy`) Restrictions for TCP port 443.
+- `allow_cidrs` - (Optional in either TCP object) At most 256 IPv4/IPv6 addresses
+  or prefixes. An empty list applies no allow restriction.
+- `deny_cidrs` - (Optional in either TCP object) At most 256 denied addresses or
+  prefixes. Deny takes precedence over allow.
+- `client_ip_policy` - (Optional, Computed) Client address interpretation for
+  new HTTP policies. Omit to preserve, `{}` to restore peer interpretation.
+- `mode` - (Optional, default `peer`) `peer` uses the TCP peer. `trusted_xff`
+  accepts a forwarded client address only through explicit trusted networks.
+- `trusted_proxy_cidrs` - (Optional) At most 256 trusted IPv4/IPv6 networks.
+  Required and nonempty for `trusted_xff`, empty for `peer`. Trust only proxy
+  networks you control. Malformed or ambiguous trusted forwarded chains fail
+  closed; an untrusted peer's forwarding headers do not establish identity.
+- `access_policy_state` - (Computed) Public application state: `pending`,
+  `partial`, `applied` or `unknown`. This is distinct from gateway `status`.
+
+`l4_policy.enabled` defaults to false. TCP filtering and historical
+`global_allow_cidrs`, `global_deny_cidrs` and route `allow_cidrs` / `deny_cidrs`
+continue to use the peer address. `trust_proxy_headers` controls legacy header
+forwarding and does not configure the trusted proxy policy.
+
+Restricting TCP port 80 is incompatible with a listener using HTTP-01,
+including its default challenge. Use DNS-01 or a custom certificate before
+restricting that port. The API rejects incompatible combinations rather than
+silently bypassing the filter for certificate renewal.
+
+```hcl
+l4_policy = {
+  enabled = true
+  tcp_443 = { allow_cidrs = ["192.0.2.0/24", "2001:db8::/32"] }
+}
+client_ip_policy = { mode = "peer" }
+l7_policy = {
+  enabled = true
+  policies = {
+    administration = {
+      scope = { path = { op = "segment_prefix", value = "/admin" } }
+      allow_rules = {
+        office_read = { match = { source_cidrs = ["192.0.2.0/24"], methods = ["GET", "HEAD"] } }
+      }
+      required_headers = {
+        request_id = { name = "X-Request-ID", op = "non_empty" }
+      }
+    }
+  }
+}
+```

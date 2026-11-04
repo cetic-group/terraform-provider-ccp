@@ -9,34 +9,40 @@ package client
 // ─── Application Gateway ─────────────────────────────────────────────────────
 
 type ApplicationGateway struct {
-	ReplicaCount          *int64   `json:"replica_count,omitempty"`
-	CacheEnabled          bool     `json:"cache_enabled"`
-	CacheSizeMB           int64    `json:"cache_size_mb"`
-	CacheMaxObjectKB      int64    `json:"cache_max_object_kb"`
-	CacheSizeLimitMB      int64    `json:"cache_size_limit_mb"`
-	CacheEffectiveSizeMB  int64    `json:"cache_effective_size_mb"`
-	ID                    string   `json:"id"`
-	Name                  string   `json:"name"`
-	Region                string   `json:"region"`
-	Plan                  string   `json:"plan"`
-	VpcID                 string   `json:"vpc_id"`
-	VnetID                string   `json:"vnet_id"`
-	PublicIPID            *string  `json:"public_ip_id,omitempty"`
-	PublicIPAddress       *string  `json:"public_ip_address,omitempty"`
-	PublicIPStatus        *string  `json:"public_ip_status,omitempty"`
-	VIPAddress            *string  `json:"vip_address,omitempty"`
-	Status                string   `json:"status"`
-	ErrorMessage          *string  `json:"error_message,omitempty"`
-	ForceHTTPS            bool     `json:"force_https"`
-	HSTSEnabled           bool     `json:"hsts_enabled"`
-	HSTSMaxAge            int64    `json:"hsts_max_age"`
-	GlobalRateLimitPerSec *int64   `json:"global_rate_limit_per_sec,omitempty"`
-	GlobalAllowCIDRs      []string `json:"global_allow_cidrs"`
-	GlobalDenyCIDRs       []string `json:"global_deny_cidrs"`
-	TrustProxyHeaders     bool     `json:"trust_proxy_headers"`
-	Tags                  []string `json:"tags"`
-	CreatedAt             string   `json:"created_at"`
-	UpdatedAt             string   `json:"updated_at"`
+	L4Policy               *AppGWL4Policy       `json:"l4_policy,omitempty"`
+	L7Policy               *AppGWL7Policy       `json:"l7_policy,omitempty"`
+	ClientIPPolicy         *AppGWClientIPPolicy `json:"client_ip_policy,omitempty"`
+	SecurityRevision       *int64               `json:"security_revision,omitempty"`
+	AccessPolicyGeneration *int64               `json:"access_policy_generation,omitempty"`
+	AccessPolicyStatus     *AppGWAccessStatus   `json:"access_policy_status,omitempty"`
+	ReplicaCount           *int64               `json:"replica_count,omitempty"`
+	CacheEnabled           bool                 `json:"cache_enabled"`
+	CacheSizeMB            int64                `json:"cache_size_mb"`
+	CacheMaxObjectKB       int64                `json:"cache_max_object_kb"`
+	CacheSizeLimitMB       int64                `json:"cache_size_limit_mb"`
+	CacheEffectiveSizeMB   int64                `json:"cache_effective_size_mb"`
+	ID                     string               `json:"id"`
+	Name                   string               `json:"name"`
+	Region                 string               `json:"region"`
+	Plan                   string               `json:"plan"`
+	VpcID                  string               `json:"vpc_id"`
+	VnetID                 string               `json:"vnet_id"`
+	PublicIPID             *string              `json:"public_ip_id,omitempty"`
+	PublicIPAddress        *string              `json:"public_ip_address,omitempty"`
+	PublicIPStatus         *string              `json:"public_ip_status,omitempty"`
+	VIPAddress             *string              `json:"vip_address,omitempty"`
+	Status                 string               `json:"status"`
+	ErrorMessage           *string              `json:"error_message,omitempty"`
+	ForceHTTPS             bool                 `json:"force_https"`
+	HSTSEnabled            bool                 `json:"hsts_enabled"`
+	HSTSMaxAge             int64                `json:"hsts_max_age"`
+	GlobalRateLimitPerSec  *int64               `json:"global_rate_limit_per_sec,omitempty"`
+	GlobalAllowCIDRs       []string             `json:"global_allow_cidrs"`
+	GlobalDenyCIDRs        []string             `json:"global_deny_cidrs"`
+	TrustProxyHeaders      bool                 `json:"trust_proxy_headers"`
+	Tags                   []string             `json:"tags"`
+	CreatedAt              string               `json:"created_at"`
+	UpdatedAt              string               `json:"updated_at"`
 	// Réseau d'attache résolu côté serveur (#1579).
 	VpcName  *string `json:"vpc_name,omitempty"`
 	VnetName *string `json:"vnet_name,omitempty"`
@@ -51,37 +57,44 @@ type ApplicationGateway struct {
 }
 
 type ApplicationGatewayCreateRequest struct {
-	ReplicaCount          *int64   `json:"replica_count,omitempty"`
-	CacheEnabled          *bool    `json:"cache_enabled,omitempty"`
-	Name                  string   `json:"name"`
-	Region                string   `json:"region"`
-	Plan                  string   `json:"plan"`
-	VpcID                 string   `json:"vpc_id"`
-	VnetID                string   `json:"vnet_id"`
-	PublicIPID            *string  `json:"public_ip_id,omitempty"`
-	VIPAddress            *string  `json:"vip_address,omitempty"`
-	ForceHTTPS            *bool    `json:"force_https,omitempty"`
-	HSTSEnabled           *bool    `json:"hsts_enabled,omitempty"`
-	HSTSMaxAge            *int64   `json:"hsts_max_age,omitempty"`
-	GlobalRateLimitPerSec *int64   `json:"global_rate_limit_per_sec,omitempty"`
-	GlobalAllowCIDRs      []string `json:"global_allow_cidrs,omitempty"`
-	GlobalDenyCIDRs       []string `json:"global_deny_cidrs,omitempty"`
-	TrustProxyHeaders     *bool    `json:"trust_proxy_headers,omitempty"`
-	Tags                  []string `json:"tags,omitempty"`
+	L4Policy              *AppGWL4Policy       `json:"l4_policy,omitempty"`
+	L7Policy              *AppGWL7Policy       `json:"l7_policy,omitempty"`
+	ClientIPPolicy        *AppGWClientIPPolicy `json:"client_ip_policy,omitempty"`
+	ReplicaCount          *int64               `json:"replica_count,omitempty"`
+	CacheEnabled          *bool                `json:"cache_enabled,omitempty"`
+	Name                  string               `json:"name"`
+	Region                string               `json:"region"`
+	Plan                  string               `json:"plan"`
+	VpcID                 string               `json:"vpc_id"`
+	VnetID                string               `json:"vnet_id"`
+	PublicIPID            *string              `json:"public_ip_id,omitempty"`
+	VIPAddress            *string              `json:"vip_address,omitempty"`
+	ForceHTTPS            *bool                `json:"force_https,omitempty"`
+	HSTSEnabled           *bool                `json:"hsts_enabled,omitempty"`
+	HSTSMaxAge            *int64               `json:"hsts_max_age,omitempty"`
+	GlobalRateLimitPerSec *int64               `json:"global_rate_limit_per_sec,omitempty"`
+	GlobalAllowCIDRs      []string             `json:"global_allow_cidrs,omitempty"`
+	GlobalDenyCIDRs       []string             `json:"global_deny_cidrs,omitempty"`
+	TrustProxyHeaders     *bool                `json:"trust_proxy_headers,omitempty"`
+	Tags                  []string             `json:"tags,omitempty"`
 }
 
 type ApplicationGatewayUpdateRequest struct {
-	Plan                  *string   `json:"plan,omitempty"`
-	CacheEnabled          *bool     `json:"cache_enabled,omitempty"`
-	Name                  *string   `json:"name,omitempty"`
-	ForceHTTPS            *bool     `json:"force_https,omitempty"`
-	HSTSEnabled           *bool     `json:"hsts_enabled,omitempty"`
-	HSTSMaxAge            *int64    `json:"hsts_max_age,omitempty"`
-	GlobalRateLimitPerSec *int64    `json:"global_rate_limit_per_sec,omitempty"`
-	GlobalAllowCIDRs      *[]string `json:"global_allow_cidrs,omitempty"`
-	GlobalDenyCIDRs       *[]string `json:"global_deny_cidrs,omitempty"`
-	TrustProxyHeaders     *bool     `json:"trust_proxy_headers,omitempty"`
-	Tags                  *[]string `json:"tags,omitempty"`
+	L4Policy              *AppGWL4Policy       `json:"l4_policy,omitempty"`
+	L7Policy              *AppGWL7Policy       `json:"l7_policy,omitempty"`
+	ClientIPPolicy        *AppGWClientIPPolicy `json:"client_ip_policy,omitempty"`
+	SecurityRevision      *int64               `json:"security_revision,omitempty"`
+	Plan                  *string              `json:"plan,omitempty"`
+	CacheEnabled          *bool                `json:"cache_enabled,omitempty"`
+	Name                  *string              `json:"name,omitempty"`
+	ForceHTTPS            *bool                `json:"force_https,omitempty"`
+	HSTSEnabled           *bool                `json:"hsts_enabled,omitempty"`
+	HSTSMaxAge            *int64               `json:"hsts_max_age,omitempty"`
+	GlobalRateLimitPerSec *int64               `json:"global_rate_limit_per_sec,omitempty"`
+	GlobalAllowCIDRs      *[]string            `json:"global_allow_cidrs,omitempty"`
+	GlobalDenyCIDRs       *[]string            `json:"global_deny_cidrs,omitempty"`
+	TrustProxyHeaders     *bool                `json:"trust_proxy_headers,omitempty"`
+	Tags                  *[]string            `json:"tags,omitempty"`
 	// nil = clé absente (inchangée) ; &NullableString{nil} = `null` (page standard).
 	CustomErrorPageHTML *NullableString `json:"custom_error_page_html,omitempty"`
 }
@@ -113,17 +126,19 @@ const (
 // ─── Listener ───────────────────────────────────────────────────────────────
 
 type AppGWListener struct {
-	ID                string  `json:"id"`
-	AppGWID           string  `json:"appgw_id"`
-	Hostname          string  `json:"hostname"`
-	AcmeStatus        string  `json:"acme_status"`
-	AcmeChallenge     *string `json:"acme_challenge,omitempty"`
-	AcmeDNSProvider   *string `json:"acme_dns_provider,omitempty"`
-	AcmeLastRenewalAt *string `json:"acme_last_renewal_at,omitempty"`
-	AcmeIssuedAt      *string `json:"acme_issued_at,omitempty"`
-	AcmeRenewAfter    *string `json:"acme_renew_after,omitempty"`
-	AcmeLastError     *string `json:"acme_last_error,omitempty"`
-	CertPath          *string `json:"cert_path,omitempty"`
+	L7Policy          *AppGWL7Policy `json:"l7_policy,omitempty"`
+	SecurityRevision  *int64         `json:"security_revision,omitempty"`
+	ID                string         `json:"id"`
+	AppGWID           string         `json:"appgw_id"`
+	Hostname          string         `json:"hostname"`
+	AcmeStatus        string         `json:"acme_status"`
+	AcmeChallenge     *string        `json:"acme_challenge,omitempty"`
+	AcmeDNSProvider   *string        `json:"acme_dns_provider,omitempty"`
+	AcmeLastRenewalAt *string        `json:"acme_last_renewal_at,omitempty"`
+	AcmeIssuedAt      *string        `json:"acme_issued_at,omitempty"`
+	AcmeRenewAfter    *string        `json:"acme_renew_after,omitempty"`
+	AcmeLastError     *string        `json:"acme_last_error,omitempty"`
+	CertPath          *string        `json:"cert_path,omitempty"`
 	// Certificat fourni par le client (#1579) — métadonnées seulement.
 	TLSCertNotAfter *string `json:"tls_cert_not_after,omitempty"`
 	TLSCertNames    *string `json:"tls_cert_names,omitempty"`
@@ -132,6 +147,8 @@ type AppGWListener struct {
 }
 
 type AppGWListenerCreateRequest struct {
+	L7Policy           *AppGWL7Policy    `json:"l7_policy,omitempty"`
+	SecurityRevision   *int64            `json:"security_revision,omitempty"`
 	Hostname           string            `json:"hostname"`
 	AcmeChallenge      *string           `json:"acme_challenge,omitempty"`
 	AcmeDNSProvider    *string           `json:"acme_dns_provider,omitempty"`
@@ -252,6 +269,8 @@ type AppGWBasicAuthUser struct {
 }
 
 type AppGWRoute struct {
+	L7Policy           *AppGWL7Policy     `json:"l7_policy,omitempty"`
+	SecurityRevision   *int64             `json:"security_revision,omitempty"`
 	CacheMode          string             `json:"cache_mode"`
 	CacheDefaultTTLS   int64              `json:"cache_default_ttl_s"`
 	CacheMaxTTLS       int64              `json:"cache_max_ttl_s"`
@@ -283,6 +302,8 @@ type AppGWRoute struct {
 }
 
 type AppGWRouteCreateRequest struct {
+	L7Policy           *AppGWL7Policy       `json:"l7_policy,omitempty"`
+	SecurityRevision   *int64               `json:"security_revision,omitempty"`
 	CacheMode          *string              `json:"cache_mode,omitempty"`
 	CacheDefaultTTLS   *int64               `json:"cache_default_ttl_s,omitempty"`
 	CacheMaxTTLS       *int64               `json:"cache_max_ttl_s,omitempty"`
@@ -310,6 +331,8 @@ type AppGWRouteCreateRequest struct {
 }
 
 type AppGWRouteUpdateRequest struct {
+	L7Policy           *AppGWL7Policy        `json:"l7_policy,omitempty"`
+	SecurityRevision   *int64                `json:"security_revision,omitempty"`
 	CacheMode          *string               `json:"cache_mode,omitempty"`
 	CacheDefaultTTLS   *int64                `json:"cache_default_ttl_s,omitempty"`
 	CacheMaxTTLS       *int64                `json:"cache_max_ttl_s,omitempty"`
