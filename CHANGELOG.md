@@ -13,6 +13,7 @@ production. Application Gateway access policies need a platform advertising
 access policy version 1 (cetic-cloud-platform#1828), not yet confirmed in
 production: without it, configuring a policy fails at apply time and gateways
 without policies keep working.
+
 The dedicated VPC egress IP needs the platform API of
 cetic-cloud-platform#1734, **not yet in production**: do not release before it
 is deployed.
