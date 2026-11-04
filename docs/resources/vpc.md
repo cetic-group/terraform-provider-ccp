@@ -81,7 +81,7 @@ next refresh shows it.
 
 The option is changed **in place** (no replacement of the VPC). If no public
 IP is free in the region, turning it on fails with HTTP 409; if the
-installation does not offer it, or the VPC is not an EVPN VPC, with HTTP 422.
+installation does not offer it, or the VPC predates the current network architecture, with HTTP 422.
 In both cases nothing is changed (or created) and the VPC keeps the shared
 egress.
 
@@ -112,7 +112,7 @@ removed.
 
 - `cidr` - (Optional, Computed, Forces new resource) Private address block of the VPC (RFC1918, mask `/16` to `/24`, e.g. `10.1.0.0/16`). Auto-allocated by the platform when omitted. VNets created inside the VPC must be sub-ranges of this block. Immutable after creation — changing it forces replacement.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each). Example: `["env:prod", "team:infra"]`.
-- `dedicated_egress_ip` - (Optional, Computed, updated in place) Give the VPC its own dedicated public egress IP. Defaults to `false` (shared egress, outbound TCP port 25 blocked). Setting it back to `false`, or removing it, **releases the IP immediately**. Billed as a public IP. EVPN VPCs only. See [Dedicated egress IP](#dedicated-egress-ip).
+- `dedicated_egress_ip` - (Optional, Computed, updated in place) Give the VPC its own dedicated public egress IP. Defaults to `false` (shared egress, outbound TCP port 25 blocked). Setting it back to `false`, or removing it, **releases the IP immediately**. Billed as a public IP. Not available on VPCs that predate the current network architecture. See [Dedicated egress IP](#dedicated-egress-ip).
 
 ## Attributes Reference
 

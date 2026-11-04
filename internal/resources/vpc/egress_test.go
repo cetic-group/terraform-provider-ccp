@@ -147,8 +147,8 @@ func TestEgressRefusalHint(t *testing.T) {
 		!strings.Contains(h, "nothing was changed") {
 		t.Errorf("409 + true : indication pool vide attendue, reçu %q", h)
 	}
-	if h := egressRefusalHint(c422, true); !strings.Contains(h, "not offered") || !strings.Contains(h, "EVPN") {
-		t.Errorf("422 + true : indication option non proposée / non EVPN attendue, reçu %q", h)
+	if h := egressRefusalHint(c422, true); !strings.Contains(h, "not offered") || !strings.Contains(h, "network architecture") {
+		t.Errorf("422 + true : indication option non proposée / VPC trop ancien attendue, reçu %q", h)
 	}
 	if h := egressRefusalHint(c409, false); h != "" {
 		t.Errorf("409 sans l'option : aucune indication d'IP attendue, reçu %q", h)

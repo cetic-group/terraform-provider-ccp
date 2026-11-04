@@ -210,7 +210,7 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"long as the option stays on; billed as a public IP, outside the `max_public_ips` " +
 					"quota. Updated in place. **Setting it back to `false` (or removing it) gives the " +
 					"IP back to the pool immediately**: it may be assigned to another customer, and " +
-					"turning the option on again gives a different IP. EVPN VPCs only.",
+					"turning the option on again gives a different IP. Not available on VPCs that predate the current network architecture.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(false),
@@ -508,8 +508,8 @@ func egressRefusalHint(err error, want bool) string {
 			"keeps the shared egress of the platform. Retry later, or contact support."
 	case client.IsUnprocessable(err):
 		return " The dedicated egress IP is not offered on this installation, or the VPC is " +
-			"not an EVPN VPC (create a new VPC to get one): nothing was changed and the VPC " +
-			"keeps the shared egress of the platform."
+			"older than the current network architecture (create a new VPC to get one): " +
+			"nothing was changed and the VPC keeps the shared egress of the platform."
 	default:
 		return ""
 	}
