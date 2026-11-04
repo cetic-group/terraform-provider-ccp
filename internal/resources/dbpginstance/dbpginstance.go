@@ -159,9 +159,10 @@ func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"extensions_available": schema.BoolAttribute{
-				MarkdownDescription: "Whether extensions can be allowed on this instance. They must " +
-					"first be enabled on the instance by support; until then, extension settings " +
-					"cannot change.",
+				MarkdownDescription: "Whether extensions can be allowed on this instance. An instance " +
+					"created in a region where extensions are offered has them from its creation; " +
+					"for an instance created earlier, their activation must be requested. Until " +
+					"then, extension settings cannot change.",
 				Computed:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
@@ -333,12 +334,10 @@ func (r *dbpgResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError("PostgreSQL provisioning timed out or failed", err.Error())
 		return
 	}
-	planned := plan
-	final, keepPlanned := r.applyExtensionsOnCreate(ctx, planned, final, &resp.Diagnostics)
+	// Extension settings come from the platform even when they were not
+	// applied: the state never shows extensions the instance does not have.
+	final = r.applyExtensionsOnCreate(ctx, plan, final, &resp.Diagnostics)
 	setState(ctx, &plan, final)
-	if keepPlanned {
-		keepPlannedExtensions(&plan, planned)
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -385,13 +384,20 @@ func (r *dbpgResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	id := state.ID.ValueString()
 	var final *client.DbPgInstance
 	var err error
-	if extReq, send := extensionRequest(ctx, plan, &state); send {
+	extReq, send := extensionRequest(ctx, plan, &state)
+	if send {
 		if _, err = r.client.UpdateDbPgExtensions(ctx, id, extReq); err != nil {
 			resp.Diagnostics.AddError("Failed to update PostgreSQL extensions", err.Error())
 			return
 		}
+	}
+	// Settings sent now, or accepted by an earlier apply and still pending
+	// (ModifyPlan planned the status unknown): wait until they are in effect.
+	if send || state.ExtensionsStatus.ValueString() == extensionsPending {
 		if final, err = waitExtensionsApplied(ctx, r.client, id); err != nil {
-			resp.Diagnostics.AddError("PostgreSQL extension settings not applied", err.Error())
+			resp.Diagnostics.AddError("PostgreSQL extension settings not in effect yet",
+				"The extension settings were accepted, but they were not in effect yet: "+err.Error()+
+					"\n\nThe next terraform apply waits for them again.")
 			return
 		}
 	} else if final, err = r.client.GetDbPg(ctx, id); err != nil {
