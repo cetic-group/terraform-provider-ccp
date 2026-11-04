@@ -42,7 +42,7 @@ resource "ccp_vnet" "db" {
 ### Optional
 
 - `snat` - (Optional, Computed) Outbound mode of the subnet, and the one setting that distinguishes an isolated network:
-  - `true` — resources in this subnet reach the internet, and a public address can be attached to them;
+  - `true` — resources in this subnet reach the internet, and a public address can be attached to them. Their traffic leaves through the shared egress of the platform (outbound TCP port 25 blocked), or through the VPC's own IP when the VPC has [`dedicated_egress_ip = true`](vpc.md#dedicated-egress-ip). A `snat = true` VNet takes no public IP of its own;
   - `false` (the default) — **isolated subnet**: no outbound internet access, and **no public address can be attached** to anything in it. The platform rejects the attachment rather than creating an address that would never answer.
 
   Changed in place. Turning it off is rejected while public addresses are still attached to resources of this subnet — detach them first. A [`ccp_k8s_cluster`](k8s_cluster.md) runs in an isolated subnet: its nodes no longer need internet access to start.

@@ -513,15 +513,15 @@ func (r *vnetResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	if hasChange {
 		if _, err := r.client.UpdateVNet(ctx, vpcID, id, updateReq); err != nil {
-			// 409 most commonly means "snat=false rejected because routed
-			// public IPs are still attached" — surface the API detail so the
-			// user knows what to detach.
+			// 409 on a snat change: `false` is rejected while routed public
+			// IPs are still attached. `true` never needs a public IP since
+			// cetic-cloud-platform#1734 (shared egress by default, the
+			// dedicated IP is an option of the VPC): no hint then.
 			if client.IsConflict(err) {
 				resp.Diagnostics.AddError(
 					"VNet update conflicts with current state",
-					fmt.Sprintf("CETIC Cloud rejected the update for vnet %s: %s. "+
-						"For `snat=false`, ensure no routed public IPs remain attached "+
-						"to instances in this VNet before retrying.", id, err.Error()),
+					fmt.Sprintf("CETIC Cloud rejected the update for vnet %s: %s.%s",
+						id, err.Error(), vnetConflictHint(updateReq.SNAT)),
 				)
 				return
 			}
@@ -704,4 +704,18 @@ func stringPtrOrNil(s types.String) *string {
 	}
 	v := s.ValueString()
 	return &v
+}
+
+// vnetConflictHint completes a 409 on a VNet update with the likely cause of
+// the requested `snat` value (nil: snat not part of the request). Only
+// `snat = false` has a known cause (routed public IPs still attached). A
+// `snat = true` VNet takes no public IP: the internet egress is shared unless
+// the VPC has `dedicated_egress_ip = true`, whose IP is assigned when the
+// option is turned on (cetic-cloud-platform#1734), so no IP-related hint.
+func vnetConflictHint(snat *bool) string {
+	if snat == nil || *snat {
+		return ""
+	}
+	return " For `snat = false`, ensure no routed public IPs remain attached " +
+		"to instances in this VNet before retrying."
 }

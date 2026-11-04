@@ -97,6 +97,12 @@ func IsConflict(err error) bool {
 	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict
 }
 
+// IsUnprocessable reports whether err is an APIError with status 422.
+func IsUnprocessable(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity
+}
+
 // PollUntilDeleted blocks until `get` returns a NotFound error (resource is
 // really gone server-side) or the timeout expires. Call it at the end of a
 // resource Delete for any resource whose backend teardown is asynchronous
@@ -396,6 +402,16 @@ func (c *Client) GetVPC(ctx context.Context, id string) (*VPC, error) {
 func (c *Client) CreateVPC(ctx context.Context, req VPCCreateRequest) (*VPC, error) {
 	var out VPC
 	if err := c.do(ctx, http.MethodPost, "/v1/vpcs", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateVPC changes a VPC in place (PATCH /v1/vpcs/{id}). Only the non-nil
+// fields of req are sent.
+func (c *Client) UpdateVPC(ctx context.Context, id string, req VPCUpdateRequest) (*VPC, error) {
+	var out VPC
+	if err := c.do(ctx, http.MethodPatch, "/v1/vpcs/"+id, req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

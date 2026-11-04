@@ -56,6 +56,12 @@ resource "ccp_vpc" "prod" {
   region = "RNN"
   cidr   = "10.0.0.0/16" # omit to let the platform auto-allocate a /16
   tags   = ["env:prod", "tier:public"]
+
+  # false (default): shared internet egress, outbound TCP 25 blocked.
+  # true: own public egress IP (egress_ip, to give to partners that filter by
+  # source address), billed as a public IP. Switching back to false releases
+  # the IP to the pool immediately.
+  dedicated_egress_ip = false
 }
 
 # ---------------------------------------------------------------------------
@@ -134,6 +140,10 @@ resource "ccp_block_volume" "data" {
 
 output "vpc_status" {
   value = ccp_vpc.prod.status
+}
+
+output "vpc_egress_ip" { # null while dedicated_egress_ip = false
+  value = ccp_vpc.prod.egress_ip
 }
 
 output "vnet_web_gateway" {

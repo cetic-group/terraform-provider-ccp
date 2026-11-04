@@ -14,6 +14,10 @@ access policy version 1 (cetic-cloud-platform#1828), not yet confirmed in
 production: without it, configuring a policy fails at apply time and gateways
 without policies keep working.
 
+The dedicated VPC egress IP needs the platform API of
+cetic-cloud-platform#1734, **not yet in production**: do not release before it
+is deployed.
+
 ### Breaking
 
 - `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
@@ -47,6 +51,27 @@ without policies keep working.
   selected single-instance or high-availability mode; no multiplier is applied.
 - The HTTP cache remains opt-in and mutable. The platform catalog defines its
   optional surcharge independently from the gateway base rate.
+- **`ccp_vpc`: dedicated egress IP (option).** New `dedicated_egress_ip`
+  argument (default `false`), updated in place through `PATCH /v1/vpcs/{id}`
+  (`ccp_vpc` has an in-place update for the first time; `name`, `region`,
+  `cidr` and `tags` still force replacement). `false`: the VPC uses the shared
+  internet egress of the platform, where outbound TCP port 25 is blocked.
+  `true`: the platform assigns the VPC its own public egress IP within the
+  apply and keeps it as long as the option stays on; it is billed as a public
+  IP and does not count against `max_public_ips`. **Turning the option off, or
+  removing the attribute, gives the IP back to the pool immediately**, with no
+  grace period: it may go to another customer, and turning the option on again
+  gives a different IP. Read-only `egress_ip`, `egress_ip_type` and
+  `egress_ip_status` describe the IP (`null` without it); they keep their state
+  value in plans unless `dedicated_egress_ip` changes. The `ccp_vpc` data
+  source exposes `dedicated_egress_ip` and the three attributes. HTTP 409 (no
+  free public IP, VPC not active) and 422 (option not offered, VPC older than
+  the current network architecture) come with an explanation; nothing is
+  changed. An older platform API that ignores the option is reported as such
+  instead of a Terraform inconsistency error. `cidr` and `tags` keep their
+  state value before `RequiresReplace` is evaluated, so turning the option on
+  never replaces a VPC whose `cidr` or `tags` are omitted from the
+  configuration (cetic-cloud-platform#1734).
 - **Application Gateway access policies.** Typed `l4_policy`, `l7_policy`
   and `client_ip_policy` on `ccp_application_gateway`; `l7_policy` on
   `ccp_appgw_listener` and `ccp_appgw_route`, updated in place. Keyed
