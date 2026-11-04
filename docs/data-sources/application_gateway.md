@@ -45,10 +45,10 @@ output "listeners" {
 ## Attributes Reference
 
 - `cache_enabled` (Boolean) — Enables the gateway HTTP cache. Default `false`; also enable caching on individual routes.
-- `cache_size_mb` (Number) — Requested shared budget in MiB (default `64`). Plan limits: small 64, medium 256, large 1024, custom 64. The requested value is preserved after a downgrade.
-- `cache_max_object_kb` (Number) — Maximum object size in KiB, 1–1024 (default `512`).
+- `cache_size_mb` (Number) — Cache budget assigned by the selected plan, in MiB; shared across routes. Read-only.
+- `cache_max_object_kb` (Number) — Maximum object size assigned by the selected plan, in KiB. Read-only.
 - `cache_size_limit_mb` (Number) — Current plan limit in MiB.
-- `cache_effective_size_mb` (Number) — Effective budget after applying the plan limit. Read-only; do not copy it into `cache_size_mb`.
+- `cache_effective_size_mb` (Number) — Cache budget assigned by the selected plan. Read-only.
 
 In addition to all arguments above:
 
@@ -59,3 +59,23 @@ In addition to all arguments above:
 - `listeners` - List of `{id, hostname, acme_status, acme_challenge, acme_dns_provider, acme_last_renewal_at}`.
 - `target_groups` - List of `{id, name, algorithm}`.
 - `routes` - List of `{id, listener_id, priority, path_match, path_match_type, target_group_id}`.
+
+### Availability
+
+`replica_count` (Number, read-only) is `1` without redundancy or `2` for high
+availability. A platform version predating this field only supports two
+instances; its response is read as `2`.
+
+## Access policies (provider 7.3.2+)
+
+- `l4_policy` - Current typed TCP policy on ports 80 and 443.
+- `l7_policy` - Current HTTP policies, also included in each listener and route.
+- `client_ip_policy` - Current peer/trusted-forwarded client address policy.
+- `security_revision` - Observed gateway-wide policy revision.
+- `access_policy_state` - Public application state (`pending`, `partial`,
+  `applied`, `unknown`), distinct from the gateway lifecycle status.
+
+Policy objects use the same keyed-map representation as the
+[`ccp_application_gateway` resource](../resources/application_gateway.md#http-access-policies-provider-81).
+A platform predating these fields returns null; the data source never assumes
+that an absent policy response means protection has been applied.

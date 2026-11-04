@@ -3,6 +3,7 @@ package appgwlistener
 import (
 	"regexp"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -38,6 +39,8 @@ func optStr(p *string) types.String {
 // acme_dns_provider is mirrored back (so we map it), but acme_dns_credentials
 // is preserved from the prior model value (already in m) and never touched.
 func applyToModel(l *client.AppGWListener, m *listenerResourceModel) {
+	m.L7Policy = appgwpolicy.FromL7(m.L7Policy, l.L7Policy)
+	m.SecurityRevision = types.Int64PointerValue(l.SecurityRevision)
 	m.ID = types.StringValue(l.ID)
 	m.AppGWID = types.StringValue(l.AppGWID)
 	m.Hostname = types.StringValue(l.Hostname)

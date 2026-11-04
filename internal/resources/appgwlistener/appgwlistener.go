@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -39,6 +40,8 @@ func New() resource.Resource { return &listenerResource{} }
 type listenerResource struct{ client *client.Client }
 
 type listenerResourceModel struct {
+	L7Policy           types.Object `tfsdk:"l7_policy"`
+	SecurityRevision   types.Int64  `tfsdk:"security_revision"`
 	ID                 types.String `tfsdk:"id"`
 	AppGWID            types.String `tfsdk:"appgw_id"`
 	Hostname           types.String `tfsdk:"hostname"`
@@ -69,10 +72,12 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"optional automatically-issued TLS certificate via Let's Encrypt/ACME). When `acme_challenge` " +
 			"is set, the certificate is requested automatically and served over SNI when a client connects " +
 			"with this hostname.\n\n" +
-			"~> **All attributes except the client certificate are immutable.** Any other change forces a " +
+			"~> **Attributes other than the client certificate and HTTP access policy are immutable.** Any other change forces a " +
 			"destroy + create. A change of `tls_certificate_pem` / `tls_private_key_pem` rotates the " +
 			"certificate in place.",
 		Attributes: map[string]schema.Attribute{
+			"l7_policy":         appgwpolicy.L7Schema(),
+			"security_revision": schema.Int64Attribute{Computed: true, MarkdownDescription: "Current gateway-wide access policy revision. Used for concurrency control."},
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the listener.",
 				Computed:            true,
@@ -241,6 +246,18 @@ func (r *listenerResource) Create(ctx context.Context, req resource.CreateReques
 		createReq.TLSPrivateKeyPEM = &v
 	}
 
+	cfgPolicy := appgwpolicy.Configuration(ctx, req.Config, "l7_policy", &resp.Diagnostics)
+	if appgwpolicy.Configured(cfgPolicy) {
+		var err error
+		createReq.L7Policy, err = appgwpolicy.L7(plan.L7Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, err) {
+			return
+		}
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	created, err := r.client.CreateAppGWListener(ctx, plan.AppGWID.ValueString(), createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create AppGW listener", err.Error())
@@ -250,6 +267,27 @@ func (r *listenerResource) Create(ctx context.Context, req resource.CreateReques
 	// returns them).
 	applyToModel(created, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if createReq.L7Policy != nil || (created.SecurityRevision != nil && *created.SecurityRevision > 0) {
+		if createReq.L7Policy != nil && !appgwpolicy.Confirm(createReq.L7Policy, created.L7Policy, &resp.Diagnostics) {
+			return
+		}
+		final := appgwpolicy.Wait(ctx, r.client, created.AppGWID, created.SecurityRevision, &resp.Diagnostics)
+		if final == nil {
+			return
+		}
+		for _, listener := range final.Listeners {
+			if listener.ID == created.ID {
+				if createReq.L7Policy != nil && !appgwpolicy.Confirm(createReq.L7Policy, listener.L7Policy, &resp.Diagnostics) {
+					return
+				}
+				applyToModel(&listener, &plan)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+				return
+			}
+		}
+		resp.Diagnostics.AddError("Access policy not confirmed", "The resource was not returned after policy application.")
+	}
+
 }
 
 func (r *listenerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -271,9 +309,7 @@ func (r *listenerResource) Read(ctx context.Context, req resource.ReadRequest, r
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update n'est atteint que par la rotation du certificat client : tout autre
-// attribut porte RequiresReplace. Le nouveau certificat part sur la route de
-// renouvellement, en place — recréer le listener couperait le trafic.
+// Access policies and client certificates can be updated without replacing the listener.
 func (r *listenerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state listenerResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -283,8 +319,36 @@ func (r *listenerResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 	appgwID, id := state.AppGWID.ValueString(), state.ID.ValueString()
 
+	cfgPolicy := appgwpolicy.Configuration(ctx, req.Config, "l7_policy", &resp.Diagnostics)
+	var desiredPolicy *client.AppGWL7Policy
+	if appgwpolicy.Configured(cfgPolicy) {
+		var err error
+		desiredPolicy, err = appgwpolicy.L7(plan.L7Policy)
+		if appgwpolicy.WriteError(&resp.Diagnostics, err) {
+			return
+		}
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	var got *client.AppGWListener
+	var acceptedRevision *int64
 	var err error
+	if appgwpolicy.Changed(cfgPolicy, plan.L7Policy, state.L7Policy) {
+		got, err = r.client.UpdateAppGWListener(ctx, appgwID, id, client.AppGWListenerUpdateRequest{L7Policy: desiredPolicy})
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update listener access policy", err.Error())
+			return
+		}
+		acceptedRevision = got.SecurityRevision
+		early := state
+		early.L7Policy = plan.L7Policy
+		applyToModel(got, &early)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &early)...)
+		if !appgwpolicy.Confirm(desiredPolicy, got.L7Policy, &resp.Diagnostics) {
+			return
+		}
+	}
 	if certRotationNeeded(plan, state) {
 		got, err = r.client.RotateAppGWListenerCert(ctx, appgwID, id, client.ListenerCertificateUpload{
 			TLSCertificatePEM: plan.TLSCertificatePEM.ValueString(),
@@ -301,6 +365,30 @@ func (r *listenerResource) Update(ctx context.Context, req resource.UpdateReques
 			return
 		}
 	}
+	if desiredPolicy != nil || acceptedRevision != nil || (got.SecurityRevision != nil && *got.SecurityRevision > 0) {
+		if acceptedRevision == nil || (got.SecurityRevision != nil && *got.SecurityRevision > *acceptedRevision) {
+			acceptedRevision = got.SecurityRevision
+		}
+		final := appgwpolicy.Wait(ctx, r.client, appgwID, acceptedRevision, &resp.Diagnostics)
+		if final == nil {
+			return
+		}
+		matched := false
+		for _, listener := range final.Listeners {
+			if listener.ID == id {
+				if desiredPolicy != nil && !appgwpolicy.Confirm(desiredPolicy, listener.L7Policy, &resp.Diagnostics) {
+					return
+				}
+				got = &listener
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			resp.Diagnostics.AddError("Access policy not confirmed", "The listener was not returned after policy application.")
+			return
+		}
+	}
 	applyToModel(got, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -311,7 +399,7 @@ func (r *listenerResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteAppGWListener(ctx, state.AppGWID.ValueString(), state.ID.ValueString()); err != nil {
+	if err := r.client.DeleteAppGWListener(ctx, state.AppGWID.ValueString(), state.ID.ValueString(), state.SecurityRevision.ValueInt64()); err != nil {
 		if client.IsNotFound(err) {
 			return
 		}

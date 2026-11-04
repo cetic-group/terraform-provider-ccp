@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/appgwpolicy"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 )
@@ -18,6 +19,7 @@ import (
 func planModel(vip types.String) appgwResourceModel {
 	n := types.StringNull()
 	return appgwResourceModel{
+		L7Policy: types.ObjectNull(appgwpolicy.L7Type().AttrTypes), L4Policy: types.ObjectNull(appgwpolicy.L4Type().AttrTypes), ClientIPPolicy: types.ObjectNull(appgwpolicy.ClientIPType().AttrTypes),
 		ID: types.StringUnknown(), Name: types.StringValue("web-appgw"),
 		Region: types.StringValue("RNN"), Plan: types.StringValue("appgw-medium"),
 		VpcID: types.StringValue("vpc-1"), VnetID: types.StringValue("vnet-1"),
@@ -44,7 +46,7 @@ func runCreate(t *testing.T, plan appgwResourceModel, vipFromAPI string) (map[st
 	return sent, out
 }
 
-func runCreateDiags(t *testing.T, plan appgwResourceModel, postVIP, vipFromAPI string) (map[string]any, appgwResourceModel, diag.Diagnostics) {
+func runCreateDiags(t *testing.T, plan appgwResourceModel, postVIP, vipFromAPI string, replicas ...int64) (map[string]any, appgwResourceModel, diag.Diagnostics) {
 	t.Helper()
 	ctx := context.Background()
 	id := "appgw-92"
@@ -52,6 +54,10 @@ func runCreateDiags(t *testing.T, plan appgwResourceModel, postVIP, vipFromAPI s
 	creating := fixtureCreating(id)
 	if postVIP != "" {
 		creating["vip_address"] = postVIP
+	}
+	if len(replicas) > 0 {
+		creating["replica_count"] = replicas[0]
+		active["replica_count"] = replicas[0]
 	}
 	srv := testutil.NewTestServer(t, testutil.Routes{
 		{Method: "POST", Path: "/v1/app-gateways", Status: http.StatusCreated, Body: creating},

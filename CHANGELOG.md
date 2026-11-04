@@ -6,11 +6,50 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-Requires a platform API that is **not yet in production** (dedicated VPC
-egress IP, cetic-cloud-platform#1734). Do not release before it is deployed.
+**The next release is 7.3.2, a patch version that changes the expected
+configuration** (see Breaking). The plan-managed cache and single-instance
+gateways need the platform API of cetic-cloud-platform#1748, already in
+production. Application Gateway access policies need a platform advertising
+access policy version 1 (cetic-cloud-platform#1828), not yet confirmed in
+production: without it, configuring a policy fails at apply time and gateways
+without policies keep working.
+The dedicated VPC egress IP needs the platform API of
+cetic-cloud-platform#1734, **not yet in production**: do not release before it
+is deployed.
+
+### Breaking
+
+- `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
+  computed-only outputs. Remove their HCL assignments when upgrading to 7.3.2.
+  The plan selected on the gateway now determines both values; `cache_enabled`
+  and route policies remain writable. Requests no longer send dimensions or
+  client-side defaults. Existing state keys and types are preserved, and a
+  plan change does not replace the gateway. Provider 7.3.1 and earlier send
+  their own default dimensions and can report inconsistent results with the
+  plan-managed API: upgrade. See the resource migration guide.
+- `data.ccp_pricing`: `items[*].hourly_price_cents` changes from an integer to
+  a number and may carry fractional cents (e.g. `0.4096`); do not assume an
+  integer or compare it for exact equality. `monthly_price_eur` and
+  `yearly_price_eur` are now `null` when the platform gives no estimate
+  (per-unit pricing) instead of `0`: guard them (`try()`, `coalesce()`) before
+  any arithmetic.
 
 ### Added
 
+- `replica_count` on `ccp_application_gateway` and `ccp_load_balancer`, and
+  their data sources: `1` without redundancy or `2` for high availability
+  (default). Changing the count forces replacement; capacity plans remain
+  independent. A state written by an earlier provider (no `replica_count`)
+  counts as `2`, so existing gateways are never replaced, even when planning
+  with `-refresh=false`.
+- Creation detects older platforms that ignore the requested mode and keeps
+  the created ID in state. Reading historical two-instance resources remains
+  compatible. Prices are selected from the live catalog.
+- `data.ccp_pricing` exposes and filters `replica_count` and supports
+  `appgw_cache` tariffs. Base prices and cache surcharges already cover the
+  selected single-instance or high-availability mode; no multiplier is applied.
+- The HTTP cache remains opt-in and mutable. The platform catalog defines its
+  optional surcharge independently from the gateway base rate.
 - **`ccp_vpc`: dedicated egress IP (option).** New `dedicated_egress_ip`
   argument (default `false`), updated in place through `PATCH /v1/vpcs/{id}`
   (`ccp_vpc` has an in-place update for the first time; `name`, `region`,
@@ -32,6 +71,25 @@ egress IP, cetic-cloud-platform#1734). Do not release before it is deployed.
   state value before `RequiresReplace` is evaluated, so turning the option on
   never replaces a VPC whose `cidr` or `tags` are omitted from the
   configuration (cetic-cloud-platform#1734).
+- **Application Gateway access policies.** Typed `l4_policy`, `l7_policy`
+  and `client_ip_policy` on `ccp_application_gateway`; `l7_policy` on
+  `ccp_appgw_listener` and `ccp_appgw_route`, updated in place. Keyed
+  policy and rule maps, independent protected paths, IP, method and header
+  criteria, mandatory headers.
+- Read-only `security_revision` and `access_policy_state` on the gateway;
+  policies exposed by the `ccp_application_gateway` data source.
+- Ownership: omitting a policy preserves the remote one (including after
+  import); an explicit `{}` clears it; removing the attribute relinquishes
+  management without clearing it.
+- Capability check, per-gateway write serialization, revision conflict
+  handling and confirmation that every instance applied the policy, including
+  after a child resource is removed. Plan-time validation of bounded values;
+  policy request errors are redacted.
+
+### Fixed
+
+- `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
+  complete pricing response. Explicit zero prices are kept.
 
 ## v7.4.0 (2026-11-04)
 

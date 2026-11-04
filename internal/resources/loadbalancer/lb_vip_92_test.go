@@ -23,7 +23,7 @@ func runCreate(t *testing.T, plan lbResourceModel, vipFromAPI string) (map[strin
 	return sent, out
 }
 
-func runCreateDiags(t *testing.T, plan lbResourceModel, postVIP, vipFromAPI string) (map[string]any, lbResourceModel, diag.Diagnostics) {
+func runCreateDiags(t *testing.T, plan lbResourceModel, postVIP, vipFromAPI string, replicas ...int64) (map[string]any, lbResourceModel, diag.Diagnostics) {
 	t.Helper()
 	ctx := context.Background()
 	body := apiLB(nil)
@@ -33,6 +33,10 @@ func runCreateDiags(t *testing.T, plan lbResourceModel, postVIP, vipFromAPI stri
 	post["listeners"] = []any{}
 	if postVIP != "" {
 		post["vip_address"] = postVIP
+	}
+	if len(replicas) > 0 {
+		post["replica_count"] = replicas[0]
+		body["replica_count"] = replicas[0]
 	}
 	srv := testutil.NewTestServer(t, testutil.Routes{
 		{Method: "POST", Path: "/v1/load-balancers", Status: 201, Body: post},

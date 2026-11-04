@@ -239,6 +239,7 @@ resource "ccp_load_balancer" "api" {
 ### Optional
 
 - `plan` - (Optional, Forces new resource) Capacity plan key, e.g. `small` (default), `medium`, `large`. Resolved server-side against the live plan catalog (`compute_plans`, key `lb-<plan>`, kind `lb`) — no hardcoded list, so plans added to the catalogue are usable without a provider release. Changing the plan forces replacement.
+- `replica_count` (Number, Optional) — `1` without redundancy or `2` for high availability (default). Changing it forces replacement.
 - `public_ip_id` - (Optional) UUID of a `ccp_public_ip` to attach as the public entrypoint. Remove to detach.
 - `vip_address` - (Optional, Forces new resource) Private IPv4 address of the load balancer in the VNet, in canonical dotted form (`10.0.1.200`). When omitted, the platform picks a free address and exports it. Set it to pin the address: reserve it first with `ccp_vnet_ip_reservation` (a reservation of your own organization is accepted). The API rejects an address outside the VNet or below the start of the network's address range, an address reserved for the network itself (network, gateway `.1`, broadcast), or one already in use — including the address block reserved for the nodes of a Kubernetes cluster on the same VNet, and an address reserved by another organization on a shared network.
 - `tags` - (Optional) Free-form tags (max 60 tags, max 50 chars each).
@@ -332,3 +333,23 @@ terraform import ccp_load_balancer.web <lb_id>
 ```
 
 ~> **Note:** After import, `acme_dns_credentials` cannot be recovered (write-only). If an imported listener uses `dns01`, declaring `acme_dns_credentials` in configuration will not cause a replacement — the provider carries over the prior credentials value from state across reads.
+
+## Number of instances
+
+`replica_count` is optional and defaults to `2` (high availability). Set it to
+`1` for an environment that accepts interruption when its only instance is
+unavailable or under maintenance. The capacity plan remains independent of
+this choice; capacity and cache budgets are per instance.
+
+The value is immutable after creation. Changing it forces replacement of the
+resource, including when reverting from `1` to the default. Existing resources
+continue to use `2`. Set the matching value when importing a single instance.
+The platform catalog defines independent prices for one and two instances.
+Each amount already covers the selected mode; the provider does not multiply
+it by the instance count.
+
+Requires a platform implementing cetic-cloud-platform#1748. Upgrade the
+platform before requesting the new mode. The provider can be installed first
+while keeping the historical value `2`. An older platform may ignore the
+field: if the returned mode differs, creation fails explicitly and preserves
+the created ID in Terraform state so the resource is not orphaned.
