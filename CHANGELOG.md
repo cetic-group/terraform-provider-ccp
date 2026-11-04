@@ -6,7 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-## v7.4.0 (2026-11-04)
+Requires a platform API that is **not yet in production** (dedicated VPC
+egress IP, cetic-cloud-platform#1734). Do not release before it is deployed.
 
 ### Added
 
@@ -24,10 +25,17 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `egress_ip_status` describe the IP (`null` without it); they keep their state
   value in plans unless `dedicated_egress_ip` changes. The `ccp_vpc` data
   source exposes `dedicated_egress_ip` and the three attributes. HTTP 409 (no
-  free public IP, VPC not active) and 422 (option not offered, VPC not EVPN)
-  come with an explanation; nothing is changed. Requires a platform API that
-  supports the option: an older one is reported as such instead of a
-  Terraform inconsistency error (cetic-cloud-platform#1734).
+  free public IP, VPC not active) and 422 (option not offered, VPC older than
+  the current network architecture) come with an explanation; nothing is
+  changed. An older platform API that ignores the option is reported as such
+  instead of a Terraform inconsistency error. `cidr` and `tags` keep their
+  state value before `RequiresReplace` is evaluated, so turning the option on
+  never replaces a VPC whose `cidr` or `tags` are omitted from the
+  configuration (cetic-cloud-platform#1734).
+
+## v7.4.0 (2026-11-04)
+
+### Added
 
 - **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
   (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
@@ -88,13 +96,6 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the configuration (#104). Behaviour to know: removing the attribute from the
   configuration now keeps the current list; write `cache_bypass_cookies = []`
   to empty it.
-
-- **`ccp_vpc`: `cidr` and `tags` no longer force a replacement on an in-place
-  update.** Their `RequiresReplace` ran before `UseStateForUnknown`: once
-  `dedicated_egress_ip` made an update possible, an omitted `cidr` or `tags`
-  became unknown in the plan and Terraform would have replaced the VPC (and
-  everything in it) to turn the option on. The state value is now kept first
-  (cetic-cloud-platform#1734).
 
 ## v7.3.0 (2026-10-25)
 
