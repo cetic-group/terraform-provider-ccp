@@ -4,32 +4,14 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased — Application Gateway access policies (8.1.0)
-
-### Added
-
-- Typed `l4_policy`, `l7_policy`, and `client_ip_policy` on Application Gateways;
-  `l7_policy` on listeners and routes, updated in place. Keyed policy/rule maps,
-  independent protected paths, IP/method/header criteria and mandatory headers.
-- Read-only policy revision and gateway application state, including policies
-  in the Application Gateway data source.
-- Optional/computed ownership: omission preserves imported remote protection;
-  explicit `{}` resets it; removing an attribute relinquishes management.
-- Capability checks, per-gateway write serialization, revision conflict
-  handling and confirmation on every expected replica, including child removal.
-  A newer generation is accepted only if managed fields still match.
-- Plan-time bounded-value validation and redacted policy request errors.
-- CI tests and vet for pull requests and pushes to `develop` and `main`.
-
-Requires provider 8.1.0 **once released**, after the 8.0.0 cache migration below,
-plus a platform advertising access policy version 1. This change publishes no
-provider version or tag.
-
 ## Unreleased
 
 **Breaking: the next release must be 8.0.0.** The plan-managed cache and
 single-instance gateways need the platform API of cetic-cloud-platform#1748,
-already in production.
+already in production. Application Gateway access policies need a platform
+advertising access policy version 1 (cetic-cloud-platform#1828), not yet
+confirmed in production: without it, configuring a policy fails at apply time
+and gateways without policies keep working.
 
 ### Breaking
 
@@ -64,6 +46,20 @@ already in production.
   selected single-instance or high-availability mode; no multiplier is applied.
 - The HTTP cache remains opt-in and mutable. The platform catalog defines its
   optional surcharge independently from the gateway base rate.
+- **Application Gateway access policies.** Typed `l4_policy`, `l7_policy`
+  and `client_ip_policy` on `ccp_application_gateway`; `l7_policy` on
+  `ccp_appgw_listener` and `ccp_appgw_route`, updated in place. Keyed
+  policy and rule maps, independent protected paths, IP, method and header
+  criteria, mandatory headers.
+- Read-only `security_revision` and `access_policy_state` on the gateway;
+  policies exposed by the `ccp_application_gateway` data source.
+- Ownership: omitting a policy preserves the remote one (including after
+  import); an explicit `{}` clears it; removing the attribute relinquishes
+  management without clearing it.
+- Capability check, per-gateway write serialization, revision conflict
+  handling and confirmation that every instance applied the policy, including
+  after a child resource is removed. Plan-time validation of bounded values;
+  policy request errors are redacted.
 
 ### Fixed
 

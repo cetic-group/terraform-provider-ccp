@@ -153,10 +153,10 @@ terraform import ccp_appgw_route.api_v1 <appgw_id>/<route_id>
 
 Requires a platform version implementing cetic-cloud-platform#1733. Only public GET 200 responses populate the cache; HEAD may read a cached GET. Authorization, session cookies, Set-Cookie, private, no-store and no-cache bypass it. Unsupported Vary fields (including Accept-Language) bypass caching. Host, path, query string, route and gateway are isolated. Each replica owns its own cache; failover may reach a cold cache. Use the API, console or `cetic appgw cache purge` for invalidation; there is no Terraform purge resource.
 
-## HTTP access policies (provider 8.1+)
+## HTTP access policies (provider 8.0+)
 
-Requires provider `>= 8.1.0` once released and a platform advertising
-`appgw_security_policy_versions = [1]`. This change does not publish a release.
+Requires provider `>= 8.0.0` once released and a platform advertising
+`appgw_security_policy_versions = [1]`.
 The provider checks this capability before submitting a policy, including `{}`.
 An older server cannot silently ignore the configuration. Nonempty documents
 also require `appgw_security_policies_enabled = true`. Explicit `{}` resets

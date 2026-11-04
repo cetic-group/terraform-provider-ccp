@@ -206,10 +206,10 @@ the selected plan and instance count; enabling it opts into the published
 surcharge. Use the platform estimator for the combined price. An unavailable
 cache tariff must be configured on the platform before enabling the option.
 
-## HTTP access policies (provider 8.1+)
+## HTTP access policies (provider 8.0+)
 
-Requires provider `>= 8.1.0` once released and a platform advertising
-`appgw_security_policy_versions = [1]`. This change does not publish a release.
+Requires provider `>= 8.0.0` once released and a platform advertising
+`appgw_security_policy_versions = [1]`.
 The provider checks this capability before submitting a policy, including `{}`.
 An older server cannot silently ignore the configuration. Nonempty documents
 also require `appgw_security_policies_enabled = true`. Explicit `{}` resets
