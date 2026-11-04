@@ -207,7 +207,7 @@ func (h *vpcHarness) read(state tftypes.Value) tftypes.Value {
 	return h.dec(r.NewState)
 }
 
-func attr(v tftypes.Value, name string) tftypes.Value {
+func vpcAttr(v tftypes.Value, name string) tftypes.Value {
 	var m map[string]tftypes.Value
 	_ = v.As(&m)
 	return m[name]
@@ -242,15 +242,15 @@ func TestVPCDedicatedEgressLifecycle(t *testing.T) {
 	// 1. Création sans l'option : défaut false, envoyé explicitement.
 	cfg := h.config(nil)
 	planned, _ := h.plan(null, cfg)
-	if !attr(planned, "dedicated_egress_ip").Equal(tftypes.NewValue(tftypes.Bool, false)) {
-		t.Fatalf("défaut : dedicated_egress_ip=false attendu dans le plan, reçu %v", attr(planned, "dedicated_egress_ip"))
+	if !vpcAttr(planned, "dedicated_egress_ip").Equal(tftypes.NewValue(tftypes.Bool, false)) {
+		t.Fatalf("défaut : dedicated_egress_ip=false attendu dans le plan, reçu %v", vpcAttr(planned, "dedicated_egress_ip"))
 	}
 	state := h.apply(null, planned, cfg)
 	if got := api.posts[0]["dedicated_egress_ip"]; got != false {
 		t.Errorf("POST : dedicated_egress_ip=false attendu, reçu %v", got)
 	}
-	if !attr(state, "egress_ip").Equal(nullStr) {
-		t.Errorf("sans l'option : egress_ip null attendu, reçu %v", attr(state, "egress_ip"))
+	if !vpcAttr(state, "egress_ip").Equal(nullStr) {
+		t.Errorf("sans l'option : egress_ip null attendu, reçu %v", vpcAttr(state, "egress_ip"))
 	}
 	state = h.assertNoDiff("création sans l'option", state, cfg)
 
@@ -261,21 +261,21 @@ func TestVPCDedicatedEgressLifecycle(t *testing.T) {
 		t.Fatalf("activation : remplacement planifié %v (doit être en place)", r.RequiresReplace)
 	}
 	for _, a := range []string{"egress_ip", "egress_ip_type", "egress_ip_status"} {
-		if attr(planned, a).IsKnown() {
-			t.Errorf("activation : %s doit être « known after apply », planifié %v", a, attr(planned, a))
+		if vpcAttr(planned, a).IsKnown() {
+			t.Errorf("activation : %s doit être « known after apply », planifié %v", a, vpcAttr(planned, a))
 		}
 	}
 	for _, a := range []string{"id", "status", "created_at", "cidr"} {
-		if !attr(planned, a).Equal(attr(state, a)) {
-			t.Errorf("activation : %s ne doit pas changer, planifié %v", a, attr(planned, a))
+		if !vpcAttr(planned, a).Equal(vpcAttr(state, a)) {
+			t.Errorf("activation : %s ne doit pas changer, planifié %v", a, vpcAttr(planned, a))
 		}
 	}
 	state = h.apply(state, planned, cfg)
 	if len(api.patches) != 1 || api.patches[0] != `{"dedicated_egress_ip":true}` {
 		t.Fatalf("PATCH : un seul appel avec {\"dedicated_egress_ip\":true} attendu, reçu %q", api.patches)
 	}
-	if !attr(state, "egress_ip").Equal(str("203.0.113.7")) {
-		t.Errorf("activation : egress_ip=203.0.113.7 attendu dans l'état, reçu %v", attr(state, "egress_ip"))
+	if !vpcAttr(state, "egress_ip").Equal(str("203.0.113.7")) {
+		t.Errorf("activation : egress_ip=203.0.113.7 attendu dans l'état, reçu %v", vpcAttr(state, "egress_ip"))
 	}
 	state = h.assertNoDiff("activation", state, cfg)
 
@@ -284,8 +284,8 @@ func TestVPCDedicatedEgressLifecycle(t *testing.T) {
 	api.vpc["egress_ip_status"] = "attached"
 	api.mu.Unlock()
 	state = h.assertNoDiff("IP mise en service", state, cfg)
-	if !attr(state, "egress_ip_status").Equal(str("attached")) {
-		t.Errorf("refresh : egress_ip_status=attached attendu, reçu %v", attr(state, "egress_ip_status"))
+	if !vpcAttr(state, "egress_ip_status").Equal(str("attached")) {
+		t.Errorf("refresh : egress_ip_status=attached attendu, reçu %v", vpcAttr(state, "egress_ip_status"))
 	}
 	if len(api.patches) != 1 {
 		t.Errorf("aucun PATCH attendu sans changement, reçu %q", api.patches)
@@ -297,18 +297,18 @@ func TestVPCDedicatedEgressLifecycle(t *testing.T) {
 	if len(r.RequiresReplace) != 0 {
 		t.Fatalf("désactivation : remplacement planifié %v", r.RequiresReplace)
 	}
-	if !attr(planned, "dedicated_egress_ip").Equal(tftypes.NewValue(tftypes.Bool, false)) {
-		t.Fatalf("attribut retiré : false planifié attendu, reçu %v", attr(planned, "dedicated_egress_ip"))
+	if !vpcAttr(planned, "dedicated_egress_ip").Equal(tftypes.NewValue(tftypes.Bool, false)) {
+		t.Fatalf("attribut retiré : false planifié attendu, reçu %v", vpcAttr(planned, "dedicated_egress_ip"))
 	}
-	if attr(planned, "egress_ip").IsKnown() {
-		t.Errorf("désactivation : egress_ip ne doit pas rester figé à %v", attr(planned, "egress_ip"))
+	if vpcAttr(planned, "egress_ip").IsKnown() {
+		t.Errorf("désactivation : egress_ip ne doit pas rester figé à %v", vpcAttr(planned, "egress_ip"))
 	}
 	state = h.apply(state, planned, cfg)
 	if len(api.patches) != 2 || api.patches[1] != `{"dedicated_egress_ip":false}` {
 		t.Fatalf("PATCH : {\"dedicated_egress_ip\":false} attendu, reçu %q", api.patches)
 	}
-	if !attr(state, "egress_ip").Equal(nullStr) || !attr(state, "egress_ip_status").Equal(nullStr) {
-		t.Errorf("désactivation : egress_* null attendus, reçu %v %v", attr(state, "egress_ip"), attr(state, "egress_ip_status"))
+	if !vpcAttr(state, "egress_ip").Equal(nullStr) || !vpcAttr(state, "egress_ip_status").Equal(nullStr) {
+		t.Errorf("désactivation : egress_* null attendus, reçu %v %v", vpcAttr(state, "egress_ip"), vpcAttr(state, "egress_ip_status"))
 	}
 	h.assertNoDiff("désactivation", state, cfg)
 }
@@ -326,8 +326,8 @@ func TestVPCCreatedWithDedicatedEgress(t *testing.T) {
 	if got := api.posts[0]["dedicated_egress_ip"]; got != true {
 		t.Errorf("POST : dedicated_egress_ip=true attendu, reçu %v", got)
 	}
-	if !attr(state, "egress_ip").Equal(tftypes.NewValue(tftypes.String, "203.0.113.7")) {
-		t.Errorf("egress_ip attendu dès l'apply de création, reçu %v", attr(state, "egress_ip"))
+	if !vpcAttr(state, "egress_ip").Equal(tftypes.NewValue(tftypes.String, "203.0.113.7")) {
+		t.Errorf("egress_ip attendu dès l'apply de création, reçu %v", vpcAttr(state, "egress_ip"))
 	}
 	h.assertNoDiff("création avec l'option", state, cfg)
 	if len(api.patches) != 0 {
