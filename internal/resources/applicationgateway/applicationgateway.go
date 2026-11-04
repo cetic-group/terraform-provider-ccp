@@ -87,7 +87,8 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 		MarkdownDescription: "Manages a CETIC Cloud Application Gateway (ccp-appgw) — an L7 HTTP/HTTPS " +
 			"reverse proxy with TLS termination, SNI multi-cert, rate limiting, IP allow/deny lists, " +
 			"CORS, basic auth and WAF presets.\n\n" +
-			"Each gateway provisions a highly-available pair of containers behind a floating virtual IP. " +
+			"Each gateway provisions a highly-available pair of containers (default) or a single one " +
+			"(`replica_count = 1`) behind a floating virtual IP. " +
 			"Listeners, routes and target groups are declared as separate resources " +
 			"(`ccp_appgw_listener`, `ccp_appgw_target_group`, `ccp_appgw_route`, " +
 			"`ccp_appgw_target_group_member`) to keep per-route HCL edits idempotent.\n\n" +
