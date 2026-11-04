@@ -90,9 +90,10 @@ curl -H "Authorization: Bearer $CCP_API_KEY" \
 
 Extensions are allowed on an instance, then created by the owner of a database:
 
-- **Enabling**: extensions must first be enabled on the instance by support (`extensions_available = true`). Until then, extension settings cannot change. A new instance always starts without them: if they are set at creation, the instance is still created, with a warning, and the next `terraform apply` applies the settings once support has enabled extensions.
-- **Plan-time checks**: the settings are checked against the catalog of the instance's major version. A missing dependency, a library to preload, an extension that needs no authorization, or `cron_database` without `pg_cron` fails the plan with a message naming the fix.
-- **Apply**: `terraform apply` waits until the instance runs with the new settings (`extensions_status = "applied"`, up to 20 minutes).
+- **Enabling**: extensions can be allowed only on an instance where they are enabled (`extensions_available = true`). An instance created in a region where extensions are offered has them from its creation. For an instance created earlier, request their activation; until then, extension settings cannot change.
+- **At creation**: `terraform apply` fails if the settings cannot be applied to the new instance (extensions not enabled on it, or any other refusal), or if they are accepted but not in effect when the wait ends. The instance is saved in the state with the settings the platform reports — never extensions it refused — and Terraform marks it tainted, so the next apply would replace it. To keep it, run `terraform untaint ccp_db_pg_instance.<name>`: the next plan then proposes the refused settings again, in place, or waits for the accepted ones (see below).
+- **Plan-time checks**: the settings are checked against the catalog of the instance's major version. A missing dependency, a library to preload, an extension that needs no authorization, `cron_database` without `pg_cron`, or an invalid `cron_database` name fails the plan with a message naming the fix. At creation, an omitted setting is checked as empty: the instance starts without it.
+- **Apply**: `terraform apply` waits until the instance runs with the new settings (`extensions_status = "applied"`, up to 20 minutes). If the wait ends first, the apply fails; the settings stay accepted (`extensions_status = "pending"`), and the next plan shows `extensions_status` as known after apply: the next apply waits for them.
 - **Removing an extension** is refused while it is installed in a database: run `DROP EXTENSION` first, then remove it from `allowed_extensions`. The refusal names the databases concerned. It is also refused while a database of the instance does not accept connections.
 - Only `allowed_extensions`, `preload_libraries` and `cron_database` change in place. Changing another non-replacing attribute (`storage_gb`, `tags`) fails the apply.
 
@@ -109,7 +110,7 @@ In addition to all arguments above, the following attributes are exported:
 - `admin_database` - Name of the default database created at provisioning.
 - `cpu_millicores` - CPU allocation in millicores (e.g. `2000` = 2 vCPU). Derived from `plan`.
 - `memory_mb` - Memory allocation in MB. Derived from `plan`.
-- `extensions_available` - Whether extensions can be allowed on this instance (enabled by support).
+- `extensions_available` - Whether extensions can be allowed on this instance.
 - `extensions_status` - `applied` when the instance runs with its extension settings, `pending` while a change is being applied.
 
 ## Import

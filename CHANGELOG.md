@@ -4,7 +4,7 @@ All notable changes to the CETIC Cloud Platform Terraform provider are
 documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased — plan-managed Application Gateway cache
+## Unreleased
 
 ### Breaking
 
@@ -41,6 +41,70 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   complete pricing response. Periodic prices returned as `null` remain null,
   rather than appearing as free zero amounts; explicit zero prices are kept.
   HCL consumers must handle nullable periodic estimates before arithmetic.
+
+## v7.4.0 (2026-11-04)
+
+### Added
+
+- **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
+  (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
+  `max_age_seconds`, `description`). Without any block CORS is left untouched;
+  removing every block deletes the rules. Writes carry the revision
+  recorded in the state (`cors_revision`, read-only), so a change made by
+  someone else after the plan is refused instead of overwritten.
+  Values are validated at plan time against the platform's formats and limits
+  (canonical origins, header names, 0–86400 s, 100 rules). A refusal while the
+  bucket is created is a warning, not an error, so the bucket is never replaced.
+  Requires a platform API that exposes bucket CORS.
+
+### Changed
+
+- **`ccp_db_pg_instance`: a refusal of the extension settings at creation now
+  fails the apply** (it was a warning). It also fails when the settings were
+  accepted but not in effect when the wait ended. The instance is created and
+  kept in the state with the settings the platform reports, but Terraform
+  marks a resource whose creation failed as tainted: the next apply would
+  replace it. **Upgrade note**: after such a failure, run
+  `terraform untaint ccp_db_pg_instance.<name>` to keep the instance; the next
+  plan then applies the extension settings again in place, or waits for them.
+  In a region where extensions are not offered, also request their activation
+  or remove the settings, otherwise the next apply fails again.
+  `ccp_object_bucket` keeps a warning when its CORS rules are refused at
+  creation: a bucket works without them and the practitioner fixes the
+  rules in the configuration. Here the refusal comes from the instance and
+  the database application relies on the extensions, so a successful apply
+  would hide a missing prerequisite.
+  Extensions enabled from creation require a platform API that enables them
+  on new instances in a region where they are offered; with an older one, the
+  creation fails as described above. The message no longer refers to support:
+  for an instance created earlier, request the activation of extensions.
+
+### Fixed
+
+- **`ccp_db_pg_instance`: the state no longer shows extensions the instance
+  does not have.** A refusal at creation used to keep the planned extensions
+  in the state, so the apply succeeded although the platform had not applied
+  them. The state now holds the settings the platform reports (see Changed).
+- **`ccp_db_pg_instance`: settings still pending are waited for.** When an
+  apply ended before the extension settings were in effect
+  (`extensions_status = "pending"`), the next plan showed no change and they
+  were never waited for. The next plan now shows `extensions_status` as known
+  after apply, and the apply waits until they are in effect.
+- **`ccp_db_pg_instance`: extension settings omitted at creation are
+  checked.** An omitted `preload_libraries` was not checked when the instance
+  was created: `cron_database` without it failed the apply with "inconsistent
+  result" and left the instance tainted, and `pg_cron` in `allowed_extensions`
+  without preloading it failed only at apply time. An omitted setting is now
+  checked as empty at creation, as the platform applies it; `cron_database`
+  is also checked against the platform's naming rule.
+- **`ccp_appgw_route`: `cache_bypass_cookies` no longer shows "known after
+  apply" on every plan.** The attribute is optional and computed but kept no
+  state when unconfigured, so any plan touching another field marked it
+  unknown, and the following update sent an empty list to the platform,
+  erasing the stored cookie list. It now keeps its state value unless set in
+  the configuration (#104). Behaviour to know: removing the attribute from the
+  configuration now keeps the current list; write `cache_bypass_cookies = []`
+  to empty it.
 
 ## v7.3.0 (2026-10-25)
 

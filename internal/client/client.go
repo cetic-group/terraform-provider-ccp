@@ -759,6 +759,33 @@ func (c *Client) DeleteObjectBucket(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/buckets/"+id, nil, nil)
 }
 
+// GetBucketCors reads the CORS rules of a bucket.
+func (c *Client) GetBucketCors(ctx context.Context, id string) (*BucketCors, error) {
+	var out BucketCors
+	if err := c.do(ctx, http.MethodGet, "/v1/buckets/"+id+"/cors", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PutBucketCors replaces all CORS rules of a bucket.
+func (c *Client) PutBucketCors(ctx context.Context, id string, req BucketCorsUpdateRequest) (*BucketCors, error) {
+	var out BucketCors
+	if err := c.do(ctx, http.MethodPut, "/v1/buckets/"+id+"/cors", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteBucketCors removes all CORS rules of a bucket.
+func (c *Client) DeleteBucketCors(ctx context.Context, id, expectedRevision string) error {
+	path := "/v1/buckets/" + id + "/cors"
+	if expectedRevision != "" {
+		path += "?expected_revision=" + url.QueryEscape(expectedRevision)
+	}
+	return c.do(ctx, http.MethodDelete, path, nil, nil)
+}
+
 // GetObjectBucketCredentials returns the master S3 credentials for the
 // tenant in the bucket's region (covers all buckets in that region).
 // Requires bucket status == active. Sensitive — handle with care.
