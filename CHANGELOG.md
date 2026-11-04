@@ -19,18 +19,46 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   bucket is created is a warning, not an error, so the bucket is never replaced.
   Requires a platform API that exposes bucket CORS.
 
+### Changed
+
+- **`ccp_db_pg_instance`: a refusal of the extension settings at creation now
+  fails the apply** (it was a warning). It also fails when the settings were
+  accepted but not in effect when the wait ended. The instance is created and
+  kept in the state with the settings the platform reports, but Terraform
+  marks a resource whose creation failed as tainted: the next apply would
+  replace it. **Upgrade note**: after such a failure, run
+  `terraform untaint ccp_db_pg_instance.<name>` to keep the instance; the next
+  plan then applies the extension settings again in place, or waits for them.
+  In a region where extensions are not offered, also request their activation
+  or remove the settings, otherwise the next apply fails again.
+  `ccp_object_bucket` keeps a warning when its CORS rules are refused at
+  creation: a bucket works without them and the practitioner fixes the
+  rules in the configuration. Here the refusal comes from the instance and
+  the database application relies on the extensions, so a successful apply
+  would hide a missing prerequisite.
+  Extensions enabled from creation require a platform API that enables them
+  on new instances in a region where they are offered; with an older one, the
+  creation fails as described above. The message no longer refers to support:
+  for an instance created earlier, request the activation of extensions.
+
 ### Fixed
 
-- **`ccp_db_pg_instance`: a refusal of the extension settings at creation
-  fails the apply.** It used to be a warning, and the state kept the planned
-  extensions although the platform had not applied them: the apply succeeded
-  and the state showed extensions the instance did not have. The apply now
-  fails, as on update, and the state holds the instance with the settings the
-  platform reports. Terraform marks the instance tainted; run
-  `terraform untaint` to keep it, and the next plan proposes the extension
-  settings again. The message no longer refers to support: extensions are
-  enabled from creation in a region where they are offered, and their
-  activation is requested for an instance created earlier.
+- **`ccp_db_pg_instance`: the state no longer shows extensions the instance
+  does not have.** A refusal at creation used to keep the planned extensions
+  in the state, so the apply succeeded although the platform had not applied
+  them. The state now holds the settings the platform reports (see Changed).
+- **`ccp_db_pg_instance`: settings still pending are waited for.** When an
+  apply ended before the extension settings were in effect
+  (`extensions_status = "pending"`), the next plan showed no change and they
+  were never waited for. The next plan now shows `extensions_status` as known
+  after apply, and the apply waits until they are in effect.
+- **`ccp_db_pg_instance`: extension settings omitted at creation are
+  checked.** An omitted `preload_libraries` was not checked when the instance
+  was created: `cron_database` without it failed the apply with "inconsistent
+  result" and left the instance tainted, and `pg_cron` in `allowed_extensions`
+  without preloading it failed only at apply time. An omitted setting is now
+  checked as empty at creation, as the platform applies it; `cron_database`
+  is also checked against the platform's naming rule.
 - **`ccp_appgw_route`: `cache_bypass_cookies` no longer shows "known after
   apply" on every plan.** The attribute is optional and computed but kept no
   state when unconfigured, so any plan touching another field marked it

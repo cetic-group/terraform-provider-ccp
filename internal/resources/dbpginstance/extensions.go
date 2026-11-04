@@ -3,6 +3,7 @@ package dbpginstance
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,6 +26,12 @@ import (
 // fails the plan with a clear message rather than the apply.
 
 const cronLibrary = "pg_cron"
+
+// extensionsPending is `extensions_status` while settings are not in effect.
+const extensionsPending = "pending"
+
+// databaseNameRe is the platform's rule for `cron_database`.
+var databaseNameRe = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
 
 // extensionsApplyTimeout bounds the wait for new settings to be in effect.
 // Preloaded libraries restart the instance pod by pod.
@@ -123,6 +130,26 @@ func checkExtensions(cat *client.DbPgExtensionCatalog, allowed []string, allowed
 	return problems
 }
 
+// plannedSetting returns the extension setting the platform will apply. An
+// omitted setting (Optional+Computed) is unknown in the plan of a new
+// instance: it is not sent, and the instance starts without it, so it is
+// checked as empty. On update, an omitted setting already holds the state's
+// value (UseStateForUnknown). A configured value that is not known yet
+// (it depends on another resource) cannot be checked.
+func (r *dbpgResource) plannedSetting(ctx context.Context, req resource.ModifyPlanRequest, state *dbpgResourceModel, attr string, planned types.Set) ([]string, bool) {
+	if v, ok := stringSet(ctx, planned); ok {
+		return v, true
+	}
+	if state != nil || !planned.IsUnknown() {
+		return nil, false
+	}
+	var configured types.Set
+	if d := req.Config.GetAttribute(ctx, path.Root(attr), &configured); d.HasError() || !configured.IsNull() {
+		return nil, false
+	}
+	return []string{}, true
+}
+
 // ModifyPlan checks extension settings before the apply.
 func (r *dbpgResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() || r.client == nil {
@@ -141,13 +168,27 @@ func (r *dbpgResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		state = &s
 	}
 
-	allowed, allowedKnown := stringSet(ctx, plan.AllowedExtensions)
-	preload, preloadKnown := stringSet(ctx, plan.PreloadLibraries)
+	// Settings applied before have not all taken effect: plan the status as
+	// unknown, so that the apply goes through Update and waits for them.
+	// Otherwise a configuration equal to the state plans nothing, and the
+	// settings stay pending without anyone noticing (#1809).
+	if state != nil && state.ExtensionsStatus.ValueString() == extensionsPending {
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("extensions_status"), types.StringUnknown())...)
+	}
 
-	if !plan.CronDatabase.IsNull() && !plan.CronDatabase.IsUnknown() && preloadKnown &&
-		!contains(preload, cronLibrary) {
-		resp.Diagnostics.AddAttributeError(path.Root("cron_database"), "Invalid extension settings",
-			"cron_database only applies when \"pg_cron\" is listed in preload_libraries.")
+	allowed, allowedKnown := r.plannedSetting(ctx, req, state, "allowed_extensions", plan.AllowedExtensions)
+	preload, preloadKnown := r.plannedSetting(ctx, req, state, "preload_libraries", plan.PreloadLibraries)
+
+	if !plan.CronDatabase.IsNull() && !plan.CronDatabase.IsUnknown() {
+		if !databaseNameRe.MatchString(plan.CronDatabase.ValueString()) {
+			resp.Diagnostics.AddAttributeError(path.Root("cron_database"), "Invalid extension settings",
+				"cron_database must be a database name made of lowercase letters, digits and "+
+					"underscores, not starting with a digit (63 characters at most).")
+		}
+		if preloadKnown && !contains(preload, cronLibrary) {
+			resp.Diagnostics.AddAttributeError(path.Root("cron_database"), "Invalid extension settings",
+				"cron_database only applies when \"pg_cron\" is listed in preload_libraries.")
+		}
 	}
 
 	changed := state == nil ||
@@ -244,7 +285,9 @@ const extensionsUnavailableDetail = "Extensions cannot be enabled on this instan
 // platform: never the planned settings, so the state never shows extensions
 // the instance does not have (#1809). After a refusal, the instance read
 // before the PATCH (the platform changed nothing); after a wait that did not
-// end, the last instance read (its settings and `extensions_status`).
+// end, the last instance read: the settings were accepted, and
+// `extensions_status = "pending"` says they are not in effect yet, so the
+// next plan makes the apply wait for them (ModifyPlan).
 //
 // Terraform marks a resource whose creation returned an error as tainted:
 // the message tells how to keep the instance (`terraform untaint`), after
@@ -268,9 +311,9 @@ func (r *dbpgResource) applyExtensionsOnCreate(ctx context.Context, plan dbpgRes
 	}
 	final, err := waitExtensionsApplied(ctx, r.client, inst.ID)
 	if err != nil {
-		diags.AddError("PostgreSQL extension settings not applied",
+		diags.AddError("PostgreSQL extension settings not in effect yet",
 			"The PostgreSQL instance was created and its extension settings were accepted, "+
-				"but they were not in effect yet: "+err.Error()+"\n\n"+createdNotAppliedHint)
+				"but they were not in effect yet: "+err.Error()+"\n\n"+createdPendingHint)
 		if final != nil {
 			return final
 		}
@@ -278,6 +321,13 @@ func (r *dbpgResource) applyExtensionsOnCreate(ctx context.Context, plan dbpgRes
 	}
 	return final
 }
+
+// createdPendingHint tells what to do with an instance whose settings were
+// accepted at creation but not in effect when the wait ended.
+const createdPendingHint = "The instance is saved in the state with the settings the platform reports " +
+	"(`extensions_status = \"pending\"` while they are not in effect), and Terraform marks it tainted: " +
+	"the next apply would replace it. To keep it, run `terraform untaint` on it; the next apply " +
+	"then waits for the settings to be in effect."
 
 // createdNotAppliedHint tells what to do with an instance whose creation
 // failed on its extension settings.

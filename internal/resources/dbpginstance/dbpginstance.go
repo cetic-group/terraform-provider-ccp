@@ -384,13 +384,20 @@ func (r *dbpgResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	id := state.ID.ValueString()
 	var final *client.DbPgInstance
 	var err error
-	if extReq, send := extensionRequest(ctx, plan, &state); send {
+	extReq, send := extensionRequest(ctx, plan, &state)
+	if send {
 		if _, err = r.client.UpdateDbPgExtensions(ctx, id, extReq); err != nil {
 			resp.Diagnostics.AddError("Failed to update PostgreSQL extensions", err.Error())
 			return
 		}
+	}
+	// Settings sent now, or accepted by an earlier apply and still pending
+	// (ModifyPlan planned the status unknown): wait until they are in effect.
+	if send || state.ExtensionsStatus.ValueString() == extensionsPending {
 		if final, err = waitExtensionsApplied(ctx, r.client, id); err != nil {
-			resp.Diagnostics.AddError("PostgreSQL extension settings not applied", err.Error())
+			resp.Diagnostics.AddError("PostgreSQL extension settings not in effect yet",
+				"The extension settings were accepted, but they were not in effect yet: "+err.Error()+
+					"\n\nThe next terraform apply waits for them again.")
 			return
 		}
 	} else if final, err = r.client.GetDbPg(ctx, id); err != nil {

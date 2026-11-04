@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func catalog16() *client.DbPgExtensionCatalog {
@@ -201,14 +202,18 @@ func TestUpdateExtensionsSurfacesThePlatformRefusal(t *testing.T) {
 	}
 }
 
-// createPlan is the plan of a new instance, as Terraform sends it: the
-// configured settings are known, the computed ones unknown.
-func createPlan(t *testing.T, r *dbpgResource, allowed types.Set) tfsdk.Plan {
+func testSchema(t *testing.T) (*dbpgResource, resource.SchemaResponse) {
 	t.Helper()
-	ctx := context.Background()
+	r := &dbpgResource{}
 	var sr resource.SchemaResponse
-	r.Schema(ctx, resource.SchemaRequest{}, &sr)
-	m := dbpgResourceModel{
+	r.Schema(context.Background(), resource.SchemaRequest{}, &sr)
+	return r, sr
+}
+
+// newInstanceModel is the plan of a new instance, as Terraform sends it: the
+// configured settings are known, the omitted and computed ones unknown.
+func newInstanceModel(allowed types.Set) dbpgResourceModel {
+	return dbpgResourceModel{
 		ID: types.StringUnknown(), Name: types.StringValue("app"), Region: types.StringValue("RNN"),
 		VpcID: types.StringValue("vpc-1"), VnetID: types.StringValue("vnet-1"),
 		Plan: types.StringValue("small"), StorageGB: types.Int64Value(20),
@@ -220,26 +225,66 @@ func createPlan(t *testing.T, r *dbpgResource, allowed types.Set) tfsdk.Plan {
 		AllowedExtensions: allowed, PreloadLibraries: types.SetUnknown(types.StringType),
 		CronDatabase: types.StringUnknown(), ExtensionsStatus: types.StringUnknown(),
 	}
+}
+
+// configOf is the configuration behind a plan: an unknown value is an
+// omitted (null) attribute, unless listed in `unknownInConfig` (a value that
+// depends on another resource).
+func configOf(m dbpgResourceModel, unknownInConfig ...string) dbpgResourceModel {
+	keep := map[string]bool{}
+	for _, a := range unknownInConfig {
+		keep[a] = true
+	}
+	nullIfUnknown := func(name string, v types.Set) types.Set {
+		if v.IsUnknown() && !keep[name] {
+			return types.SetNull(types.StringType)
+		}
+		return v
+	}
+	c := m
+	c.ID, c.Tier, c.Status, c.EndpointVnetIP = types.StringNull(), types.StringNull(), types.StringNull(), types.StringNull()
+	c.EndpointPort, c.CPUMillicores, c.MemoryMB = types.Int64Null(), types.Int64Null(), types.Int64Null()
+	c.AdminUsername, c.AdminDatabase, c.ExtensionsStatus = types.StringNull(), types.StringNull(), types.StringNull()
+	c.ExtensionsAvailable, c.Tags = types.BoolNull(), types.ListNull(types.StringType)
+	if c.EngineVersion.IsUnknown() {
+		c.EngineVersion = types.StringNull()
+	}
+	if c.CronDatabase.IsUnknown() {
+		c.CronDatabase = types.StringNull()
+	}
+	c.AllowedExtensions = nullIfUnknown("allowed_extensions", c.AllowedExtensions)
+	c.PreloadLibraries = nullIfUnknown("preload_libraries", c.PreloadLibraries)
+	return c
+}
+
+// runCreate calls Create as Terraform does: the response state starts null.
+func runCreate(t *testing.T, ctx context.Context, srv *testutil.Server, allowed types.Set) (*resource.CreateResponse, dbpgResourceModel) {
+	t.Helper()
+	r, sr := testSchema(t)
+	r.client = client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
 	plan := tfsdk.Plan{Schema: sr.Schema}
+	m := newInstanceModel(allowed)
 	if d := plan.Set(ctx, &m); d.HasError() {
 		t.Fatalf("plan: %v", d)
 	}
-	return plan
-}
-
-// runCreate calls Create as Terraform does and returns its response.
-func runCreate(t *testing.T, srv *testutil.Server, allowed types.Set) (*resource.CreateResponse, dbpgResourceModel) {
-	t.Helper()
-	ctx := context.Background()
-	r := &dbpgResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
-	plan := createPlan(t, r, allowed)
-	resp := &resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema, Raw: plan.Raw.Copy()}}
+	resp := &resource.CreateResponse{State: tfsdk.State{
+		Schema: sr.Schema, Raw: tftypes.NewValue(sr.Schema.Type().TerraformType(ctx), nil)}}
 	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
 	var got dbpgResourceModel
 	if d := resp.State.Get(ctx, &got); d.HasError() {
 		t.Fatalf("state: %v", d)
 	}
 	return resp, got
+}
+
+// assertKnown fails if a state written after an apply holds an unknown value.
+func assertKnown(t *testing.T, got dbpgResourceModel) {
+	t.Helper()
+	if got.AllowedExtensions.IsUnknown() || got.PreloadLibraries.IsUnknown() ||
+		got.CronDatabase.IsUnknown() || got.ExtensionsStatus.IsUnknown() {
+		t.Errorf("unknown value in state: %v %v %v %v", got.AllowedExtensions,
+			got.PreloadLibraries, got.CronDatabase, got.ExtensionsStatus)
+	}
 }
 
 // A new instance without the extensions image: GET reports
@@ -266,7 +311,7 @@ func TestCreateFailsWhenExtensionsAreRefused(t *testing.T) {
 	})
 	defer srv.Close()
 
-	resp, got := runCreate(t, srv, setOf("postgis"))
+	resp, got := runCreate(t, context.Background(), srv, setOf("postgis"))
 
 	if !resp.Diagnostics.HasError() {
 		t.Fatalf("a refused extension setting must fail the creation, got %v", resp.Diagnostics)
@@ -292,10 +337,7 @@ func TestCreateFailsWhenExtensionsAreRefused(t *testing.T) {
 	if got.ExtensionsAvailable.ValueBool() {
 		t.Errorf("extensions_available = %v", got.ExtensionsAvailable)
 	}
-	// A state written after an apply holds no unknown value.
-	if got.PreloadLibraries.IsUnknown() || got.CronDatabase.IsUnknown() || got.ExtensionsStatus.IsUnknown() {
-		t.Errorf("unknown value in state: %v %v %v", got.PreloadLibraries, got.CronDatabase, got.ExtensionsStatus)
-	}
+	assertKnown(t, got)
 	if srv.PendingRoutes() != 0 {
 		t.Errorf("%d fixtures not consumed", srv.PendingRoutes())
 	}
@@ -316,7 +358,7 @@ func TestCreateReportsAnotherRefusalWithThePlatformMessage(t *testing.T) {
 	})
 	defer srv.Close()
 
-	resp, got := runCreate(t, srv, setOf("postgis"))
+	resp, got := runCreate(t, context.Background(), srv, setOf("postgis"))
 
 	if !resp.Diagnostics.HasError() ||
 		!strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "L'instance doit être active.") {
@@ -343,12 +385,309 @@ func TestCreateAppliesExtensions(t *testing.T) {
 	})
 	defer srv.Close()
 
-	resp, got := runCreate(t, srv, setOf("postgis"))
+	resp, got := runCreate(t, context.Background(), srv, setOf("postgis"))
 
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected error: %v", resp.Diagnostics)
 	}
 	if !got.AllowedExtensions.Equal(setOf("postgis")) || got.ExtensionsStatus.ValueString() != "applied" {
 		t.Errorf("got %v %v", got.AllowedExtensions, got.ExtensionsStatus)
+	}
+	if srv.PendingRoutes() != 0 {
+		t.Errorf("%d fixtures not consumed", srv.PendingRoutes())
+	}
+}
+
+// fastWait makes the extension wait return at once.
+func fastWait(t *testing.T, timeout time.Duration) {
+	oldI, oldT := extensionsPollInterval, extensionsApplyTimeout
+	extensionsPollInterval, extensionsApplyTimeout = time.Millisecond, timeout
+	t.Cleanup(func() { extensionsPollInterval, extensionsApplyTimeout = oldI, oldT })
+}
+
+func activeWithExtensions() map[string]any {
+	b := instanceWithoutExtensions("active")
+	b["extensions_available"] = true
+	return b
+}
+
+// TestCreateFailsWhenExtensionsAreStillPending: accepted but not in effect
+// when the wait ends. The state holds what the platform reports — the
+// accepted settings, with extensions_status "pending" — and the message says
+// the next apply waits for them.
+func TestCreateFailsWhenExtensionsAreStillPending(t *testing.T) {
+	fastWait(t, 0)
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "POST", Path: "/v1/db/pg", Status: http.StatusCreated, Body: instanceWithoutExtensions("provisioning")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: activeWithExtensions()},
+		{Method: "PATCH", Path: "/v1/db/pg/db-1/extensions", Status: http.StatusOK, Body: instanceBody("pending")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceBody("pending")},
+	})
+	defer srv.Close()
+
+	resp, got := runCreate(t, context.Background(), srv, setOf("postgis"))
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("settings not in effect must fail the creation, got %v", resp.Diagnostics)
+	}
+	detail := resp.Diagnostics.Errors()[0].Detail()
+	for _, want := range []string{"not in effect yet", "terraform untaint", "waits for the settings"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("message must contain %q: %s", want, detail)
+		}
+	}
+	if got.ID.ValueString() != "db-1" || got.ExtensionsStatus.ValueString() != extensionsPending {
+		t.Errorf("state must hold the instance as reported, pending: %v %v", got.ID, got.ExtensionsStatus)
+	}
+	assertKnown(t, got)
+	if srv.PendingRoutes() != 0 {
+		t.Errorf("%d fixtures not consumed", srv.PendingRoutes())
+	}
+}
+
+// TestCreateStopsWhenCancelled: interrupted while waiting, the creation
+// fails, and the state holds the instance read before the PATCH.
+func TestCreateStopsWhenCancelled(t *testing.T) {
+	fastWait(t, time.Hour)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "POST", Path: "/v1/db/pg", Status: http.StatusCreated, Body: instanceWithoutExtensions("provisioning")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: activeWithExtensions()},
+		{Method: "PATCH", Path: "/v1/db/pg/db-1/extensions", Status: http.StatusOK, BodyFn: func(*testing.T, []byte) (int, any) {
+			return http.StatusOK, instanceBody("pending")
+		}},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, BodyFn: func(*testing.T, []byte) (int, any) {
+			cancel()
+			return http.StatusOK, instanceBody("pending")
+		}},
+	})
+	defer srv.Close()
+
+	resp, got := runCreate(t, ctx, srv, setOf("postgis"))
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("an interrupted wait must fail the creation, got %v", resp.Diagnostics)
+	}
+	if got.ID.ValueString() != "db-1" {
+		t.Fatalf("the created instance must be in state, id = %v", got.ID)
+	}
+	assertKnown(t, got)
+}
+
+// TestCreateReportsOtherErrorsWithThePlatformMessage: on an instance without
+// extensions, a refusal other than 409 is not mistaken for "not available".
+func TestCreateReportsOtherErrorsWithThePlatformMessage(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "POST", Path: "/v1/db/pg", Status: http.StatusCreated, Body: instanceWithoutExtensions("provisioning")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceWithoutExtensions("active")},
+		{Method: "PATCH", Path: "/v1/db/pg/db-1/extensions", Status: http.StatusUnprocessableEntity, Body: map[string]any{
+			"detail": "Extension(s) hors catalogue : plpython3u.",
+		}},
+	})
+	defer srv.Close()
+
+	resp, got := runCreate(t, context.Background(), srv, setOf("postgis"))
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("got %v", resp.Diagnostics)
+	}
+	detail := resp.Diagnostics.Errors()[0].Detail()
+	if !strings.Contains(detail, "hors catalogue") || strings.Contains(detail, "cannot be enabled on this instance yet") {
+		t.Errorf("the platform's own refusal must be reported: %s", detail)
+	}
+	if !got.AllowedExtensions.Equal(setOf()) {
+		t.Errorf("state must hold the platform's extensions: %v", got.AllowedExtensions)
+	}
+}
+
+// existingState is the state of an active instance with postgis allowed.
+func existingState(status string) dbpgResourceModel {
+	m := newInstanceModel(setOf("postgis"))
+	m.ID, m.Tier, m.EngineVersion, m.Status = types.StringValue("db-1"), types.StringValue("dev"), types.StringValue("16"), types.StringValue("active")
+	m.EndpointVnetIP, m.EndpointPort = types.StringNull(), types.Int64Value(5432)
+	m.AdminUsername, m.AdminDatabase = types.StringNull(), types.StringNull()
+	m.CPUMillicores, m.MemoryMB = types.Int64Value(500), types.Int64Value(2048)
+	m.Tags = types.ListValueMust(types.StringType, nil)
+	m.ExtensionsAvailable = types.BoolValue(true)
+	m.PreloadLibraries, m.CronDatabase = setOf(), types.StringNull()
+	m.ExtensionsStatus = types.StringValue(status)
+	return m
+}
+
+// runModifyPlan calls ModifyPlan with a plan, its configuration and a state
+// (nil at creation), and returns the diagnostics and the modified plan.
+func runModifyPlan(t *testing.T, srv *testutil.Server, plan, config dbpgResourceModel, state *dbpgResourceModel) (*resource.ModifyPlanResponse, dbpgResourceModel) {
+	t.Helper()
+	ctx := context.Background()
+	r, sr := testSchema(t)
+	url := "http://127.0.0.1:1"
+	if srv != nil {
+		url = srv.URL
+	}
+	r.client = client.New(url, "ccp_test_unit", "0.0.0-test")
+	p := tfsdk.Plan{Schema: sr.Schema}
+	c := tfsdk.Config{Schema: sr.Schema}
+	st := tfsdk.State{Schema: sr.Schema, Raw: tftypes.NewValue(sr.Schema.Type().TerraformType(ctx), nil)}
+	for _, d := range []interface{ HasError() bool }{p.Set(ctx, &plan), st.Set(ctx, state)} {
+		if d.HasError() {
+			t.Fatalf("set: %v", d)
+		}
+	}
+	if state == nil {
+		st.Raw = tftypes.NewValue(sr.Schema.Type().TerraformType(ctx), nil)
+	}
+	cs := tfsdk.State{Schema: sr.Schema}
+	if d := cs.Set(ctx, &config); d.HasError() {
+		t.Fatalf("config: %v", d)
+	}
+	c.Raw = cs.Raw
+	resp := &resource.ModifyPlanResponse{Plan: p}
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{Plan: p, Config: c, State: st}, resp)
+	var got dbpgResourceModel
+	if d := resp.Plan.Get(ctx, &got); d.HasError() {
+		t.Fatalf("plan: %v", d)
+	}
+	return resp, got
+}
+
+// TestModifyPlanWaitsForPendingSettings: settings accepted by an earlier
+// apply are still pending. A configuration equal to the state must still
+// plan a change (extensions_status unknown), so that the apply waits.
+func TestModifyPlanWaitsForPendingSettings(t *testing.T) {
+	state := existingState(extensionsPending)
+	plan := state
+	_, got := runModifyPlan(t, nil, plan, configOf(plan), &state)
+	if !got.ExtensionsStatus.IsUnknown() {
+		t.Fatalf("pending settings must be planned for, extensions_status = %v", got.ExtensionsStatus)
+	}
+
+	applied := existingState("applied")
+	_, got = runModifyPlan(t, nil, applied, configOf(applied), &applied)
+	if got.ExtensionsStatus.ValueString() != "applied" {
+		t.Fatalf("settings in effect plan nothing, extensions_status = %v", got.ExtensionsStatus)
+	}
+}
+
+// TestModifyPlanChecksOmittedSettingsAtCreation: an omitted setting is
+// unknown in the plan of a new instance, but the instance starts without it.
+// The checks must treat it as empty instead of skipping them.
+func TestModifyPlanChecksOmittedSettingsAtCreation(t *testing.T) {
+	t.Run("cron_database without preload_libraries", func(t *testing.T) {
+		plan := newInstanceModel(types.SetUnknown(types.StringType))
+		plan.CronDatabase = types.StringValue("app")
+		resp, _ := runModifyPlan(t, nil, plan, configOf(plan), nil)
+		if !resp.Diagnostics.HasError() ||
+			!strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "cron_database only applies") {
+			t.Fatalf("got %v", resp.Diagnostics)
+		}
+	})
+	t.Run("pg_cron without preload_libraries", func(t *testing.T) {
+		srv := testutil.NewTestServer(t, testutil.Routes{
+			{Method: "GET", Path: "/v1/db/pg/extensions", Status: http.StatusOK, Body: catalog16()},
+		})
+		defer srv.Close()
+		plan := newInstanceModel(setOf("pg_cron"))
+		resp, _ := runModifyPlan(t, srv, plan, configOf(plan), nil)
+		if !resp.Diagnostics.HasError() ||
+			!strings.Contains(resp.Diagnostics.Errors()[0].Detail(), `add "pg_cron" to preload_libraries`) {
+			t.Fatalf("got %v", resp.Diagnostics)
+		}
+	})
+	t.Run("value known only at apply is not checked", func(t *testing.T) {
+		srv := testutil.NewTestServer(t, testutil.Routes{
+			{Method: "GET", Path: "/v1/db/pg/extensions", Status: http.StatusOK, Body: catalog16()},
+		})
+		defer srv.Close()
+		plan := newInstanceModel(setOf("pg_cron"))
+		resp, _ := runModifyPlan(t, srv, plan, configOf(plan, "preload_libraries"), nil)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("a value not known yet cannot be checked: %v", resp.Diagnostics)
+		}
+	})
+	t.Run("invalid cron_database name", func(t *testing.T) {
+		plan := newInstanceModel(types.SetUnknown(types.StringType))
+		plan.PreloadLibraries = setOf("pg_cron")
+		plan.CronDatabase = types.StringValue("App-DB")
+		srv := testutil.NewTestServer(t, testutil.Routes{
+			{Method: "GET", Path: "/v1/db/pg/extensions", Status: http.StatusOK, Body: catalog16()},
+		})
+		defer srv.Close()
+		resp, _ := runModifyPlan(t, srv, plan, configOf(plan), nil)
+		if !resp.Diagnostics.HasError() ||
+			!strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "database name") {
+			t.Fatalf("got %v", resp.Diagnostics)
+		}
+	})
+}
+
+// runUpdate calls Update as Terraform does: the response state starts as
+// the prior state.
+func runUpdate(t *testing.T, srv *testutil.Server, plan, state dbpgResourceModel) (*resource.UpdateResponse, dbpgResourceModel) {
+	t.Helper()
+	ctx := context.Background()
+	r, sr := testSchema(t)
+	r.client = client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+	p := tfsdk.Plan{Schema: sr.Schema}
+	st := tfsdk.State{Schema: sr.Schema}
+	if d := p.Set(ctx, &plan); d.HasError() {
+		t.Fatalf("plan: %v", d)
+	}
+	if d := st.Set(ctx, &state); d.HasError() {
+		t.Fatalf("state: %v", d)
+	}
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: sr.Schema, Raw: st.Raw.Copy()}}
+	r.Update(ctx, resource.UpdateRequest{Plan: p, State: st}, resp)
+	var got dbpgResourceModel
+	if d := resp.State.Get(ctx, &got); d.HasError() {
+		t.Fatalf("state: %v", d)
+	}
+	return resp, got
+}
+
+// TestUpdateWaitsForPendingSettings: nothing to send, but settings accepted
+// earlier are pending. The apply waits until they are in effect.
+func TestUpdateWaitsForPendingSettings(t *testing.T) {
+	fastWait(t, time.Hour)
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceBody("pending")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceBody("applied")},
+	})
+	defer srv.Close()
+	state := existingState(extensionsPending)
+	plan := state
+	plan.ExtensionsStatus = types.StringUnknown()
+
+	resp, got := runUpdate(t, srv, plan, state)
+
+	if resp.Diagnostics.HasError() || got.ExtensionsStatus.ValueString() != "applied" {
+		t.Fatalf("got %v, %v", resp.Diagnostics, got.ExtensionsStatus)
+	}
+	if srv.PendingRoutes() != 0 {
+		t.Errorf("the apply must wait until applied: %d fixtures not consumed", srv.PendingRoutes())
+	}
+}
+
+// TestUpdateFailsWhilePendingSettingsAreNotInEffect: the wait ends first.
+// The apply fails and keeps the prior state, still pending, so the next plan
+// waits again.
+func TestUpdateFailsWhilePendingSettingsAreNotInEffect(t *testing.T) {
+	fastWait(t, 0)
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceBody("pending")},
+	})
+	defer srv.Close()
+	state := existingState(extensionsPending)
+	plan := state
+	plan.ExtensionsStatus = types.StringUnknown()
+
+	resp, got := runUpdate(t, srv, plan, state)
+
+	if !resp.Diagnostics.HasError() ||
+		!strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "waits for them again") {
+		t.Fatalf("got %v", resp.Diagnostics)
+	}
+	if got.ExtensionsStatus.ValueString() != extensionsPending {
+		t.Errorf("prior state must be kept: %v", got.ExtensionsStatus)
 	}
 }
