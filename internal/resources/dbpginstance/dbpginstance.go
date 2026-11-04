@@ -159,9 +159,10 @@ func (r *dbpgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"extensions_available": schema.BoolAttribute{
-				MarkdownDescription: "Whether extensions can be allowed on this instance. They must " +
-					"first be enabled on the instance by support; until then, extension settings " +
-					"cannot change.",
+				MarkdownDescription: "Whether extensions can be allowed on this instance. An instance " +
+					"created in a region where extensions are offered has them from its creation; " +
+					"for an instance created earlier, their activation must be requested. Until " +
+					"then, extension settings cannot change.",
 				Computed:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
@@ -333,12 +334,10 @@ func (r *dbpgResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError("PostgreSQL provisioning timed out or failed", err.Error())
 		return
 	}
-	planned := plan
-	final, keepPlanned := r.applyExtensionsOnCreate(ctx, planned, final, &resp.Diagnostics)
+	// Extension settings come from the platform even when they were not
+	// applied: the state never shows extensions the instance does not have.
+	final = r.applyExtensionsOnCreate(ctx, plan, final, &resp.Diagnostics)
 	setState(ctx, &plan, final)
-	if keepPlanned {
-		keepPlannedExtensions(&plan, planned)
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

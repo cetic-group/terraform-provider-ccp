@@ -90,7 +90,8 @@ curl -H "Authorization: Bearer $CCP_API_KEY" \
 
 Extensions are allowed on an instance, then created by the owner of a database:
 
-- **Enabling**: extensions must first be enabled on the instance by support (`extensions_available = true`). Until then, extension settings cannot change. A new instance always starts without them: if they are set at creation, the instance is still created, with a warning, and the next `terraform apply` applies the settings once support has enabled extensions.
+- **Enabling**: extensions can be allowed only on an instance where they are enabled (`extensions_available = true`). An instance created in a region where extensions are offered has them from its creation. For an instance created earlier, request their activation; until then, extension settings cannot change.
+- **At creation**: if the settings cannot be applied to the new instance (extensions not enabled on it, or any other refusal), `terraform apply` fails. The instance is saved in the state with the settings the platform reports — never extensions it does not have — and Terraform marks it tainted, so the next apply would replace it. To keep it, run `terraform untaint ccp_db_pg_instance.<name>`: the next plan then proposes the extension settings again, in place.
 - **Plan-time checks**: the settings are checked against the catalog of the instance's major version. A missing dependency, a library to preload, an extension that needs no authorization, or `cron_database` without `pg_cron` fails the plan with a message naming the fix.
 - **Apply**: `terraform apply` waits until the instance runs with the new settings (`extensions_status = "applied"`, up to 20 minutes).
 - **Removing an extension** is refused while it is installed in a database: run `DROP EXTENSION` first, then remove it from `allowed_extensions`. The refusal names the databases concerned. It is also refused while a database of the instance does not accept connections.
@@ -109,7 +110,7 @@ In addition to all arguments above, the following attributes are exported:
 - `admin_database` - Name of the default database created at provisioning.
 - `cpu_millicores` - CPU allocation in millicores (e.g. `2000` = 2 vCPU). Derived from `plan`.
 - `memory_mb` - Memory allocation in MB. Derived from `plan`.
-- `extensions_available` - Whether extensions can be allowed on this instance (enabled by support).
+- `extensions_available` - Whether extensions can be allowed on this instance.
 - `extensions_status` - `applied` when the instance runs with its extension settings, `pending` while a change is being applied.
 
 ## Import

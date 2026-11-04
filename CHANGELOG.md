@@ -21,6 +21,16 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`ccp_db_pg_instance`: a refusal of the extension settings at creation
+  fails the apply.** It used to be a warning, and the state kept the planned
+  extensions although the platform had not applied them: the apply succeeded
+  and the state showed extensions the instance did not have. The apply now
+  fails, as on update, and the state holds the instance with the settings the
+  platform reports. Terraform marks the instance tainted; run
+  `terraform untaint` to keep it, and the next plan proposes the extension
+  settings again. The message no longer refers to support: extensions are
+  enabled from creation in a region where they are offered, and their
+  activation is requested for an instance created earlier.
 - **`ccp_appgw_route`: `cache_bypass_cookies` no longer shows "known after
   apply" on every plan.** The attribute is optional and computed but kept no
   state when unconfigured, so any plan touching another field marked it

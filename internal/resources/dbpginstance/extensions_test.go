@@ -10,6 +10,8 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -199,25 +201,154 @@ func TestUpdateExtensionsSurfacesThePlatformRefusal(t *testing.T) {
 	}
 }
 
-// TestKeepPlannedExtensionsNeverStoresUnknown pins the fix of a real apply:
-// a setting omitted from the configuration is unknown in the plan, and
-// restoring it made Terraform reject the result and taint the instance.
-func TestKeepPlannedExtensionsNeverStoresUnknown(t *testing.T) {
-	fromPlatform := dbpgResourceModel{
-		AllowedExtensions: setOf(), PreloadLibraries: setOf(), CronDatabase: types.StringNull(),
+// createPlan is the plan of a new instance, as Terraform sends it: the
+// configured settings are known, the computed ones unknown.
+func createPlan(t *testing.T, r *dbpgResource, allowed types.Set) tfsdk.Plan {
+	t.Helper()
+	ctx := context.Background()
+	var sr resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &sr)
+	m := dbpgResourceModel{
+		ID: types.StringUnknown(), Name: types.StringValue("app"), Region: types.StringValue("RNN"),
+		VpcID: types.StringValue("vpc-1"), VnetID: types.StringValue("vnet-1"),
+		Plan: types.StringValue("small"), StorageGB: types.Int64Value(20),
+		Replicas: types.Int64Value(1), Tier: types.StringUnknown(), EngineVersion: types.StringUnknown(),
+		Status: types.StringUnknown(), EndpointVnetIP: types.StringUnknown(), EndpointPort: types.Int64Unknown(),
+		AdminUsername: types.StringUnknown(), AdminDatabase: types.StringUnknown(),
+		CPUMillicores: types.Int64Unknown(), MemoryMB: types.Int64Unknown(),
+		Tags: types.ListUnknown(types.StringType), ExtensionsAvailable: types.BoolUnknown(),
+		AllowedExtensions: allowed, PreloadLibraries: types.SetUnknown(types.StringType),
+		CronDatabase: types.StringUnknown(), ExtensionsStatus: types.StringUnknown(),
 	}
-	planned := dbpgResourceModel{
-		AllowedExtensions: setOf("postgis"),
-		PreloadLibraries:  types.SetUnknown(types.StringType),
-		CronDatabase:      types.StringUnknown(),
+	plan := tfsdk.Plan{Schema: sr.Schema}
+	if d := plan.Set(ctx, &m); d.HasError() {
+		t.Fatalf("plan: %v", d)
 	}
-	got := fromPlatform
-	keepPlannedExtensions(&got, planned)
-	if !got.AllowedExtensions.Equal(setOf("postgis")) {
-		t.Errorf("configured value must be kept: %v", got.AllowedExtensions)
+	return plan
+}
+
+// runCreate calls Create as Terraform does and returns its response.
+func runCreate(t *testing.T, srv *testutil.Server, allowed types.Set) (*resource.CreateResponse, dbpgResourceModel) {
+	t.Helper()
+	ctx := context.Background()
+	r := &dbpgResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	plan := createPlan(t, r, allowed)
+	resp := &resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema, Raw: plan.Raw.Copy()}}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+	var got dbpgResourceModel
+	if d := resp.State.Get(ctx, &got); d.HasError() {
+		t.Fatalf("state: %v", d)
 	}
-	if got.PreloadLibraries.IsUnknown() || got.CronDatabase.IsUnknown() {
-		t.Errorf("unknown planned values must not reach the state: %v %v",
-			got.PreloadLibraries, got.CronDatabase)
+	return resp, got
+}
+
+// A new instance without the extensions image: GET reports
+// extensions_available=false and no extension, the PATCH is refused (409).
+func instanceWithoutExtensions(status string) map[string]any {
+	b := instanceBody("applied")
+	b["status"] = status
+	b["extensions_available"] = false
+	b["allowed_extensions"] = []string{}
+	return b
+}
+
+// TestCreateFailsWhenExtensionsAreRefused pins #1809: the platform refused
+// the extension settings of a new instance (409) and the apply succeeded,
+// with the refused extensions in state. The creation must now fail, and the
+// state must hold the instance with the settings the platform reports.
+func TestCreateFailsWhenExtensionsAreRefused(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "POST", Path: "/v1/db/pg", Status: http.StatusCreated, Body: instanceWithoutExtensions("provisioning")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceWithoutExtensions("active")},
+		{Method: "PATCH", Path: "/v1/db/pg/db-1/extensions", Status: http.StatusConflict, Body: map[string]any{
+			"detail": "Les extensions ne sont pas encore activables sur cette instance.",
+		}},
+	})
+	defer srv.Close()
+
+	resp, got := runCreate(t, srv, setOf("postgis"))
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("a refused extension setting must fail the creation, got %v", resp.Diagnostics)
+	}
+	detail := resp.Diagnostics.Errors()[0].Detail()
+	for _, want := range []string{"cannot be enabled on this instance yet", "region where extensions are offered",
+		"request their activation", "terraform untaint"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("message must contain %q: %s", want, detail)
+		}
+	}
+	if strings.Contains(strings.ToLower(detail), "support") {
+		t.Errorf("message must not send the user to support: %s", detail)
+	}
+	// The instance exists: it stays in state, or the next apply strands it.
+	if got.ID.ValueString() != "db-1" {
+		t.Fatalf("the created instance must be in state, id = %v", got.ID)
+	}
+	// Never the refused settings: the platform reports none.
+	if !got.AllowedExtensions.Equal(setOf()) {
+		t.Errorf("state must hold the platform's extensions, not the refused ones: %v", got.AllowedExtensions)
+	}
+	if got.ExtensionsAvailable.ValueBool() {
+		t.Errorf("extensions_available = %v", got.ExtensionsAvailable)
+	}
+	// A state written after an apply holds no unknown value.
+	if got.PreloadLibraries.IsUnknown() || got.CronDatabase.IsUnknown() || got.ExtensionsStatus.IsUnknown() {
+		t.Errorf("unknown value in state: %v %v %v", got.PreloadLibraries, got.CronDatabase, got.ExtensionsStatus)
+	}
+	if srv.PendingRoutes() != 0 {
+		t.Errorf("%d fixtures not consumed", srv.PendingRoutes())
+	}
+}
+
+// TestCreateReportsAnotherRefusalWithThePlatformMessage: on an instance where
+// extensions are available, a refusal is the platform's own (here a race on
+// the status), reported as such.
+func TestCreateReportsAnotherRefusalWithThePlatformMessage(t *testing.T) {
+	active := instanceWithoutExtensions("active")
+	active["extensions_available"] = true
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "POST", Path: "/v1/db/pg", Status: http.StatusCreated, Body: instanceWithoutExtensions("provisioning")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: active},
+		{Method: "PATCH", Path: "/v1/db/pg/db-1/extensions", Status: http.StatusConflict, Body: map[string]any{
+			"detail": "L'instance doit être active.",
+		}},
+	})
+	defer srv.Close()
+
+	resp, got := runCreate(t, srv, setOf("postgis"))
+
+	if !resp.Diagnostics.HasError() ||
+		!strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "L'instance doit être active.") {
+		t.Fatalf("got %v", resp.Diagnostics)
+	}
+	if !got.AllowedExtensions.Equal(setOf()) {
+		t.Errorf("state must hold the platform's extensions: %v", got.AllowedExtensions)
+	}
+}
+
+// TestCreateAppliesExtensions: accepted and in effect, the creation succeeds
+// with the platform's settings.
+func TestCreateAppliesExtensions(t *testing.T) {
+	oldI := extensionsPollInterval
+	extensionsPollInterval = time.Millisecond
+	defer func() { extensionsPollInterval = oldI }()
+	active := instanceWithoutExtensions("active")
+	active["extensions_available"] = true
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "POST", Path: "/v1/db/pg", Status: http.StatusCreated, Body: instanceWithoutExtensions("provisioning")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: active},
+		{Method: "PATCH", Path: "/v1/db/pg/db-1/extensions", Status: http.StatusOK, Body: instanceBody("pending")},
+		{Method: "GET", Path: "/v1/db/pg/db-1", Status: http.StatusOK, Body: instanceBody("applied")},
+	})
+	defer srv.Close()
+
+	resp, got := runCreate(t, srv, setOf("postgis"))
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected error: %v", resp.Diagnostics)
+	}
+	if !got.AllowedExtensions.Equal(setOf("postgis")) || got.ExtensionsStatus.ValueString() != "applied" {
+		t.Errorf("got %v %v", got.AllowedExtensions, got.ExtensionsStatus)
 	}
 }

@@ -231,53 +231,56 @@ func waitExtensionsApplied(ctx context.Context, c *client.Client, id string) (*c
 	}
 }
 
+// extensionsUnavailableDetail explains a refusal because extensions cannot be
+// enabled on the instance yet. Shared with the create path's error.
+const extensionsUnavailableDetail = "Extensions cannot be enabled on this instance yet. " +
+	"An instance created in a region where extensions are offered has them enabled from its creation. " +
+	"For an instance created earlier, request their activation, then apply again."
+
 // applyExtensionsOnCreate applies the extension settings of a new instance.
-// It never fails the creation: an instance is created without extensions,
-// and they can only be allowed once support has enabled them on it. Failing
-// here would taint the instance, and the next apply would destroy it.
 //
-// It returns the instance to write in state, and whether the planned
-// extension values must be kept in state instead of the platform's (settings
-// not applied): Terraform requires the state to match the plan, and the next
-// refresh reads the real settings, so the next apply tries again.
-func (r *dbpgResource) applyExtensionsOnCreate(ctx context.Context, plan dbpgResourceModel, inst *client.DbPgInstance, diags *diag.Diagnostics) (*client.DbPgInstance, bool) {
+// A refusal fails the apply, as on update: the instance is created, but not
+// as configured. It returns the instance to write in state, read from the
+// platform: never the planned settings, so the state never shows extensions
+// the instance does not have (#1809). After a refusal, the instance read
+// before the PATCH (the platform changed nothing); after a wait that did not
+// end, the last instance read (its settings and `extensions_status`).
+//
+// Terraform marks a resource whose creation returned an error as tainted:
+// the message tells how to keep the instance (`terraform untaint`), after
+// which the next plan proposes the extension settings again, in place.
+func (r *dbpgResource) applyExtensionsOnCreate(ctx context.Context, plan dbpgResourceModel, inst *client.DbPgInstance, diags *diag.Diagnostics) *client.DbPgInstance {
 	req, send := extensionRequest(ctx, plan, nil)
 	if !send {
-		return inst, false
+		return inst
 	}
 	if _, err := r.client.UpdateDbPgExtensions(ctx, inst.ID, req); err != nil {
-		diags.AddWarning("Extension settings not applied",
-			"The PostgreSQL instance was created, but its extension settings could not be applied: "+
-				err.Error()+"\n\nExtensions must first be enabled on the instance by support. "+
-				"The next terraform apply will try again.")
-		return inst, true
+		if client.IsConflict(err) && !inst.ExtensionsAvailable {
+			diags.AddError("PostgreSQL extensions not available on this instance",
+				"The PostgreSQL instance was created, but its extension settings were not applied. "+
+					extensionsUnavailableDetail+"\n\n"+createdNotAppliedHint)
+		} else {
+			diags.AddError("Failed to apply PostgreSQL extensions",
+				"The PostgreSQL instance was created, but its extension settings were not applied: "+
+					err.Error()+"\n\n"+createdNotAppliedHint)
+		}
+		return inst
 	}
 	final, err := waitExtensionsApplied(ctx, r.client, inst.ID)
 	if err != nil {
-		diags.AddWarning("Extension settings still pending",
+		diags.AddError("PostgreSQL extension settings not applied",
 			"The PostgreSQL instance was created and its extension settings were accepted, "+
-				"but they were not in effect yet: "+err.Error())
+				"but they were not in effect yet: "+err.Error()+"\n\n"+createdNotAppliedHint)
 		if final != nil {
-			return final, true
+			return final
 		}
-		return inst, true
+		return inst
 	}
-	return final, false
+	return final
 }
 
-// keepPlannedExtensions restores the practitioner's extension settings in a
-// state model that `setState` filled from the platform. Only KNOWN planned
-// values are restored: an omitted setting is unknown in the plan, and a state
-// written after an apply must not hold any unknown value — it keeps the
-// platform's value instead.
-func keepPlannedExtensions(m *dbpgResourceModel, planned dbpgResourceModel) {
-	if !planned.AllowedExtensions.IsUnknown() {
-		m.AllowedExtensions = planned.AllowedExtensions
-	}
-	if !planned.PreloadLibraries.IsUnknown() {
-		m.PreloadLibraries = planned.PreloadLibraries
-	}
-	if !planned.CronDatabase.IsUnknown() {
-		m.CronDatabase = planned.CronDatabase
-	}
-}
+// createdNotAppliedHint tells what to do with an instance whose creation
+// failed on its extension settings.
+const createdNotAppliedHint = "The instance is saved in the state with the settings the platform reports, " +
+	"and Terraform marks it tainted: the next apply would replace it. To keep it, run " +
+	"`terraform untaint` on it; the next plan then proposes the extension settings again."
