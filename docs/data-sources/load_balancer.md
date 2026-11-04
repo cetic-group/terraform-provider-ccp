@@ -24,3 +24,9 @@ data "ccp_load_balancer" "main" {
 - `vip_address`, `public_ip_address`, `public_ip_id` (nullable)
 - `status`, `error_message` (nullable)
 - `tags`, `created_at`, `updated_at`
+
+### Availability
+
+`replica_count` (Number, read-only) is `1` without redundancy or `2` for high
+availability. A platform version predating this field only supports two
+instances; its response is read as `2`.

@@ -6,6 +6,50 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+**The next release is 7.3.2, a patch version that changes the expected
+configuration** (see Breaking). The plan-managed cache and single-instance
+gateways need the platform API of cetic-cloud-platform#1748, already in
+production.
+
+### Breaking
+
+- `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
+  computed-only outputs. Remove their HCL assignments when upgrading to 7.3.2.
+  The plan selected on the gateway now determines both values; `cache_enabled`
+  and route policies remain writable. Requests no longer send dimensions or
+  client-side defaults. Existing state keys and types are preserved, and a
+  plan change does not replace the gateway. Provider 7.3.1 and earlier send
+  their own default dimensions and can report inconsistent results with the
+  plan-managed API: upgrade. See the resource migration guide.
+- `data.ccp_pricing`: `items[*].hourly_price_cents` changes from an integer to
+  a number and may carry fractional cents (e.g. `0.4096`); do not assume an
+  integer or compare it for exact equality. `monthly_price_eur` and
+  `yearly_price_eur` are now `null` when the platform gives no estimate
+  (per-unit pricing) instead of `0`: guard them (`try()`, `coalesce()`) before
+  any arithmetic.
+
+### Added
+
+- `replica_count` on `ccp_application_gateway` and `ccp_load_balancer`, and
+  their data sources: `1` without redundancy or `2` for high availability
+  (default). Changing the count forces replacement; capacity plans remain
+  independent. A state written by an earlier provider (no `replica_count`)
+  counts as `2`, so existing gateways are never replaced, even when planning
+  with `-refresh=false`.
+- Creation detects older platforms that ignore the requested mode and keeps
+  the created ID in state. Reading historical two-instance resources remains
+  compatible. Prices are selected from the live catalog.
+- `data.ccp_pricing` exposes and filters `replica_count` and supports
+  `appgw_cache` tariffs. Base prices and cache surcharges already cover the
+  selected single-instance or high-availability mode; no multiplier is applied.
+- The HTTP cache remains opt-in and mutable. The platform catalog defines its
+  optional surcharge independently from the gateway base rate.
+
+### Fixed
+
+- `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
+  complete pricing response. Explicit zero prices are kept.
+
 ## v7.4.0 (2026-11-04)
 
 ### Added

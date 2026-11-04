@@ -47,6 +47,7 @@ type routeModel struct {
 }
 
 type appgwDSModel struct {
+	ReplicaCount          types.Int64        `tfsdk:"replica_count"`
 	CacheEnabled          types.Bool         `tfsdk:"cache_enabled"`
 	CacheSizeMB           types.Int64        `tfsdk:"cache_size_mb"`
 	CacheMaxObjectKB      types.Int64        `tfsdk:"cache_max_object_kb"`
@@ -90,11 +91,11 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 		MarkdownDescription: "Look up an existing CETIC Cloud Application Gateway by `id` or by `(name, region)`. " +
 			"Exactly one of those discriminators must be provided.",
 		Attributes: map[string]schema.Attribute{
-			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Enable the HTTP cache. Disabled by default.", Computed: true},
-			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Requested cache budget in MiB, shared across routes. The plan limits the effective size.", Computed: true},
-			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB (1–1024).", Computed: true},
+			"cache_enabled":           schema.BoolAttribute{MarkdownDescription: "Whether the paid HTTP cache option is enabled.", Computed: true},
+			"cache_size_mb":           schema.Int64Attribute{MarkdownDescription: "Cache budget in MiB assigned by the selected plan; shared across routes.", Computed: true},
+			"cache_max_object_kb":     schema.Int64Attribute{MarkdownDescription: "Maximum object size in KiB assigned by the selected plan.", Computed: true},
 			"cache_size_limit_mb":     schema.Int64Attribute{MarkdownDescription: "Cache size limit of the current plan, in MiB.", Computed: true},
-			"cache_effective_size_mb": schema.Int64Attribute{MarkdownDescription: "Effective cache budget after applying the current plan limit, in MiB.", Computed: true},
+			"cache_effective_size_mb": schema.Int64Attribute{MarkdownDescription: "Cache budget assigned by the selected plan, in MiB.", Computed: true},
 
 			"id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the gateway. Conflicts with `name` + `region`.",
@@ -107,6 +108,7 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Computed:            true,
 			},
 			"region":                    schema.StringAttribute{Optional: true, Computed: true},
+			"replica_count":             schema.Int64Attribute{Computed: true, MarkdownDescription: "Number of instances: 1 without redundancy or 2 for high availability."},
 			"plan":                      schema.StringAttribute{Computed: true},
 			"vpc_id":                    schema.StringAttribute{Computed: true},
 			"vpc_name":                  schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the VPC."},
@@ -238,6 +240,7 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	state := appgwDSModel{
+		ReplicaCount:      types.Int64Value(client.GatewayReplicaCount(found.ReplicaCount)),
 		ID:                types.StringValue(found.ID),
 		Name:              types.StringValue(found.Name),
 		Region:            types.StringValue(found.Region),
@@ -255,13 +258,7 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		VnetCIDR:          nullableStr(found.VnetCIDR),
 	}
 	state.CacheEnabled = types.BoolValue(found.CacheEnabled)
-	if found.CacheSizeMB == 0 {
-		found.CacheSizeMB = 64
-	}
 	state.CacheSizeMB = types.Int64Value(found.CacheSizeMB)
-	if found.CacheMaxObjectKB == 0 {
-		found.CacheMaxObjectKB = 512
-	}
 	state.CacheMaxObjectKB = types.Int64Value(found.CacheMaxObjectKB)
 	state.CacheSizeLimitMB = types.Int64Value(found.CacheSizeLimitMB)
 	state.CacheEffectiveSizeMB = types.Int64Value(found.CacheEffectiveSizeMB)

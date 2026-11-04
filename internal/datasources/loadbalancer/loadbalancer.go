@@ -21,6 +21,7 @@ func New() datasource.DataSource { return &lbDataSource{} }
 type lbDataSource struct{ client *client.Client }
 
 type lbDSModel struct {
+	ReplicaCount    types.Int64  `tfsdk:"replica_count"`
 	ID              types.String `tfsdk:"id"`
 	Name            types.String `tfsdk:"name"`
 	Region          types.String `tfsdk:"region"`
@@ -51,6 +52,7 @@ func (d *lbDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, res
 			"id":                schema.StringAttribute{Optional: true, Computed: true},
 			"name":              schema.StringAttribute{Optional: true, Computed: true},
 			"region":            schema.StringAttribute{Optional: true, Computed: true},
+			"replica_count":     schema.Int64Attribute{Computed: true, MarkdownDescription: "Number of instances: 1 without redundancy or 2 for high availability."},
 			"plan":              schema.StringAttribute{Computed: true},
 			"vnet_id":           schema.StringAttribute{Computed: true},
 			"vpc_id":            schema.StringAttribute{Computed: true, MarkdownDescription: "UUID of the VPC that contains the VNet."},
@@ -136,14 +138,15 @@ func (d *lbDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	}
 
 	state := lbDSModel{
-		ID:        types.StringValue(found.ID),
-		Name:      types.StringValue(found.Name),
-		Region:    types.StringValue(found.Region),
-		Plan:      types.StringValue(found.Plan),
-		VnetID:    types.StringValue(found.VnetID),
-		Status:    types.StringValue(found.Status),
-		CreatedAt: types.StringValue(found.CreatedAt),
-		UpdatedAt: types.StringValue(found.UpdatedAt),
+		ReplicaCount: types.Int64Value(client.GatewayReplicaCount(found.ReplicaCount)),
+		ID:           types.StringValue(found.ID),
+		Name:         types.StringValue(found.Name),
+		Region:       types.StringValue(found.Region),
+		Plan:         types.StringValue(found.Plan),
+		VnetID:       types.StringValue(found.VnetID),
+		Status:       types.StringValue(found.Status),
+		CreatedAt:    types.StringValue(found.CreatedAt),
+		UpdatedAt:    types.StringValue(found.UpdatedAt),
 	}
 	setStrPtr(&state.VIPAddress, found.VIPAddress)
 	setStrPtr(&state.PublicIPAddress, found.PublicIPAddress)

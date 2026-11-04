@@ -9,6 +9,7 @@ package client
 // ─── Application Gateway ─────────────────────────────────────────────────────
 
 type ApplicationGateway struct {
+	ReplicaCount          *int64   `json:"replica_count,omitempty"`
 	CacheEnabled          bool     `json:"cache_enabled"`
 	CacheSizeMB           int64    `json:"cache_size_mb"`
 	CacheMaxObjectKB      int64    `json:"cache_max_object_kb"`
@@ -50,9 +51,8 @@ type ApplicationGateway struct {
 }
 
 type ApplicationGatewayCreateRequest struct {
+	ReplicaCount          *int64   `json:"replica_count,omitempty"`
 	CacheEnabled          *bool    `json:"cache_enabled,omitempty"`
-	CacheSizeMB           *int64   `json:"cache_size_mb,omitempty"`
-	CacheMaxObjectKB      *int64   `json:"cache_max_object_kb,omitempty"`
 	Name                  string   `json:"name"`
 	Region                string   `json:"region"`
 	Plan                  string   `json:"plan"`
@@ -73,8 +73,6 @@ type ApplicationGatewayCreateRequest struct {
 type ApplicationGatewayUpdateRequest struct {
 	Plan                  *string   `json:"plan,omitempty"`
 	CacheEnabled          *bool     `json:"cache_enabled,omitempty"`
-	CacheSizeMB           *int64    `json:"cache_size_mb,omitempty"`
-	CacheMaxObjectKB      *int64    `json:"cache_max_object_kb,omitempty"`
 	Name                  *string   `json:"name,omitempty"`
 	ForceHTTPS            *bool     `json:"force_https,omitempty"`
 	HSTSEnabled           *bool     `json:"hsts_enabled,omitempty"`

@@ -44,7 +44,7 @@ func runCreate(t *testing.T, plan appgwResourceModel, vipFromAPI string) (map[st
 	return sent, out
 }
 
-func runCreateDiags(t *testing.T, plan appgwResourceModel, postVIP, vipFromAPI string) (map[string]any, appgwResourceModel, diag.Diagnostics) {
+func runCreateDiags(t *testing.T, plan appgwResourceModel, postVIP, vipFromAPI string, replicas ...int64) (map[string]any, appgwResourceModel, diag.Diagnostics) {
 	t.Helper()
 	ctx := context.Background()
 	id := "appgw-92"
@@ -52,6 +52,10 @@ func runCreateDiags(t *testing.T, plan appgwResourceModel, postVIP, vipFromAPI s
 	creating := fixtureCreating(id)
 	if postVIP != "" {
 		creating["vip_address"] = postVIP
+	}
+	if len(replicas) > 0 {
+		creating["replica_count"] = replicas[0]
+		active["replica_count"] = replicas[0]
 	}
 	srv := testutil.NewTestServer(t, testutil.Routes{
 		{Method: "POST", Path: "/v1/app-gateways", Status: http.StatusCreated, Body: creating},
