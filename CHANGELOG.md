@@ -6,18 +6,19 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-**Breaking: the next release must be 8.0.0.** The plan-managed cache and
-single-instance gateways need the platform API of cetic-cloud-platform#1748,
-already in production.
+**The next release is 7.3.2, a patch version that changes the expected
+configuration** (see Breaking). The plan-managed cache and single-instance
+gateways need the platform API of cetic-cloud-platform#1748, already in
+production.
 
 ### Breaking
 
 - `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
-  computed-only outputs. Remove their HCL assignments when upgrading to 8.0.0.
+  computed-only outputs. Remove their HCL assignments when upgrading to 7.3.2.
   The plan selected on the gateway now determines both values; `cache_enabled`
   and route policies remain writable. Requests no longer send dimensions or
   client-side defaults. Existing state keys and types are preserved, and a
-  plan change does not replace the gateway. Provider 7.4 and earlier send
+  plan change does not replace the gateway. Provider 7.3.1 and earlier send
   their own default dimensions and can report inconsistent results with the
   plan-managed API: upgrade. See the resource migration guide.
 - `data.ccp_pricing`: `items[*].hourly_price_cents` changes from an integer to
