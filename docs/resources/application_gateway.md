@@ -159,20 +159,20 @@ terraform import ccp_application_gateway.web <appgw_id>
 
 Requires a platform version implementing cetic-cloud-platform#1733. Only public GET 200 responses populate the cache; HEAD may read a cached GET. Authorization, session cookies, Set-Cookie, private, no-store and no-cache bypass it. Unsupported Vary fields (including Accept-Language) bypass caching. Host, path, query string, route and gateway are isolated. Each replica owns its own cache; failover may reach a cold cache. Use the API, console or `cetic appgw cache purge` for invalidation; there is no Terraform purge resource.
 
-## Migration to plan-managed cache (provider 8.0+)
+## Migration to plan-managed cache (provider 7.3.2+)
 
 The selected `plan` now determines both cache dimensions. Keep `cache_enabled`
 and the route cache policies; remove the **assignments** `cache_size_mb = ...`
 and `cache_max_object_kb = ...` from the resource configuration. References
 such as `ccp_application_gateway.web.cache_size_mb` remain valid outputs.
 
-Upgrade your provider constraint to `>= 8.0.0` once that version is released,
+Upgrade the provider to `7.3.2` or later (for example `~> 7.3, >= 7.3.2`),
 run `terraform init -upgrade`, then review `terraform plan`. Existing state
 keys and types are retained: no resource replacement, state removal or import
 is required for this change. A plan change updates dimensions in place.
 The provider reads the profile from the API and never calculates its own sizes.
 
-The plan-managed API is already deployed. Provider 7.4 and earlier send their
+The plan-managed API is already deployed. Provider 7.3.1 and earlier send their
 own default dimensions even if they are omitted from HCL; when those values
 differ from the server profile, Terraform can report an inconsistent result or
 persistent drift. Do not work around that with `ignore_changes` or
