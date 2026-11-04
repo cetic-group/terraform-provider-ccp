@@ -25,31 +25,40 @@ Requires provider 8.1.0 **once released**, after the 8.0.0 cache migration below
 plus a platform advertising access policy version 1. This change publishes no
 provider version or tag.
 
-## Unreleased — plan-managed Application Gateway cache
+## Unreleased
+
+**Breaking: the next release must be 8.0.0.** The plan-managed cache and
+single-instance gateways need the platform API of cetic-cloud-platform#1748,
+already in production.
 
 ### Breaking
 
 - `ccp_application_gateway.cache_size_mb` and `cache_max_object_kb` become
-  computed-only outputs. Remove their HCL assignments when upgrading to the
-  next major provider version (8.0.0). The plan selected on the gateway now
-  determines both values; `cache_enabled` and route policies remain writable.
-- Requests no longer send dimensions or client-side defaults. Existing state
-  keys and types are preserved, and a plan change does not replace the gateway.
-- Resource and data source read the server profile without a local plan table.
-  Coordinate the provider upgrade before rollout of the plan-managed API;
-  provider 7.3 can report inconsistent results with that API. See the resource
-  migration guide. No release is published by this change.
+  computed-only outputs. Remove their HCL assignments when upgrading to 8.0.0.
+  The plan selected on the gateway now determines both values; `cache_enabled`
+  and route policies remain writable. Requests no longer send dimensions or
+  client-side defaults. Existing state keys and types are preserved, and a
+  plan change does not replace the gateway. Provider 7.4 and earlier send
+  their own default dimensions and can report inconsistent results with the
+  plan-managed API: upgrade. See the resource migration guide.
+- `data.ccp_pricing`: `items[*].hourly_price_cents` changes from an integer to
+  a number and may carry fractional cents (e.g. `0.4096`); do not assume an
+  integer or compare it for exact equality. `monthly_price_eur` and
+  `yearly_price_eur` are now `null` when the platform gives no estimate
+  (per-unit pricing) instead of `0`: guard them (`try()`, `coalesce()`) before
+  any arithmetic.
 
 ### Added
 
-- `replica_count` on `ccp_application_gateway` and `ccp_load_balancer`, and their
-  data sources: `1` without redundancy or `2` for high availability (default).
-  Changing the count forces replacement; capacity plans remain independent.
+- `replica_count` on `ccp_application_gateway` and `ccp_load_balancer`, and
+  their data sources: `1` without redundancy or `2` for high availability
+  (default). Changing the count forces replacement; capacity plans remain
+  independent. A state written by an earlier provider (no `replica_count`)
+  counts as `2`, so existing gateways are never replaced, even when planning
+  with `-refresh=false`.
 - Creation detects older platforms that ignore the requested mode and keeps
   the created ID in state. Reading historical two-instance resources remains
-  compatible. Deploy a platform implementing cetic-cloud-platform#1748 before
-  requesting single-instance mode. Prices are selected from the live catalog.
-
+  compatible. Prices are selected from the live catalog.
 - `data.ccp_pricing` exposes and filters `replica_count` and supports
   `appgw_cache` tariffs. Base prices and cache surcharges already cover the
   selected single-instance or high-availability mode; no multiplier is applied.
@@ -59,9 +68,71 @@ provider version or tag.
 ### Fixed
 
 - `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
-  complete pricing response. Periodic prices returned as `null` remain null,
-  rather than appearing as free zero amounts; explicit zero prices are kept.
-  HCL consumers must handle nullable periodic estimates before arithmetic.
+  complete pricing response. Explicit zero prices are kept.
+
+## v7.4.0 (2026-11-04)
+
+### Added
+
+- **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
+  (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
+  `max_age_seconds`, `description`). Without any block CORS is left untouched;
+  removing every block deletes the rules. Writes carry the revision
+  recorded in the state (`cors_revision`, read-only), so a change made by
+  someone else after the plan is refused instead of overwritten.
+  Values are validated at plan time against the platform's formats and limits
+  (canonical origins, header names, 0–86400 s, 100 rules). A refusal while the
+  bucket is created is a warning, not an error, so the bucket is never replaced.
+  Requires a platform API that exposes bucket CORS.
+
+### Changed
+
+- **`ccp_db_pg_instance`: a refusal of the extension settings at creation now
+  fails the apply** (it was a warning). It also fails when the settings were
+  accepted but not in effect when the wait ended. The instance is created and
+  kept in the state with the settings the platform reports, but Terraform
+  marks a resource whose creation failed as tainted: the next apply would
+  replace it. **Upgrade note**: after such a failure, run
+  `terraform untaint ccp_db_pg_instance.<name>` to keep the instance; the next
+  plan then applies the extension settings again in place, or waits for them.
+  In a region where extensions are not offered, also request their activation
+  or remove the settings, otherwise the next apply fails again.
+  `ccp_object_bucket` keeps a warning when its CORS rules are refused at
+  creation: a bucket works without them and the practitioner fixes the
+  rules in the configuration. Here the refusal comes from the instance and
+  the database application relies on the extensions, so a successful apply
+  would hide a missing prerequisite.
+  Extensions enabled from creation require a platform API that enables them
+  on new instances in a region where they are offered; with an older one, the
+  creation fails as described above. The message no longer refers to support:
+  for an instance created earlier, request the activation of extensions.
+
+### Fixed
+
+- **`ccp_db_pg_instance`: the state no longer shows extensions the instance
+  does not have.** A refusal at creation used to keep the planned extensions
+  in the state, so the apply succeeded although the platform had not applied
+  them. The state now holds the settings the platform reports (see Changed).
+- **`ccp_db_pg_instance`: settings still pending are waited for.** When an
+  apply ended before the extension settings were in effect
+  (`extensions_status = "pending"`), the next plan showed no change and they
+  were never waited for. The next plan now shows `extensions_status` as known
+  after apply, and the apply waits until they are in effect.
+- **`ccp_db_pg_instance`: extension settings omitted at creation are
+  checked.** An omitted `preload_libraries` was not checked when the instance
+  was created: `cron_database` without it failed the apply with "inconsistent
+  result" and left the instance tainted, and `pg_cron` in `allowed_extensions`
+  without preloading it failed only at apply time. An omitted setting is now
+  checked as empty at creation, as the platform applies it; `cron_database`
+  is also checked against the platform's naming rule.
+- **`ccp_appgw_route`: `cache_bypass_cookies` no longer shows "known after
+  apply" on every plan.** The attribute is optional and computed but kept no
+  state when unconfigured, so any plan touching another field marked it
+  unknown, and the following update sent an empty list to the platform,
+  erasing the stored cookie list. It now keeps its state value unless set in
+  the configuration (#104). Behaviour to know: removing the attribute from the
+  configuration now keeps the current list; write `cache_bypass_cookies = []`
+  to empty it.
 
 ## v7.3.0 (2026-10-25)
 

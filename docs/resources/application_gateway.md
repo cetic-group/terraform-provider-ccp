@@ -172,10 +172,10 @@ keys and types are retained: no resource replacement, state removal or import
 is required for this change. A plan change updates dimensions in place.
 The provider reads the profile from the API and never calculates its own sizes.
 
-Coordinate this upgrade before deploying the plan-managed API. Provider 7.3
-sends its own default dimensions even if they are omitted from HCL; when those
-values differ from the new server profile, Terraform can report an inconsistent
-result or persistent drift. Do not work around that with `ignore_changes` or
+The plan-managed API is already deployed. Provider 7.4 and earlier send their
+own default dimensions even if they are omitted from HCL; when those values
+differ from the server profile, Terraform can report an inconsistent result or
+persistent drift. Do not work around that with `ignore_changes` or
 by repeatedly applying the old configuration. The new provider also requires
 the plan-managed API for automatic resizing; an older API still returns its
 legacy requested budget.

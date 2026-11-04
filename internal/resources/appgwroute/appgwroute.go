@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -108,7 +109,7 @@ func (r *routeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"cache_mode":           schema.StringAttribute{MarkdownDescription: "Cache policy: off, respect origin directives, or force a fallback lifetime.", Computed: true, Optional: true, Default: stringdefault.StaticString("off"), Validators: []validator.String{stringvalidator.OneOf("off", "respect", "force")}},
 			"cache_default_ttl_s":  schema.Int64Attribute{MarkdownDescription: "Fallback lifetime in force mode, in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(60), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
 			"cache_max_ttl_s":      schema.Int64Attribute{MarkdownDescription: "Maximum lifetime in seconds (1–3600).", Computed: true, Optional: true, Default: int64default.StaticInt64(3600), Validators: []validator.Int64{int64validator.Between(1, 3600)}},
-			"cache_bypass_cookies": schema.SetAttribute{MarkdownDescription: "Session cookie names that bypass caching. Empty means any Cookie bypasses the cache.", Computed: true, Optional: true, ElementType: types.StringType},
+			"cache_bypass_cookies": schema.SetAttribute{MarkdownDescription: "Session cookie names that bypass caching. Empty means any Cookie bypasses the cache.", Computed: true, Optional: true, ElementType: types.StringType, PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()}},
 			"cache_debug_headers":  schema.BoolAttribute{MarkdownDescription: "Expose X-Cache: HIT or MISS on responses.", Computed: true, Optional: true, Default: booldefault.StaticBool(false)},
 
 			"id": schema.StringAttribute{

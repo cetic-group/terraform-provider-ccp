@@ -31,7 +31,9 @@ data "ccp_pricing" "small_container" {
 }
 
 output "monthly_eur" {
-  value = data.ccp_pricing.small_container.items[0].monthly_price_eur
+  # null when the platform gives no monthly estimate (per-unit pricing):
+  # guard it before any arithmetic.
+  value = try(data.ccp_pricing.small_container.items[0].monthly_price_eur, null)
 }
 ```
 

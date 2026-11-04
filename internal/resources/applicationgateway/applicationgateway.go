@@ -21,6 +21,7 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/errorpage"
+	ccppm "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -28,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -93,7 +93,8 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 		MarkdownDescription: "Manages a CETIC Cloud Application Gateway (ccp-appgw) — an L7 HTTP/HTTPS " +
 			"reverse proxy with TLS termination, SNI multi-cert, rate limiting, IP allow/deny lists, " +
 			"CORS, basic auth and WAF presets.\n\n" +
-			"Each gateway provisions a highly-available pair of containers behind a floating virtual IP. " +
+			"Each gateway provisions a highly-available pair of containers (default) or a single one " +
+			"(`replica_count = 1`) behind a floating virtual IP. " +
 			"Listeners, routes and target groups are declared as separate resources " +
 			"(`ccp_appgw_listener`, `ccp_appgw_target_group`, `ccp_appgw_route`, " +
 			"`ccp_appgw_target_group_member`) to keep per-route HCL edits idempotent.\n\n" +
@@ -131,7 +132,7 @@ func (r *appgwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:            true, Computed: true,
 				Default:       int64default.StaticInt64(2),
 				Validators:    []validator.Int64{int64validator.OneOf(1, 2)},
-				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+				PlanModifiers: []planmodifier.Int64{ccppm.ReplicaCountRequiresReplace()},
 			},
 
 			"plan": schema.StringAttribute{

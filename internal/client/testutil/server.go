@@ -47,6 +47,7 @@ type Routes []Route
 type RecordedRequest struct {
 	Method string
 	Path   string
+	Query  string
 	Body   []byte
 }
 
@@ -111,6 +112,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	s.calls = append(s.calls, RecordedRequest{
 		Method: r.Method,
 		Path:   r.URL.Path,
+		Query:  r.URL.RawQuery,
 		Body:   body,
 	})
 	k := key(r.Method, r.URL.Path)

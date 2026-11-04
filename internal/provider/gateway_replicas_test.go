@@ -99,6 +99,47 @@ func TestGatewayReplicaPlanning(t *testing.T) {
 					t.Fatal("single mode must replace existing HA resource")
 				}
 			}
+			// State written by a provider older than replica_count: the
+			// attribute is null. Planned without a refresh (-refresh=false,
+			// -target, CI), a plain RequiresReplace would compare null with
+			// the default 2 and replace every existing gateway.
+			legacy := map[string]tftypes.Value{}
+			for k, v := range prior {
+				legacy[k] = v
+			}
+			legacy["replica_count"] = tftypes.NewValue(tftypes.Number, nil)
+			for _, tc := range []struct {
+				name    string
+				config  tftypes.Value
+				replace bool
+			}{
+				{"omitted", tftypes.NewValue(tftypes.Number, nil), false},
+				{"explicit HA", num(2), false},
+				{"single", num(1), true},
+			} {
+				c := map[string]tftypes.Value{}
+				for k, v := range cfg {
+					c[k] = v
+				}
+				c["replica_count"] = tc.config
+				proposed := map[string]tftypes.Value{}
+				for k, v := range legacy {
+					proposed[k] = v
+				}
+				proposed["replica_count"] = tc.config
+				result, e := srv.PlanResourceChange(ctx, &tfprotov6.PlanResourceChangeRequest{TypeName: rt,
+					PriorState: enc(obj(legacy)), ProposedNewState: enc(obj(proposed)), Config: enc(obj(c))})
+				if e != nil {
+					t.Fatal(e)
+				}
+				planned := check(result)
+				if got := len(result.RequiresReplace) != 0; got != tc.replace {
+					t.Fatalf("legacy state, %s: replace=%v, want %v (%v)", tc.name, got, tc.replace, result.RequiresReplace)
+				}
+				if !tc.replace && !planned["replica_count"].Equal(num(2)) {
+					t.Fatalf("legacy state, %s: replica_count planned %v, want 2", tc.name, planned["replica_count"])
+				}
+			}
 			for _, count := range []int64{0, 3} {
 				cfg["replica_count"] = num(count)
 				result, e := srv.ValidateResourceConfig(ctx, &tfprotov6.ValidateResourceConfigRequest{TypeName: rt, Config: enc(obj(cfg))})

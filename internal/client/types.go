@@ -286,6 +286,31 @@ type ObjectBucketUpdateRequest struct {
 	IsPublic *bool `json:"is_public,omitempty"`
 }
 
+// BucketCorsRule is one CORS rule of a bucket.
+type BucketCorsRule struct {
+	AllowedOrigins []string `json:"allowed_origins"`
+	AllowedMethods []string `json:"allowed_methods"`
+	AllowedHeaders []string `json:"allowed_headers"`
+	ExposeHeaders  []string `json:"expose_headers"`
+	MaxAgeSeconds  int64    `json:"max_age_seconds"`
+	Description    *string  `json:"description,omitempty"`
+}
+
+// BucketCors is the CORS configuration of a bucket. Status: none | unmanaged |
+// pending | applied | error. Revision must be echoed back on writes so a change
+// made elsewhere is refused instead of overwritten.
+type BucketCors struct {
+	Rules        []BucketCorsRule `json:"rules"`
+	Status       string           `json:"status"`
+	ErrorMessage *string          `json:"error_message,omitempty"`
+	Revision     string           `json:"revision"`
+}
+
+type BucketCorsUpdateRequest struct {
+	Rules            []BucketCorsRule `json:"rules"`
+	ExpectedRevision string           `json:"expected_revision,omitempty"`
+}
+
 // ObjectBucketCredentials returned by GET /v1/buckets/{id}/credentials.
 // Master S3 key is tenant-region-wide (covers all buckets of the tenant in
 // the region). Sensitive — never store in Terraform state.

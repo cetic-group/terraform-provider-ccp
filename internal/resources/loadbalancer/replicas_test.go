@@ -1,8 +1,9 @@
 package loadbalancer
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestCreateSingleInstance(t *testing.T) {
