@@ -32,8 +32,8 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
    accepts only `1` or `2`**, default `2` (high availability, the historical
    behaviour). Changing it replaces the resource. **Do:** nothing for existing
    gateways: a state written by 7.3.1 reads as `2`, so the upgrade does not
-   replace them, even with `-refresh=false`. Set `replica_count = 1` only on new gateways that do
-   not need redundancy.
+   replace them, even with `-refresh=false`. Set `replica_count = 1` only on
+   new gateways that do not need redundancy.
 4. **Then** run `terraform init -upgrade` and review `terraform plan`: no
    Application Gateway or Load Balancer should be replaced, and no state
    migration or import is needed.
@@ -157,7 +157,6 @@ policies keep working.
 
 - `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
   complete pricing response. Explicit zero prices are kept.
-
 - **`ccp_db_pg_instance`: the state no longer shows extensions the instance
   does not have.** A refusal at creation used to keep the planned extensions
   in the state, so the apply succeeded although the platform had not applied
