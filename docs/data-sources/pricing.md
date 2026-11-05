@@ -31,9 +31,10 @@ data "ccp_pricing" "small_container" {
 }
 
 output "monthly_eur" {
-  # null when the platform gives no monthly estimate (per-unit pricing):
-  # guard it before any arithmetic.
-  value = try(data.ccp_pricing.small_container.items[0].monthly_price_eur, null)
+  # monthly_price_eur is null when the platform gives no monthly estimate
+  # (per-unit pricing): coalesce() turns it into 0 before any arithmetic,
+  # try() only covers an empty items list.
+  value = coalesce(try(data.ccp_pricing.small_container.items[0].monthly_price_eur, null), 0)
 }
 ```
 

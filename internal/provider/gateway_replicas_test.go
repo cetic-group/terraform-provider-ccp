@@ -133,7 +133,15 @@ func TestGatewayReplicaPlanning(t *testing.T) {
 					t.Fatal(e)
 				}
 				planned := check(result)
-				if got := len(result.RequiresReplace) != 0; got != tc.replace {
+				got := false
+				for _, path := range result.RequiresReplace {
+					if path.Equal(tftypes.NewAttributePath().WithAttributeName("replica_count")) {
+						got = true
+					} else {
+						t.Fatalf("legacy state, %s: unexpected replacement path %v", tc.name, path)
+					}
+				}
+				if got != tc.replace {
 					t.Fatalf("legacy state, %s: replace=%v, want %v (%v)", tc.name, got, tc.replace, result.RequiresReplace)
 				}
 				if !tc.replace && !planned["replica_count"].Equal(num(2)) {

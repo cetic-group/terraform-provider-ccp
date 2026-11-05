@@ -6,17 +6,49 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-**The next release is 7.3.2, a patch version that changes the expected
-configuration** (see Breaking). The plan-managed cache and single-instance
-gateways need the platform API of cetic-cloud-platform#1748, already in
-production. Application Gateway access policies need a platform advertising
-access policy version 1 (cetic-cloud-platform#1828), not yet confirmed in
-production: without it, configuring a policy fails at apply time and gateways
-without policies keep working.
+## v7.3.2 (2026-11-05)
 
-The dedicated VPC egress IP needs the platform API of
-cetic-cloud-platform#1734, **not yet in production**: do not release before it
-is deployed.
+### Upgrade notes
+
+> **⚠️ This patch version contains configuration changes.** Although it is
+> numbered 7.3.2, a configuration that worked with 7.3.1 may need edits before
+> `terraform plan` succeeds. Read these notes before upgrading.
+
+1. **`ccp_application_gateway`: `cache_size_mb` and `cache_max_object_kb` can
+   no longer be assigned.** They are now read-only and set by the gateway
+   `plan`; Terraform rejects a configuration that assigns them. **Do:** delete
+   the `cache_size_mb = ...` and `cache_max_object_kb = ...` lines from your
+   `ccp_application_gateway` blocks. References such as
+   `ccp_application_gateway.web.cache_size_mb` stay valid. `cache_enabled`
+   stays writable.
+2. **`ccp_pricing`: amounts change type and may be `null`.**
+   `items[*].hourly_price_cents` is now a number that may carry fractional
+   cents (e.g. `0.4096`) instead of an integer; `monthly_price_eur` and
+   `yearly_price_eur` are `null` instead of `0` when the platform gives no
+   estimate. **Do:** do not assume an integer or compare amounts for exact
+   equality, and wrap periodic amounts in `try()` or `coalesce()` before any
+   arithmetic (`null * 12` fails).
+3. **`replica_count` (new, `ccp_application_gateway` and `ccp_load_balancer`)
+   accepts only `1` or `2`**, default `2` (high availability, the historical
+   behaviour). Changing it replaces the resource. **Do:** nothing for existing
+   gateways: a state written by 7.3.1 reads as `2`, so the upgrade does not
+   replace them, even with `-refresh=false`. Set `replica_count = 1` only on
+   new gateways that do not need redundancy.
+4. **Then** run `terraform init -upgrade` and review `terraform plan`: no
+   Application Gateway or Load Balancer should be replaced, and no state
+   migration or import is needed.
+
+Providers 7.3.1 and earlier send their own cache dimensions and can report
+inconsistent results with the plan-managed API, already in production.
+
+Also carries the changes prepared for 7.4.0, which was never released.
+
+Requires the platform API of cetic-cloud-platform#1748 (plan-managed cache,
+single-instance gateways), bucket CORS and the dedicated VPC egress IP
+(cetic-cloud-platform#1734). Application Gateway access policies also need a
+platform advertising access policy version 1 (cetic-cloud-platform#1828):
+without it, configuring a policy fails at apply time and gateways without
+policies keep working.
 
 ### Breaking
 
@@ -41,8 +73,8 @@ is deployed.
   their data sources: `1` without redundancy or `2` for high availability
   (default). Changing the count forces replacement; capacity plans remain
   independent. A state written by an earlier provider (no `replica_count`)
-  counts as `2`, so existing gateways are never replaced, even when planning
-  with `-refresh=false`.
+  counts as `2`, so the upgrade does not replace existing gateways, even when
+  planning with `-refresh=false`.
 - Creation detects older platforms that ignore the requested mode and keeps
   the created ID in state. Reading historical two-instance resources remains
   compatible. Prices are selected from the live catalog.
@@ -84,17 +116,9 @@ is deployed.
   management without clearing it.
 - Capability check, per-gateway write serialization, revision conflict
   handling and confirmation that every instance applied the policy, including
-  after a child resource is removed. Plan-time validation of bounded values;
-  policy request errors are redacted.
-
-### Fixed
-
-- `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
-  complete pricing response. Explicit zero prices are kept.
-
-## v7.4.0 (2026-11-04)
-
-### Added
+  after a child resource is removed. A newer generation is accepted only if
+  managed fields still match. Plan-time validation of bounded values; policy
+  request errors are redacted.
 
 - **`ccp_object_bucket`: CORS rules.** Repeatable `cors_rule` block
   (`allowed_origins`, `allowed_methods`, `allowed_headers`, `expose_headers`,
@@ -131,6 +155,8 @@ is deployed.
 
 ### Fixed
 
+- `data.ccp_pricing` accepts fractional-cent rates instead of rejecting the
+  complete pricing response. Explicit zero prices are kept.
 - **`ccp_db_pg_instance`: the state no longer shows extensions the instance
   does not have.** A refusal at creation used to keep the planned extensions
   in the state, so the apply succeeded although the platform had not applied
