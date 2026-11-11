@@ -1,6 +1,8 @@
 // Package appgwtargetgroup implements the ccp_appgw_target_group
-// Terraform resource — a pool of backends with load-balancing algorithm
-// and health-check configuration, used by routes via `target_group_id`.
+// Terraform resource — either a pool of backends with load-balancing algorithm
+// and health-check configuration (`kind = "upstream"`), or a public bucket
+// served directly by the gateway (`kind = "bucket"`), used by routes via
+// `target_group_id`.
 //
 // Members (the actual backends) are managed via ccp_appgw_target_group_member.
 package appgwtargetgroup
@@ -12,8 +14,10 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/appgwvalidators"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccppm "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -27,9 +31,15 @@ import (
 )
 
 var (
-	_ resource.Resource                = (*tgResource)(nil)
-	_ resource.ResourceWithConfigure   = (*tgResource)(nil)
-	_ resource.ResourceWithImportState = (*tgResource)(nil)
+	_ resource.Resource                   = (*tgResource)(nil)
+	_ resource.ResourceWithConfigure      = (*tgResource)(nil)
+	_ resource.ResourceWithImportState    = (*tgResource)(nil)
+	_ resource.ResourceWithValidateConfig = (*tgResource)(nil)
+)
+
+const (
+	kindUpstream = "upstream"
+	kindBucket   = "bucket"
 )
 
 func New() resource.Resource { return &tgResource{} }
@@ -51,6 +61,11 @@ type tgResourceModel struct {
 	HCUnhealthyThreshold types.Int64  `tfsdk:"hc_unhealthy_threshold"`
 	StickyEnabled        types.Bool   `tfsdk:"sticky_enabled"`
 	StickyCookieName     types.String `tfsdk:"sticky_cookie_name"`
+	Kind                 types.String `tfsdk:"kind"`
+	BucketID             types.String `tfsdk:"bucket_id"`
+	BucketPrefix         types.String `tfsdk:"bucket_prefix"`
+	OriginStatus         types.String `tfsdk:"origin_status"`
+	OriginError          types.String `tfsdk:"origin_error"`
 }
 
 func (r *tgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -61,7 +76,12 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a target group on a `ccp_application_gateway` — a pool of backends with " +
 			"load-balancing algorithm and L7 health-check configuration. Routes reference target groups via " +
-			"`target_group_id`. Members are managed via `ccp_appgw_target_group_member`.",
+			"`target_group_id`. Members are managed via `ccp_appgw_target_group_member`.\n\n" +
+			"A target group is either a pool of servers (`kind = \"upstream\"`, the default) or a **bucket target** " +
+			"(`kind = \"bucket\"`): the gateway then serves a public bucket, or one folder of it, under your own domain, " +
+			"read-only (`GET` and `HEAD`, no listing of the content). A bucket target has no members, health check, " +
+			"algorithm or session persistence: those arguments are rejected. Cache behaviour is set on the route " +
+			"(`ccp_appgw_route`), not on the target group.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the target group.",
@@ -77,6 +97,44 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				MarkdownDescription: "Target group name, unique per gateway (1-100 chars).",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthBetween(1, 100)},
+			},
+			"kind": schema.StringAttribute{
+				MarkdownDescription: "Target group type: `upstream` (default, a pool of servers) or `bucket` (a public bucket " +
+					"served by the gateway; requires `bucket_id`). **Immutable** — changing it replaces the target group.",
+				Optional:   true,
+				Computed:   true,
+				Validators: []validator.String{stringvalidator.OneOf(kindUpstream, kindBucket)},
+				PlanModifiers: []planmodifier.String{
+					ccppm.LegacyStringDefault(kindUpstream),
+					ccppm.RequiresReplaceUnlessLegacy(kindUpstream),
+				},
+			},
+			"bucket_id": schema.StringAttribute{
+				MarkdownDescription: "UUID of the bucket to serve. Required with `kind = \"bucket\"`, not allowed otherwise. " +
+					"The bucket must be public, active, and in the same region as the gateway. **Immutable**.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"bucket_prefix": schema.StringAttribute{
+				MarkdownDescription: "Folder of the bucket to serve, for example `site/assets` (default: the whole bucket). " +
+					"Letters, digits, `.`, `_`, `-` and `/` only, at most 512 characters, no `.` or `..` segment, " +
+					"no leading or trailing `/`. Only with `kind = \"bucket\"`. Can be changed in place.",
+				Optional:   true,
+				Computed:   true,
+				Validators: []validator.String{bucketPrefixValidator{}},
+				PlanModifiers: []planmodifier.String{
+					ccppm.LegacyStringDefault(""),
+				},
+			},
+			"origin_status": schema.StringAttribute{
+				MarkdownDescription: "State of the bucket origin, read from the platform: `ok` when the bucket is served, " +
+					"otherwise a problem described by `origin_error`. Null for `upstream` target groups.",
+				Computed: true,
+			},
+			"origin_error": schema.StringAttribute{
+				MarkdownDescription: "Reason why the bucket cannot be served (for example the bucket became private). " +
+					"Null when there is no problem.",
+				Computed: true,
 			},
 			"algorithm": schema.StringAttribute{
 				MarkdownDescription: "Load-balancing algorithm: `roundrobin` (default), `leastconn`, `source` " +
@@ -189,6 +247,75 @@ func applyToModel(tg *client.AppGWTargetGroup, m *tgResourceModel) {
 	} else {
 		m.StickyCookieName = types.StringNull()
 	}
+	// An API that predates bucket targets sends no kind: it is an upstream pool.
+	kind := tg.Kind
+	if kind == "" {
+		kind = kindUpstream
+	}
+	m.Kind = types.StringValue(kind)
+	m.BucketID = types.StringPointerValue(tg.BucketID)
+	m.BucketPrefix = types.StringValue(tg.BucketPrefix)
+	m.OriginStatus = types.StringPointerValue(tg.OriginStatus)
+	m.OriginError = types.StringPointerValue(tg.OriginError)
+}
+
+// isBucket tells whether the model describes a bucket target.
+func (m *tgResourceModel) isBucket() bool { return m.Kind.ValueString() == kindBucket }
+
+// serverFieldAttrs are the arguments that only make sense for a pool of servers.
+var serverFieldAttrs = []string{
+	"algorithm", "hc_protocol", "hc_method", "hc_path", "hc_expect_status",
+	"hc_interval_sec", "hc_timeout_sec", "hc_healthy_threshold",
+	"hc_unhealthy_threshold", "sticky_enabled", "sticky_cookie_name",
+}
+
+// ValidateConfig rejects, at plan time, combinations the platform would refuse.
+func (r *tgResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var kind, bucketID, prefix types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("kind"), &kind)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("bucket_id"), &bucketID)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("bucket_prefix"), &prefix)...)
+	if resp.Diagnostics.HasError() || kind.IsUnknown() {
+		return
+	}
+	switch kind.ValueString() {
+	case kindBucket:
+		if bucketID.IsNull() {
+			resp.Diagnostics.AddAttributeError(path.Root("bucket_id"), "bucket_id is required",
+				"A target group with kind = \"bucket\" must name the bucket to serve.")
+		}
+		for _, name := range serverFieldAttrs {
+			var v attr.Value
+			switch name {
+			case "hc_expect_status", "hc_interval_sec", "hc_timeout_sec", "hc_healthy_threshold", "hc_unhealthy_threshold":
+				var n types.Int64
+				resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(name), &n)...)
+				v = n
+			case "sticky_enabled":
+				var b types.Bool
+				resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(name), &b)...)
+				v = b
+			default:
+				var str types.String
+				resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(name), &str)...)
+				v = str
+			}
+			if !v.IsNull() {
+				resp.Diagnostics.AddAttributeError(path.Root(name), name+" does not apply to a bucket target",
+					"A bucket target has no servers, health check or session persistence: remove this argument "+
+						"or use kind = \"upstream\".")
+			}
+		}
+	default: // upstream (explicit or defaulted)
+		if !bucketID.IsNull() {
+			resp.Diagnostics.AddAttributeError(path.Root("bucket_id"), "bucket_id requires kind = \"bucket\"",
+				"A bucket can only be set on a target group of kind \"bucket\".")
+		}
+		if !prefix.IsNull() && !prefix.IsUnknown() && prefix.ValueString() != "" {
+			resp.Diagnostics.AddAttributeError(path.Root("bucket_prefix"), "bucket_prefix requires kind = \"bucket\"",
+				"A bucket folder can only be set on a target group of kind \"bucket\".")
+		}
+	}
 }
 
 func (r *tgResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -199,6 +326,21 @@ func (r *tgResource) Create(ctx context.Context, req resource.CreateRequest, res
 	}
 	createReq := client.AppGWTargetGroupCreateRequest{
 		Name: plan.Name.ValueString(),
+	}
+	if plan.isBucket() {
+		// A bucket target carries no server settings: send only what applies.
+		kind := kindBucket
+		createReq.Kind = &kind
+		if !plan.BucketID.IsNull() && !plan.BucketID.IsUnknown() {
+			v := plan.BucketID.ValueString()
+			createReq.BucketID = &v
+		}
+		if !plan.BucketPrefix.IsNull() && !plan.BucketPrefix.IsUnknown() && plan.BucketPrefix.ValueString() != "" {
+			v := plan.BucketPrefix.ValueString()
+			createReq.BucketPrefix = &v
+		}
+		r.finishCreate(ctx, &plan, createReq, resp)
+		return
 	}
 	if !plan.Algorithm.IsNull() && !plan.Algorithm.IsUnknown() {
 		v := plan.Algorithm.ValueString()
@@ -245,13 +387,17 @@ func (r *tgResource) Create(ctx context.Context, req resource.CreateRequest, res
 		createReq.StickyCookieName = &v
 	}
 
+	r.finishCreate(ctx, &plan, createReq, resp)
+}
+
+func (r *tgResource) finishCreate(ctx context.Context, plan *tgResourceModel, createReq client.AppGWTargetGroupCreateRequest, resp *resource.CreateResponse) {
 	created, err := r.client.CreateAppGWTargetGroup(ctx, plan.AppGWID.ValueString(), createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create AppGW target group", err.Error())
 		return
 	}
-	applyToModel(created, &plan)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	applyToModel(created, plan)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
 func (r *tgResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -284,6 +430,21 @@ func (r *tgResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	if !plan.Name.Equal(state.Name) {
 		v := plan.Name.ValueString()
 		upd.Name = &v
+	}
+	if state.isBucket() {
+		// Only the name and the folder can change on a bucket target.
+		if !plan.BucketPrefix.IsNull() && !plan.BucketPrefix.IsUnknown() && !plan.BucketPrefix.Equal(state.BucketPrefix) {
+			v := plan.BucketPrefix.ValueString()
+			upd.BucketPrefix = &v
+		}
+		got, err := r.client.UpdateAppGWTargetGroup(ctx, state.AppGWID.ValueString(), state.ID.ValueString(), upd)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update AppGW target group", err.Error())
+			return
+		}
+		applyToModel(got, &plan)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
 	}
 	if !plan.Algorithm.Equal(state.Algorithm) {
 		v := plan.Algorithm.ValueString()

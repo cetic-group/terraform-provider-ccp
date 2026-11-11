@@ -34,9 +34,14 @@ type listenerModel struct {
 }
 
 type targetGroupModel struct {
-	ID        types.String `tfsdk:"id"`
-	Name      types.String `tfsdk:"name"`
-	Algorithm types.String `tfsdk:"algorithm"`
+	ID           types.String `tfsdk:"id"`
+	Name         types.String `tfsdk:"name"`
+	Algorithm    types.String `tfsdk:"algorithm"`
+	Kind         types.String `tfsdk:"kind"`
+	BucketID     types.String `tfsdk:"bucket_id"`
+	BucketPrefix types.String `tfsdk:"bucket_prefix"`
+	OriginStatus types.String `tfsdk:"origin_status"`
+	OriginError  types.String `tfsdk:"origin_error"`
 }
 
 type routeModel struct {
@@ -163,9 +168,14 @@ func (d *appgwDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":        schema.StringAttribute{Computed: true},
-						"name":      schema.StringAttribute{Computed: true},
-						"algorithm": schema.StringAttribute{Computed: true},
+						"id":            schema.StringAttribute{Computed: true},
+						"name":          schema.StringAttribute{Computed: true},
+						"algorithm":     schema.StringAttribute{Computed: true},
+						"kind":          schema.StringAttribute{Computed: true, MarkdownDescription: "`upstream` (servers) or `bucket` (a public bucket served by the gateway)."},
+						"bucket_id":     schema.StringAttribute{Computed: true, MarkdownDescription: "UUID of the served bucket (`bucket` target groups only)."},
+						"bucket_prefix": schema.StringAttribute{Computed: true, MarkdownDescription: "Folder of the bucket that is served (`bucket` target groups only)."},
+						"origin_status": schema.StringAttribute{Computed: true, MarkdownDescription: "Origin state of a `bucket` target group: `ok`, or an error state described by `origin_error`."},
+						"origin_error":  schema.StringAttribute{Computed: true, MarkdownDescription: "Reason why the bucket cannot be served, when `origin_status` reports a problem."},
 					},
 				},
 			},
@@ -349,10 +359,19 @@ func (d *appgwDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		state.Listeners = append(state.Listeners, lm)
 	}
 	for _, tg := range found.TargetGroups {
+		kind := tg.Kind
+		if kind == "" {
+			kind = "upstream"
+		}
 		state.TargetGroups = append(state.TargetGroups, targetGroupModel{
-			ID:        types.StringValue(tg.ID),
-			Name:      types.StringValue(tg.Name),
-			Algorithm: types.StringValue(tg.Algorithm),
+			ID:           types.StringValue(tg.ID),
+			Name:         types.StringValue(tg.Name),
+			Algorithm:    types.StringValue(tg.Algorithm),
+			Kind:         types.StringValue(kind),
+			BucketID:     types.StringPointerValue(tg.BucketID),
+			BucketPrefix: types.StringValue(tg.BucketPrefix),
+			OriginStatus: types.StringPointerValue(tg.OriginStatus),
+			OriginError:  types.StringPointerValue(tg.OriginError),
 		})
 	}
 	for _, rt := range found.Routes {

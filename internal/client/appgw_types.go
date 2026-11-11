@@ -178,11 +178,22 @@ type AppGWTargetGroup struct {
 	CreatedAt            string  `json:"created_at"`
 	UpdatedAt            string  `json:"updated_at"`
 
+	// Bucket target group fields. An older API omits them: Kind is then empty
+	// and means "upstream".
+	Kind         string  `json:"kind,omitempty"`
+	BucketID     *string `json:"bucket_id,omitempty"`
+	BucketPrefix string  `json:"bucket_prefix,omitempty"`
+	OriginStatus *string `json:"origin_status,omitempty"`
+	OriginError  *string `json:"origin_error,omitempty"`
+
 	Members []AppGWTargetGroupMember `json:"members,omitempty"`
 }
 
 type AppGWTargetGroupCreateRequest struct {
 	Name                 string  `json:"name"`
+	Kind                 *string `json:"kind,omitempty"`
+	BucketID             *string `json:"bucket_id,omitempty"`
+	BucketPrefix         *string `json:"bucket_prefix,omitempty"`
 	Algorithm            *string `json:"algorithm,omitempty"`
 	HCProtocol           *string `json:"hc_protocol,omitempty"`
 	HCMethod             *string `json:"hc_method,omitempty"`
@@ -198,6 +209,7 @@ type AppGWTargetGroupCreateRequest struct {
 
 type AppGWTargetGroupUpdateRequest struct {
 	Name                 *string `json:"name,omitempty"`
+	BucketPrefix         *string `json:"bucket_prefix,omitempty"`
 	Algorithm            *string `json:"algorithm,omitempty"`
 	HCProtocol           *string `json:"hc_protocol,omitempty"`
 	HCMethod             *string `json:"hc_method,omitempty"`
