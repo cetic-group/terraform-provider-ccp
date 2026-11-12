@@ -36,10 +36,10 @@ func TestApplyToModelBucketAndLegacy(t *testing.T) {
 		!m.OriginStatus.IsNull() || !m.OriginError.IsNull() {
 		t.Fatalf("an API without bucket fields is an upstream pool: %+v", m)
 	}
-	api := bucketAPI("site", strp("error"), strp("bucket redevenu privé"))
+	api := bucketAPI("site", strp("drift"), strp("Ce bucket est marqué public, mais le stockage ne le rend pas lisible publiquement."))
 	applyToModel(&api, &m)
 	if m.Kind.ValueString() != "bucket" || m.BucketID.ValueString() != "bkt" || m.BucketPrefix.ValueString() != "site" ||
-		m.OriginStatus.ValueString() != "error" || m.OriginError.ValueString() != "bucket redevenu privé" {
+		m.OriginStatus.ValueString() != "drift" || m.OriginError.IsNull() {
 		t.Fatalf("bucket fields not mapped: %+v", m)
 	}
 }

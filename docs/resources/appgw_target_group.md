@@ -83,10 +83,10 @@ Then create **one DNS record** at your DNS host pointing `assets.example.com` to
 ### Optional
 
 - `kind` - (Optional, Forces new resource, default `upstream`) Target group type: `upstream` (a pool of servers) or `bucket` (a public bucket served by the gateway). Changing it replaces the target group.
-- `bucket_id` - (Optional) UUID of the bucket to serve. **Required** with `kind = "bucket"`, rejected otherwise. Can be changed in place to serve another bucket (same conditions as at creation: public, active, same region as the gateway).
+- `bucket_id` - (Optional) UUID of the bucket to serve, in lowercase with hyphens. **Required** with `kind = "bucket"`, rejected otherwise. Can be changed in place to serve another bucket (same conditions as at creation: public, active, same region as the gateway).
 - `bucket_prefix` - (Optional) Folder of the bucket to serve, for example `site/public`. Default: the whole bucket. Letters, digits, `.`, `_`, `-` and `/` only, 512 characters at most, no `.` or `..` segment, and written without leading or trailing `/` (the plan tells you the expected form). Only with `kind = "bucket"`. Can be changed in place.
 
-The following arguments describe a pool of servers and are **rejected at plan time with `kind = "bucket"`**: `algorithm`, `hc_*`, `sticky_enabled`, `sticky_cookie_name`. A bucket target has no members either: do not attach any `ccp_appgw_target_group_member` to it.
+The following arguments describe a pool of servers and are **rejected at plan time with `kind = "bucket"`, even when set to their default value** (a wrapper module must leave them out rather than forward a variable): `algorithm`, `hc_*`, `sticky_enabled`, `sticky_cookie_name`. This check is skipped while `kind` is not yet known (for example when it comes from another resource); the platform then refuses an invalid combination at apply time. A bucket target has no members either: do not attach any `ccp_appgw_target_group_member` to it.
 
 - `algorithm` - (Optional, default `roundrobin`) Load-balancing algorithm. One of: `roundrobin`, `leastconn`, `source` (client IP hash), `random`.
 - `hc_protocol` - (Optional, default `http`) Health-check protocol. One of: `http`, `https`, `tcp`.
@@ -103,8 +103,8 @@ The following arguments describe a pool of servers and are **rejected at plan ti
 ## Attributes Reference
 
 - `id` - UUID of the target group.
-- `origin_status` - State of the bucket origin of a `bucket` target group: `ok` when the bucket is served, otherwise a problem described by `origin_error`. `null` for `upstream` target groups.
-- `origin_error` - Reason why the bucket cannot be served (for example the bucket became private). `null` when there is no problem.
+- `origin_status` - State of the bucket origin, as last checked by the platform: `null` until the first check (right after creation, and for `upstream` target groups), then `ok` when the bucket is readable publicly, or `drift` when it is not (see `origin_error`).
+- `origin_error` - Explanation given when `origin_status` is `drift` (the bucket is marked public but the storage does not make it publicly readable). `null` otherwise.
 
 ## Upgrading
 

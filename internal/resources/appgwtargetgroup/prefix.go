@@ -66,3 +66,27 @@ func (bucketPrefixValidator) ValidateString(_ context.Context, req validator.Str
 			fmt.Sprintf("Write the folder as %q (no leading or trailing slash, no repeated slash, no surrounding space).", canon))
 	}
 }
+
+var canonicalUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// canonicalUUIDValidator requires the spelling the platform returns (lowercase,
+// with hyphens) so the planned value always equals the stored one.
+type canonicalUUIDValidator struct{}
+
+func (canonicalUUIDValidator) Description(context.Context) string {
+	return "must be a UUID in lowercase with hyphens"
+}
+
+func (v canonicalUUIDValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (canonicalUUIDValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	if !canonicalUUID.MatchString(req.ConfigValue.ValueString()) {
+		resp.Diagnostics.AddAttributeError(req.Path, "Invalid bucket identifier",
+			"Expected a UUID in lowercase with hyphens, for example 11111111-2222-3333-4444-555555555555.")
+	}
+}

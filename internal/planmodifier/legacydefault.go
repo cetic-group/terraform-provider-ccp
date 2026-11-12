@@ -16,7 +16,8 @@ type legacyStringDefault struct{ def string }
 // When the attribute is not configured, the plan is the default on creation and
 // whenever the prior state holds a value. A prior state where the attribute is
 // null (written by an older provider, planned with -refresh=false or before the
-// first refresh) is left untouched, so an existing resource shows no change.
+// first refresh) is left untouched (null, or unknown if the resource changes
+// for another reason), so an existing resource shows no change.
 func LegacyStringDefault(def string) planmodifier.String { return legacyStringDefault{def: def} }
 
 func (m legacyStringDefault) Description(context.Context) string {
@@ -32,7 +33,11 @@ func (m legacyStringDefault) PlanModifyString(_ context.Context, req planmodifie
 		return
 	}
 	if !req.State.Raw.IsNull() && req.StateValue.IsNull() {
-		resp.PlanValue = types.StringNull()
+		// State written before the attribute existed. Without another change the
+		// plan equals the state (null): keep it, so nothing is shown. When the
+		// resource is modified for another reason the framework marked this
+		// attribute unknown and Update will fill it: keep it unknown, a null
+		// plan would make the applied value inconsistent with the plan.
 		return
 	}
 	resp.PlanValue = types.StringValue(m.def)
@@ -45,7 +50,8 @@ func RequiresReplaceUnlessLegacy(legacy string) planmodifier.String {
 	return stringplanmodifier.RequiresReplaceIf(
 		func(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
 			if req.StateValue.IsNull() {
-				resp.RequiresReplace = !req.PlanValue.Equal(types.StringValue(legacy))
+				// An unknown plan is a legacy state modified for another reason.
+				resp.RequiresReplace = !req.PlanValue.IsUnknown() && !req.PlanValue.Equal(types.StringValue(legacy))
 				return
 			}
 			resp.RequiresReplace = true

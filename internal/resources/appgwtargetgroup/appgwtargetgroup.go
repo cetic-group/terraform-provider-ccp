@@ -100,7 +100,11 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 			},
 			"kind": schema.StringAttribute{
 				MarkdownDescription: "Target group type: `upstream` (default, a pool of servers) or `bucket` (a public bucket " +
-					"served by the gateway; requires `bucket_id`). **Immutable** — changing it replaces the target group.",
+					"served by the gateway; requires `bucket_id`). **Immutable** — changing it replaces the target group. " +
+					"With `bucket`, the arguments of a pool of servers (`algorithm`, `hc_*`, `sticky_*`) are rejected even when " +
+					"set to their default value: leave them out. This check is made at plan time and is skipped while " +
+					"`kind` is not yet known (for example when it comes from another resource); the platform then " +
+					"refuses an invalid combination at apply time.",
 				Optional:   true,
 				Computed:   true,
 				Validators: []validator.String{stringvalidator.OneOf(kindUpstream, kindBucket)},
@@ -113,7 +117,8 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				MarkdownDescription: "UUID of the bucket to serve. Required with `kind = \"bucket\"`, not allowed otherwise. " +
 					"The bucket must be public, active, and in the same region as the gateway. Can be changed in place " +
 					"to serve another bucket.",
-				Optional: true,
+				Optional:   true,
+				Validators: []validator.String{canonicalUUIDValidator{}},
 			},
 			"bucket_prefix": schema.StringAttribute{
 				MarkdownDescription: "Folder of the bucket to serve, for example `site/assets` (default: the whole bucket). " +
@@ -127,13 +132,14 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				},
 			},
 			"origin_status": schema.StringAttribute{
-				MarkdownDescription: "State of the bucket origin, read from the platform: `ok` when the bucket is served, " +
-					"otherwise a problem described by `origin_error`. Null for `upstream` target groups.",
+				MarkdownDescription: "State of the bucket origin, as last checked by the platform: null until the first " +
+					"check (right after creation, and for `upstream` target groups), then `ok` when the bucket is " +
+					"readable publicly, or `drift` when it is not (see `origin_error`).",
 				Computed: true,
 			},
 			"origin_error": schema.StringAttribute{
-				MarkdownDescription: "Reason why the bucket cannot be served (for example the bucket became private). " +
-					"Null when there is no problem.",
+				MarkdownDescription: "Explanation given when `origin_status` is `drift` (the bucket is marked public but " +
+					"the storage does not make it publicly readable). Null otherwise.",
 				Computed: true,
 			},
 			"algorithm": schema.StringAttribute{
@@ -497,7 +503,15 @@ func (r *tgResource) Update(ctx context.Context, req resource.UpdateRequest, res
 		}
 		upd.StickyCookieName = &v
 	}
-	got, err := r.client.UpdateAppGWTargetGroup(ctx, state.AppGWID.ValueString(), state.ID.ValueString(), upd)
+	var got *client.AppGWTargetGroup
+	var err error
+	if upd == (client.AppGWTargetGroupUpdateRequest{}) {
+		// Nothing to send (for example a state written before `kind` existed
+		// that now spells `kind = "upstream"`): just read the current state.
+		got, err = r.client.GetAppGWTargetGroup(ctx, state.AppGWID.ValueString(), state.ID.ValueString())
+	} else {
+		got, err = r.client.UpdateAppGWTargetGroup(ctx, state.AppGWID.ValueString(), state.ID.ValueString(), upd)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update AppGW target group", err.Error())
 		return

@@ -25,7 +25,9 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Upgrade notes
 
 Existing target groups are `upstream` target groups: no plan change and no
-replacement, including with `-refresh=false`. Removing `kind = "bucket"` from a
+replacement, including with `-refresh=false`. Writing `kind = "upstream"` on one
+shows a harmless in-place update (`kind` goes from null to `upstream`) that sends
+nothing to the platform. Removing `kind = "bucket"` from a
 bucket target group replaces it.
 
 ## v7.3.2 (2026-11-05)

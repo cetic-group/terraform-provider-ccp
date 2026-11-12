@@ -248,6 +248,13 @@ func TestLegacyUpstreamStateProducesNoDiff(t *testing.T) {
 			if len(replace) != 0 {
 				t.Fatalf("legacy state must not be replaced: %v", replace)
 			}
+			if name == "explicit kind" {
+				// A configured value must be planned as is: the harmless
+				// null -> upstream difference is expected and documented.
+				if !planned["kind"].Equal(tfs("upstream")) || legacyObj.Equal(tftypes.NewValue(h.typ, planned)) {
+					t.Fatalf("explicit kind on a legacy state must show kind=upstream: %v", planned["kind"])
+				}
+			}
 			if name == "kind omitted" {
 				// Nothing is planned on top of the stored value: the plan equals the state.
 				if !tftypes.NewValue(h.typ, planned).Equal(legacyObj) {
@@ -281,5 +288,40 @@ func TestBucketTargetGroupCreatePlan(t *testing.T) {
 	planned, _ = h.plan(tftypes.NewValue(h.typ, nil), up, up)
 	if !planned["kind"].Equal(tfs("upstream")) {
 		t.Fatalf("kind defaults to upstream: %v", planned["kind"])
+	}
+}
+
+// A legacy state planned together with another change (name, algorithm...):
+// the attributes added since must stay unknown (not null), otherwise the value
+// written by Update is inconsistent with the plan, and nothing is replaced.
+func TestLegacyUpstreamStateWithOtherChange(t *testing.T) {
+	h := newTGHarness(t)
+	legacy := existingBucketState()
+	for _, k := range []string{"kind", "bucket_id", "bucket_prefix", "origin_status", "origin_error"} {
+		delete(legacy, k)
+	}
+	cfg := map[string]tftypes.Value{"appgw_id": tfs("gw"), "name": tfs("renamed")}
+	planned, replace := h.plan(h.obj(legacy), cfg, merge(legacy, cfg))
+	if len(replace) != 0 {
+		t.Fatalf("a rename must not replace a legacy target group: %v", replace)
+	}
+	for _, k := range []string{"kind", "bucket_prefix"} {
+		if planned[k].IsKnown() {
+			t.Fatalf("%s must stay unknown when the resource is modified, got %v", k, planned[k])
+		}
+	}
+}
+
+func TestBucketIDMustBeCanonicalUUID(t *testing.T) {
+	h := newTGHarness(t)
+	for _, id := range []string{"11111111-2222-3333-4444-555555555555"} {
+		if e := h.validate(map[string]tftypes.Value{"appgw_id": tfs("gw"), "name": tfs("a"), "kind": tfs("bucket"), "bucket_id": tfs(id)}); len(e) != 0 {
+			t.Fatalf("%s refused: %v", id, e)
+		}
+	}
+	for _, id := range []string{"AAAAAAAA-2222-3333-4444-555555555555", "11111111222233334444555555555555", "not-a-uuid", ""} {
+		if e := h.validate(map[string]tftypes.Value{"appgw_id": tfs("gw"), "name": tfs("a"), "kind": tfs("bucket"), "bucket_id": tfs(id)}); len(e) == 0 {
+			t.Fatalf("%q must be refused", id)
+		}
 	}
 }
