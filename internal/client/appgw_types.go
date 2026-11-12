@@ -209,6 +209,7 @@ type AppGWTargetGroupCreateRequest struct {
 
 type AppGWTargetGroupUpdateRequest struct {
 	Name                 *string `json:"name,omitempty"`
+	BucketID             *string `json:"bucket_id,omitempty"`
 	BucketPrefix         *string `json:"bucket_prefix,omitempty"`
 	Algorithm            *string `json:"algorithm,omitempty"`
 	HCProtocol           *string `json:"hc_protocol,omitempty"`

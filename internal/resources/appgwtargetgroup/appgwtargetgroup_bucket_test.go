@@ -135,6 +135,51 @@ func TestCreateUpstreamPayloadUnchanged(t *testing.T) {
 	}
 }
 
+func TestUpdateBucketSendsBucketIDOnlyWhenChanged(t *testing.T) {
+	ctx := context.Background()
+	for _, changed := range []bool{true, false} {
+		server := testutil.NewTestServer(t, testutil.Routes{
+			{Method: "PATCH", Path: "/v1/app-gateways/gw/target-groups/tg", Status: http.StatusOK, Body: bucketAPI("site", strp("ok"), nil)},
+		})
+		r := &tgResource{client: client.New(server.URL, "test", "test")}
+		sch := schemaOf(t, r)
+		var state tgResourceModel
+		api := bucketAPI("site", strp("ok"), nil)
+		applyToModel(&api, &state)
+		plan := state
+		plan.Name = types.StringValue("renamed")
+		if changed {
+			plan.BucketID = types.StringValue("other")
+		}
+		plan.OriginStatus, plan.OriginError = types.StringUnknown(), types.StringUnknown()
+		st := tfsdk.State{Schema: sch.Schema}
+		st.Set(ctx, &state)
+		p := tfsdk.Plan{Schema: sch.Schema}
+		p.Set(ctx, &plan)
+		resp := resource.UpdateResponse{State: st}
+		r.Update(ctx, resource.UpdateRequest{Plan: p, State: st}, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Fatal(resp.Diagnostics)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(server.Calls()[0].Body, &payload); err != nil {
+			t.Fatal(err)
+		}
+		server.Close()
+		if _, has := payload["bucket_id"]; has != changed {
+			t.Fatalf("changed=%v: bucket_id presence wrong in %v", changed, payload)
+		}
+		if changed && payload["bucket_id"] != "other" {
+			t.Fatalf("wrong bucket_id: %v", payload)
+		}
+		for _, f := range append([]string{"kind"}, serverFieldAttrs...) {
+			if _, found := payload[f]; found {
+				t.Fatalf("%s must never be sent: %v", f, payload)
+			}
+		}
+	}
+}
+
 func TestUpdateBucketSendsOnlyTheFolder(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t, testutil.Routes{

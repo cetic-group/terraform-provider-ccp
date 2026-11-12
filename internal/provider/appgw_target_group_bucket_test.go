@@ -200,8 +200,11 @@ func TestBucketTargetGroupImmutability(t *testing.T) {
 		!planned["bucket_prefix"].Equal(tfs("site/v2")) {
 		t.Fatalf("folder must change in place: replace=%v planned=%v", replace, planned["bucket_prefix"])
 	}
-	if _, replace := plan(cfgOf(map[string]tftypes.Value{"bucket_id": tfs("99999999-2222-3333-4444-555555555555")})); len(replace) != 1 || replace[0] != `AttributeName("bucket_id")` {
-		t.Fatalf("bucket_id must force replacement, got %v", replace)
+	if _, replace := plan(cfgOf(map[string]tftypes.Value{"bucket_id": tfs("99999999-2222-3333-4444-555555555555")})); len(replace) != 0 {
+		t.Fatalf("bucket_id must change in place, got replacement %v", replace)
+	}
+	if planned, _ := plan(cfgOf(map[string]tftypes.Value{"bucket_id": tfs("99999999-2222-3333-4444-555555555555")})); !planned["bucket_id"].Equal(tfs("99999999-2222-3333-4444-555555555555")) {
+		t.Fatalf("new bucket_id not planned: %v", planned["bucket_id"])
 	}
 	// kind: bucket -> upstream (bucket_id dropped from the config).
 	cfg := map[string]tftypes.Value{"appgw_id": tfs("gw"), "name": tfs("assets"), "kind": tfs("upstream")}

@@ -11,8 +11,8 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `ccp_appgw_target_group`: bucket targets. The new `kind` argument (`upstream`,
   the default, or `bucket`), `bucket_id` and `bucket_prefix` make an Application
   Gateway serve a public bucket, or one folder of it, under your own domain
-  (read-only, no listing). `kind` and `bucket_id` force a new resource;
-  `bucket_prefix` changes in place. The read-only `origin_status` and
+  (read-only, no listing). `kind` forces a new resource; `bucket_id` and
+  `bucket_prefix` change in place. The read-only `origin_status` and
   `origin_error` report whether the bucket can be served.
 - At plan time, a `bucket` target group requires `bucket_id` and rejects the
   server-pool arguments (`algorithm`, `hc_*`, `sticky_*`); `bucket_id` and

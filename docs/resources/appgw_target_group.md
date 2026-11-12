@@ -83,7 +83,7 @@ Then create **one DNS record** at your DNS host pointing `assets.example.com` to
 ### Optional
 
 - `kind` - (Optional, Forces new resource, default `upstream`) Target group type: `upstream` (a pool of servers) or `bucket` (a public bucket served by the gateway). Changing it replaces the target group.
-- `bucket_id` - (Optional, Forces new resource) UUID of the bucket to serve. **Required** with `kind = "bucket"`, rejected otherwise.
+- `bucket_id` - (Optional) UUID of the bucket to serve. **Required** with `kind = "bucket"`, rejected otherwise. Can be changed in place to serve another bucket (same conditions as at creation: public, active, same region as the gateway).
 - `bucket_prefix` - (Optional) Folder of the bucket to serve, for example `site/public`. Default: the whole bucket. Letters, digits, `.`, `_`, `-` and `/` only, 512 characters at most, no `.` or `..` segment, and written without leading or trailing `/` (the plan tells you the expected form). Only with `kind = "bucket"`. Can be changed in place.
 
 The following arguments describe a pool of servers and are **rejected at plan time with `kind = "bucket"`**: `algorithm`, `hc_*`, `sticky_enabled`, `sticky_cookie_name`. A bucket target has no members either: do not attach any `ccp_appgw_target_group_member` to it.

@@ -111,9 +111,9 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 			},
 			"bucket_id": schema.StringAttribute{
 				MarkdownDescription: "UUID of the bucket to serve. Required with `kind = \"bucket\"`, not allowed otherwise. " +
-					"The bucket must be public, active, and in the same region as the gateway. **Immutable**.",
-				Optional:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+					"The bucket must be public, active, and in the same region as the gateway. Can be changed in place " +
+					"to serve another bucket.",
+				Optional: true,
 			},
 			"bucket_prefix": schema.StringAttribute{
 				MarkdownDescription: "Folder of the bucket to serve, for example `site/assets` (default: the whole bucket). " +
@@ -432,7 +432,11 @@ func (r *tgResource) Update(ctx context.Context, req resource.UpdateRequest, res
 		upd.Name = &v
 	}
 	if state.isBucket() {
-		// Only the name and the folder can change on a bucket target.
+		// Only the name, the bucket and the folder can change on a bucket target.
+		if !plan.BucketID.IsNull() && !plan.BucketID.IsUnknown() && !plan.BucketID.Equal(state.BucketID) {
+			v := plan.BucketID.ValueString()
+			upd.BucketID = &v
+		}
 		if !plan.BucketPrefix.IsNull() && !plan.BucketPrefix.IsUnknown() && !plan.BucketPrefix.Equal(state.BucketPrefix) {
 			v := plan.BucketPrefix.ValueString()
 			upd.BucketPrefix = &v
