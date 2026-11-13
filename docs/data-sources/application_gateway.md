@@ -57,7 +57,7 @@ In addition to all arguments above:
 - `global_rate_limit_per_sec`, `global_allow_cidrs`, `global_deny_cidrs`, `trust_proxy_headers`
 - `tags`
 - `listeners` - List of `{id, hostname, acme_status, acme_challenge, acme_dns_provider, acme_last_renewal_at}`.
-- `target_groups` - List of `{id, name, algorithm}`.
+- `target_groups` - List of `{id, name, algorithm, kind, bucket_id, bucket_prefix, origin_status, origin_error}`. The last five describe bucket targets (`kind = "bucket"`); `origin_status` is `null`, `ok` or `drift`; see [`ccp_appgw_target_group`](../resources/appgw_target_group.md).
 - `routes` - List of `{id, listener_id, priority, path_match, path_match_type, target_group_id}`.
 
 ### Availability
