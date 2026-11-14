@@ -11,9 +11,17 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `ccp_vpc` (resource and data source): `egress_ip_type` is always `null` and
   will be removed in the next major version. The platform no longer reports
   the kind of the dedicated egress IP, which it assigns and manages
-  (cetic-cloud-platform#1975, #1977). It is planned `null` too, so an
-  `apply -refresh=false` on a VPC whose state still holds a kind no longer
-  fails with "Provider produced inconsistent result".
+  (cetic-cloud-platform#1975, #1977). It is planned `null` too: the first
+  plan after the upgrade shows an in-place update of a VPC whose state still
+  holds a kind, with no API call.
+
+### Fixed
+
+- `ccp_vpc`: an in-place update with nothing to send to the API now keeps the
+  planned values instead of re-reading the VPC. With `apply -refresh=false`,
+  a status that moved since the last refresh (`egress_ip_status`, `status`)
+  no longer fails with "Provider produced inconsistent result"; the next
+  refresh picks it up.
 
 ### Changed
 

@@ -10,7 +10,7 @@ import (
 
 // useStateUnlessEgressChanges keeps the state value of an `egress_*` attribute
 // in the plan, like UseStateForUnknown, EXCEPT when `dedicated_egress_ip`
-// changes: the IP, its type and its status are then decided by the platform
+// changes: the IP and its status are then decided by the platform
 // during apply, so they must stay unknown ("known after apply").
 //
 // Plain UseStateForUnknown would be wrong here: on `false` → `true` it would

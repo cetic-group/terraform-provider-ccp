@@ -340,6 +340,57 @@ func TestVPCCreatedWithDedicatedEgress(t *testing.T) {
 	}
 }
 
+// cetic-cloud-platform#1977 — état écrit par un provider d'avant, qui contient
+// encore `egress_ip_type`, puis `apply -refresh=false` alors que le statut de
+// l'IP a bougé côté plateforme. `alwaysNull` planifie un update en place ;
+// l'état rendu doit ÊTRE le plan (Terraform refuse tout écart : « Provider
+// produced inconsistent result »), sans appel à l'API.
+func TestVPCApplyWithoutRefreshOverOldEgressIPType(t *testing.T) {
+	api := &fakeVPCAPI{nextIP: []string{"203.0.113.7"}}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newVPCHarness(t, ts.URL)
+	null := tftypes.NewValue(h.typ, nil)
+	cfg := h.config(map[string]tftypes.Value{"dedicated_egress_ip": tftypes.NewValue(tftypes.Bool, true)})
+	planned, _ := h.plan(null, cfg)
+	state := h.apply(null, planned, cfg)
+
+	// État d'un provider d'avant : type connu.
+	var m map[string]tftypes.Value
+	if err := state.As(&m); err != nil {
+		t.Fatal(err)
+	}
+	m["egress_ip_type"] = tftypes.NewValue(tftypes.String, "edge")
+	ancien := tftypes.NewValue(h.typ, m)
+
+	// La plateforme a avancé depuis le dernier refresh.
+	api.mu.Lock()
+	api.vpc["egress_ip_status"] = "attached"
+	api.mu.Unlock()
+
+	// -refresh=false : plan directement depuis l'ancien état.
+	planned, r := h.plan(ancien, cfg)
+	if len(r.RequiresReplace) != 0 {
+		t.Fatalf("remplacement planifié %v", r.RequiresReplace)
+	}
+	if v := vpcAttr(planned, "egress_ip_type"); !v.IsNull() {
+		t.Fatalf("egress_ip_type planifié %v, null attendu", v)
+	}
+	patches := len(api.patches)
+	nouveau := h.apply(ancien, planned, cfg)
+	if !nouveau.Equal(planned) {
+		diff, _ := nouveau.Diff(planned)
+		t.Errorf("état rendu différent du plan (inconsistent result) : %v", diff)
+	}
+	if len(api.patches) != patches {
+		t.Errorf("aucun PATCH attendu, reçu %q", api.patches[patches:])
+	}
+	// Le refresh suivant reprend le statut réel, sans diff ensuite.
+	if got := vpcAttr(h.assertNoDiff("refresh suivant", nouveau, cfg), "egress_ip_status"); !got.Equal(tftypes.NewValue(tftypes.String, "attached")) {
+		t.Errorf("refresh : egress_ip_status attached attendu, reçu %v", got)
+	}
+}
+
 // Une API antérieure à #1734 ignore le champ : erreur explicite, pas de
 // « Provider produced inconsistent result ».
 func TestVPCCreateOnPlatformWithoutTheOption(t *testing.T) {

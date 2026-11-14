@@ -440,17 +440,20 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	id := state.ID.ValueString()
 	patch, changed := buildVPCUpdate(plan, state)
 
-	var final *client.VPC
 	if !changed {
-		// Nothing the API can change in place: refresh and keep the state.
-		got, err := r.client.GetVPC(ctx, id)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to read VPC",
-				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()))
-			return
-		}
-		final = got
-	} else {
+		// Nothing for the API to change (e.g. `egress_ip_type` planned null by
+		// `alwaysNull` over a state that still holds a kind,
+		// cetic-cloud-platform#1977): the new state IS the plan. No GET here:
+		// values that moved since the last refresh (`egress_ip_status`,
+		// `status`) would differ from the plan, and Terraform would fail with
+		// "Provider produced inconsistent result" (`apply -refresh=false`).
+		// The next refresh picks them up.
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
+	var final *client.VPC
+	{
 		want := *patch.DedicatedEgressIP
 		patched, err := r.client.UpdateVPC(ctx, id, patch)
 		if err != nil {

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
 )
@@ -90,5 +92,36 @@ func TestLookupReturnsType(t *testing.T) {
 	}
 	if got.Type == nil || *got.Type != "firewall" {
 		t.Errorf("expected type firewall, got %v", got.Type)
+	}
+}
+
+// cetic-cloud-platform#1977 — l'IP de sortie d'un VPC arrive avec `type`
+// null (ou sans la clé) : décodée sans erreur, null dans l'état.
+func TestLookupEgressIPWithoutType(t *testing.T) {
+	liste := []map[string]any{
+		{"id": "pip-null", "pool_id": "pool-1", "region": "RNN", "type": nil, "egress_vpc_id": "vpc-1",
+			"ip_address": "203.0.113.11", "status": "attached", "created_at": "2026-11-14T10:00:00Z"},
+		{"id": "pip-absent", "pool_id": "pool-1", "region": "RNN",
+			"ip_address": "203.0.113.12", "status": "attached", "created_at": "2026-11-14T10:00:00Z"},
+	}
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/public-ips", Status: http.StatusOK, Body: liste},
+		{Method: "GET", Path: "/v1/public-ips", Status: http.StatusOK, Body: liste},
+	})
+	defer srv.Close()
+	c := client.New(srv.URL, "ccp_test_unit", "0.0.0-test")
+	for _, id := range []string{"pip-null", "pip-absent"} {
+		got, err := c.GetPublicIP(context.Background(), id)
+		if err != nil {
+			t.Fatalf("%s: GetPublicIP: %v", id, err)
+		}
+		if got.Type != nil {
+			t.Errorf("%s: type nil attendu, reçu %q", id, *got.Type)
+		}
+		var v types.String
+		setStrPtr(&v, got.Type)
+		if !v.IsNull() {
+			t.Errorf("%s: type null attendu dans l'état, reçu %v", id, v)
+		}
 	}
 }

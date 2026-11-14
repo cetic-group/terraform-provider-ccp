@@ -94,6 +94,16 @@ func TestEgressIPTypeDeprecatedAlwaysNull(t *testing.T) {
 	if !resp.PlanValue.IsNull() {
 		t.Errorf("egress_ip_type: plan null attendu, reçu %v", resp.PlanValue)
 	}
+	// Destruction (plan null) : rien n'est touché.
+	destr := planmodifier.StringRequest{
+		StateValue: types.StringValue("edge"), PlanValue: types.StringValue("inchangé"),
+		Plan: tfsdk.Plan{Raw: tftypes.NewValue(tftypes.Object{}, nil)},
+	}
+	resp = &planmodifier.StringResponse{PlanValue: destr.PlanValue}
+	attr.PlanModifiers[0].PlanModifyString(context.Background(), destr, resp)
+	if resp.PlanValue.ValueString() != "inchangé" {
+		t.Errorf("destruction : plan inchangé attendu, reçu %v", resp.PlanValue)
+	}
 }
 
 func TestNameAndTagsStillForceReplacement(t *testing.T) {
