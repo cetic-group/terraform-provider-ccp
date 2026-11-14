@@ -184,6 +184,45 @@ func TestUpdate_AddingTheBlock_EnablesWithoutRetention(t *testing.T) {
 	}
 }
 
+// Mineur 2 de la revue #113 : une durée absente de la configuration arrive dans
+// le plan avec la valeur de l'état (UseStateForUnknown), peut-être périmée
+// (plan sauvegardé, -refresh=false). Elle ne doit pas partir.
+func TestUpdate_UnconfiguredRetention_IsNotSent(t *testing.T) {
+	var bodies []map[string]any
+	srv := testutil.NewTestServer(t, bucketRoutes(putCapture(&bodies, versioningBody("Suspended", 90, "applied"))))
+	defer srv.Close()
+	state := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	plan := withVersioning(model(false, nullRules()), vers("Suspended", i64(30)))
+	config := withVersioning(model(false, nullRules()), vers("Suspended", nil))
+	resp := runUpdateWithConfig(t, srv, state, plan, config)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	if len(bodies) != 1 || bodies[0]["status"] != "Suspended" {
+		t.Fatalf("PUT bodies = %v", bodies)
+	}
+	if _, sent := bodies[0]["noncurrent_version_expiration_days"]; sent {
+		t.Fatalf("a retention absent from the configuration must not be sent: %v", bodies[0])
+	}
+	if got := versioningOf(t, resp.State); got.NoncurrentVersionExpirationDays.ValueInt64() != 90 {
+		t.Fatalf("state must hold the retention the platform answered (changed elsewhere): %+v", got)
+	}
+}
+
+func TestUpdate_UnconfiguredRetention_NoStatusChange_NoCall(t *testing.T) {
+	srv := testutil.NewTestServer(t, bucketRoutes())
+	defer srv.Close()
+	state := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	plan := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	config := withVersioning(model(false, nullRules()), vers("Enabled", nil))
+	resp := runUpdateWithConfig(t, srv, state, plan, config)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	noVersioningCall(t, srv)
+}
+
+// Durée écrite dans la configuration : elle part, même inchangée, avec le statut.
 func TestUpdate_Suspend_KeepsTheRetention(t *testing.T) {
 	var bodies []map[string]any
 	srv := testutil.NewTestServer(t, bucketRoutes(putCapture(&bodies, versioningBody("Suspended", 30, "applied"))))
@@ -429,8 +468,12 @@ func TestVersioningStatusWarning(t *testing.T) {
 
 func runModifyPlan(t *testing.T, state *objectBucketResourceModel, plan objectBucketResourceModel) resource.ModifyPlanResponse {
 	t.Helper()
+	return runModifyPlanWith(t, &objectBucketResource{}, state, plan)
+}
+
+func runModifyPlanWith(t *testing.T, r *objectBucketResource, state *objectBucketResourceModel, plan objectBucketResourceModel) resource.ModifyPlanResponse {
+	t.Helper()
 	ctx := context.Background()
-	r := &objectBucketResource{}
 	var sc resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
 	pl := tfsdk.State{Schema: sc.Schema}
@@ -499,4 +542,85 @@ func TestModifyPlan_Destroy_NoCheck(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatal(resp.Diagnostics)
 	}
+}
+
+// ── Prise en charge d'un bucket existant (bloquant de la revue #113) ────────
+// Bloc ajouté à un bucket existant ou bucket importé : l'état ne connaît pas le
+// versionnage en place, le plan doit le lire.
+
+func takeOverPlan(t *testing.T, routes testutil.Routes, plan objectBucketResourceModel) (resource.ModifyPlanResponse, *testutil.Server) {
+	t.Helper()
+	srv := testutil.NewTestServer(t, routes)
+	t.Cleanup(srv.Close)
+	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	state := model(false, nullRules()) // bucket existant, sans bloc
+	return runModifyPlanWith(t, r, &state, plan), srv
+}
+
+func versioningGet(body map[string]any) testutil.Route {
+	return testutil.Route{Method: "GET", Path: versioningPath, Status: 200, Body: body}
+}
+
+func TestModifyPlan_TakeOverUnmanaged_WarnsWithTheRetentionSet(t *testing.T) {
+	cases := map[string]struct {
+		plan objectBucketResourceModel
+		want string
+	}{
+		"default":  {withVersioning(model(false, nullRules()), versUnknownDays("Enabled")), "30 days"},
+		"explicit": {withVersioning(model(false, nullRules()), vers("Suspended", i64(90))), "90 days"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			resp, _ := takeOverPlan(t, testutil.Routes{versioningGet(versioningBody("Enabled", nil, "unmanaged"))}, c.plan)
+			if resp.Diagnostics.HasError() || resp.Diagnostics.WarningsCount() != 1 {
+				t.Fatalf("want one warning: %v", resp.Diagnostics)
+			}
+			w := resp.Diagnostics.Warnings()[0]
+			if !strings.Contains(w.Summary(), "outside the platform") || !strings.Contains(w.Detail(), c.want) {
+				t.Fatalf("the warning must say which retention is set: %q / %q", w.Summary(), w.Detail())
+			}
+		})
+	}
+}
+
+func TestModifyPlan_ImportedManagedBucket_ShorterRetentionWarns(t *testing.T) {
+	resp, _ := takeOverPlan(t, testutil.Routes{versioningGet(versioningBody("Enabled", 365, "applied"))},
+		withVersioning(model(false, nullRules()), vers("Enabled", i64(7))))
+	if resp.Diagnostics.WarningsCount() != 1 || !strings.Contains(resp.Diagnostics.Warnings()[0].Detail(), "365 to 7") {
+		t.Fatalf("a shorter retention than the one in place must warn: %v", resp.Diagnostics)
+	}
+}
+
+func TestModifyPlan_ImportedManagedBucket_SameOrUnsetRetention_NoWarning(t *testing.T) {
+	for name, plan := range map[string]objectBucketResourceModel{
+		"unset":  withVersioning(model(false, nullRules()), versUnknownDays("Enabled")),
+		"longer": withVersioning(model(false, nullRules()), vers("Enabled", i64(400))),
+	} {
+		t.Run(name, func(t *testing.T) {
+			resp, _ := takeOverPlan(t, testutil.Routes{versioningGet(versioningBody("Enabled", 365, "applied"))}, plan)
+			if resp.Diagnostics.HasError() || resp.Diagnostics.WarningsCount() != 0 {
+				t.Fatalf("no warning expected: %v", resp.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestModifyPlan_TakeOver_ReadFailureWarns(t *testing.T) {
+	resp, _ := takeOverPlan(t, testutil.Routes{{Method: "GET", Path: versioningPath, Status: 500,
+		Body: map[string]any{"detail": "indisponible"}}}, withVersioning(model(false, nullRules()), versUnknownDays("Enabled")))
+	if resp.Diagnostics.HasError() || resp.Diagnostics.WarningsCount() != 1 {
+		t.Fatalf("a failed read must warn, not fail the plan: %v", resp.Diagnostics)
+	}
+}
+
+func TestModifyPlan_StateWithBlock_DoesNotReadTheBucket(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{})
+	defer srv.Close()
+	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	state := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	resp := runModifyPlanWith(t, r, &state, withVersioning(model(false, nullRules()), vers("Suspended", i64(30))))
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	noVersioningCall(t, srv)
 }

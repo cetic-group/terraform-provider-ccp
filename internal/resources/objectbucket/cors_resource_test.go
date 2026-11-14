@@ -54,6 +54,13 @@ func oneRule(t *testing.T, origin string) types.List {
 
 func runUpdate(t *testing.T, srv *testutil.Server, state, plan objectBucketResourceModel) resource.UpdateResponse {
 	t.Helper()
+	return runUpdateWithConfig(t, srv, state, plan, plan)
+}
+
+// runUpdateWithConfig sets the configuration apart from the plan: a computed
+// value the practitioner did not write is null in the configuration.
+func runUpdateWithConfig(t *testing.T, srv *testutil.Server, state, plan, config objectBucketResourceModel) resource.UpdateResponse {
+	t.Helper()
 	ctx := context.Background()
 	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
 	var sc resource.SchemaResponse
@@ -66,8 +73,15 @@ func runUpdate(t *testing.T, srv *testutil.Server, state, plan objectBucketResou
 	if d := pl.Set(ctx, &plan); d.HasError() {
 		t.Fatal(d)
 	}
+	cf := tfsdk.State{Schema: sc.Schema}
+	if d := cf.Set(ctx, &config); d.HasError() {
+		t.Fatal(d)
+	}
 	resp := resource.UpdateResponse{State: st}
-	r.Update(ctx, resource.UpdateRequest{Plan: tfsdk.Plan{Raw: pl.Raw, Schema: sc.Schema}, State: st}, &resp)
+	r.Update(ctx, resource.UpdateRequest{
+		Plan: tfsdk.Plan{Raw: pl.Raw, Schema: sc.Schema}, State: st,
+		Config: tfsdk.Config{Raw: cf.Raw, Schema: sc.Schema},
+	}, &resp)
 	return resp
 }
 

@@ -30,6 +30,8 @@ import (
 const (
 	versioningMinDays = 1
 	versioningMaxDays = 3650
+	// Retention the platform sets when none is given and none is in place.
+	versioningDefaultDays = 30
 )
 
 // versioningAttrTypes is the object type of the `versioning` block.
@@ -67,8 +69,10 @@ func versioningBlock() schema.SingleNestedBlock {
 			},
 			"noncurrent_version_expiration_days": schema.Int64Attribute{
 				MarkdownDescription: "Days a previous version is kept before being deleted, " +
-					"1 to 3650. When unset, the platform keeps the current value (30 days for a " +
-					"bucket never versioned). Shortening it deletes previous versions sooner. A " +
+					"1 to 3650. When unset, it is not sent and the platform keeps the current value " +
+					"(30 days for a bucket never versioned, or whose versioning was set outside the " +
+					"platform: older previous versions are then deleted). Shortening it deletes " +
+					"previous versions sooner. A " +
 					"lifecycle rule of your own that keeps them longer makes the platform refuse " +
 					"a shorter value.",
 				Optional:   true,

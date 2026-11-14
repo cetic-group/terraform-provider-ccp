@@ -584,6 +584,20 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// The retention is only sent when it is written in the configuration. Unset,
+	// the plan carries the state value (UseStateForUnknown), which a saved plan or
+	// `-refresh=false` may hold stale: sending it would overwrite a retention
+	// changed in the console in the meantime.
+	if planV != nil {
+		var cfgDays types.Int64
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("versioning").AtName("noncurrent_version_expiration_days"), &cfgDays)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if cfgDays.IsNull() {
+			planV.NoncurrentVersionExpirationDays = types.Int64Unknown()
+		}
+	}
 	switch {
 	case planV == nil:
 		plan.Versioning = nullVersioning()
@@ -928,12 +942,58 @@ func (r *objectBucketResource) ModifyPlan(ctx context.Context, req resource.Modi
 				"this resource simply stops managing it. To stop creating versions, set `status = \"Suspended\"` "+
 				"instead.", stateV.Status.ValueString()))
 	case planV != nil && stateV != nil:
-		pd, sd := planV.NoncurrentVersionExpirationDays, stateV.NoncurrentVersionExpirationDays
-		if !pd.IsNull() && !pd.IsUnknown() && !sd.IsNull() && !sd.IsUnknown() && pd.ValueInt64() < sd.ValueInt64() {
-			resp.Diagnostics.AddAttributeWarning(p.AtName("noncurrent_version_expiration_days"),
-				"Shorter retention deletes previous versions sooner",
-				fmt.Sprintf("Retention goes from %d to %d days: previous versions older than %d days will be deleted.",
-					sd.ValueInt64(), pd.ValueInt64(), pd.ValueInt64()))
+		warnShorterRetention(resp, p, planV.NoncurrentVersionExpirationDays, stateV.NoncurrentVersionExpirationDays)
+	case planV != nil && !creating:
+		// Block added to an existing bucket, or bucket imported: the state knows
+		// nothing of the versioning in place, so read it before the first write.
+		r.warnOnTakeOver(ctx, req, resp, p, planV)
+	}
+}
+
+// warnShorterRetention warns when the planned retention is shorter than the one in place.
+func warnShorterRetention(resp *resource.ModifyPlanResponse, p path.Path, planned, current types.Int64) {
+	if planned.IsNull() || planned.IsUnknown() || current.IsNull() || current.IsUnknown() || planned.ValueInt64() >= current.ValueInt64() {
+		return
+	}
+	resp.Diagnostics.AddAttributeWarning(p.AtName("noncurrent_version_expiration_days"),
+		"Shorter retention deletes previous versions sooner",
+		fmt.Sprintf("Retention goes from %d to %d days: previous versions older than %d days will be deleted.",
+			current.ValueInt64(), planned.ValueInt64(), planned.ValueInt64()))
+}
+
+// warnOnTakeOver reads the versioning of an existing bucket the state does not
+// manage yet. Versioning set outside the platform usually has no expiration: its
+// previous versions are kept forever, and the first write sets a retention that
+// deletes the older ones. The platform refuses a shorter retention only when one
+// of the client's own lifecycle rules sets one.
+func (r *objectBucketResource) warnOnTakeOver(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse, p path.Path, planV *versioningModel) {
+	if r.client == nil {
+		return // provider not configured (validate-only run)
+	}
+	var id types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &id)...)
+	if resp.Diagnostics.HasError() || id.IsNull() || id.IsUnknown() {
+		return
+	}
+	cur, err := r.client.GetBucketVersioning(ctx, id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeWarning(p, "Could not read the current versioning",
+			fmt.Sprintf("Bucket %s: %s. If versioning was set outside the platform, the apply sets a retention "+
+				"and deletes previous versions older than it.", id.ValueString(), err.Error()))
+		return
+	}
+	if cur.SyncStatus == "unmanaged" {
+		set := int64(versioningDefaultDays)
+		if d := planV.NoncurrentVersionExpirationDays; !d.IsNull() && !d.IsUnknown() {
+			set = d.ValueInt64()
 		}
+		resp.Diagnostics.AddAttributeWarning(p, "Taking over versioning set outside the platform deletes older versions",
+			fmt.Sprintf("Bucket %s has versioning set outside the platform, whose previous versions may be kept "+
+				"forever. The apply sets a retention of %d days: previous versions older than %d days will be "+
+				"deleted. Set `noncurrent_version_expiration_days` to keep them longer.", id.ValueString(), set, set))
+		return
+	}
+	if cur.NoncurrentVersionExpirationDays != nil {
+		warnShorterRetention(resp, p, planV.NoncurrentVersionExpirationDays, types.Int64Value(*cur.NoncurrentVersionExpirationDays))
 	}
 }

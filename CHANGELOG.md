@@ -16,6 +16,11 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   removing the block stops managing it, with a plan warning. The plan also
   refuses creating a bucket `Suspended` and warns when the retention is
   shortened. A refusal at creation is a warning, never a replaced bucket.
+  When the block is added to an existing or imported bucket, the plan reads
+  its versioning and warns if it was set outside the platform (the first apply
+  sets a retention, 30 days by default, and deletes older previous versions)
+  or if the configured retention is shorter than the one in place. The
+  retention is only sent when it is written in the configuration.
   Requires the platform versioning API (`GET/PUT /v1/buckets/{id}/versioning`).
 
 ### Deprecated
