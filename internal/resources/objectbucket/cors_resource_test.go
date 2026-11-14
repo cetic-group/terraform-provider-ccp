@@ -30,7 +30,7 @@ func bucketBody(public bool) map[string]any {
 func model(public bool, rules types.List) objectBucketResourceModel {
 	return objectBucketResourceModel{
 		ID: types.StringValue(bucketID), Name: types.StringValue("acme"), Region: types.StringValue("RNN"),
-		IsPublic: types.BoolValue(public), CorsRule: rules, CorsRevision: types.StringNull(), Tags: types.ListValueMust(types.StringType, []attr.Value{}),
+		IsPublic: types.BoolValue(public), CorsRule: rules, CorsRevision: types.StringNull(), Versioning: nullVersioning(), Tags: types.ListValueMust(types.StringType, []attr.Value{}),
 		EndpointURL: types.StringNull(), SizeBytes: types.Int64Value(0), Status: types.StringValue("active"),
 		ErrorMessage: types.StringNull(), AccessKey: types.StringNull(), SecretKey: types.StringNull(),
 		CreatedAt: types.StringValue("2026-10-31T10:00:00Z"), UpdatedAt: types.StringValue("2026-10-31T10:00:00Z"),

@@ -14,6 +14,8 @@
 //   - region      RequiresReplace
 //   - tags        RequiresReplace (no PATCH endpoint for tags)
 //   - is_public   mutable in place (synchronous PATCH)
+//   - cors_rule   mutable in place, opt-in (cors.go)
+//   - versioning  mutable in place, opt-in, never disabled (versioning.go)
 //
 // Credentials (`access_key`, `secret_key`) are fetched via the
 // `/credentials` endpoint after the bucket reaches `active` and stored in
@@ -49,6 +51,7 @@ var (
 	_ resource.ResourceWithConfigure      = (*objectBucketResource)(nil)
 	_ resource.ResourceWithImportState    = (*objectBucketResource)(nil)
 	_ resource.ResourceWithValidateConfig = (*objectBucketResource)(nil)
+	_ resource.ResourceWithModifyPlan     = (*objectBucketResource)(nil)
 )
 
 // New returns a freshly-constructed ccp_object_bucket resource.
@@ -72,6 +75,7 @@ type objectBucketResourceModel struct {
 	IsPublic     types.Bool   `tfsdk:"is_public"`
 	CorsRule     types.List   `tfsdk:"cors_rule"`
 	CorsRevision types.String `tfsdk:"cors_revision"`
+	Versioning   types.Object `tfsdk:"versioning"`
 	Tags         types.List   `tfsdk:"tags"`
 	EndpointURL  types.String `tfsdk:"endpoint_url"`
 	SizeBytes    types.Int64  `tfsdk:"size_bytes"`
@@ -112,7 +116,8 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			"`is_public` flag is mutable in place; `name`, `region`, and " +
 			"`tags` force replacement.",
 		Blocks: map[string]schema.Block{
-			"cors_rule": corsRuleBlock(),
+			"cors_rule":  corsRuleBlock(),
+			"versioning": versioningBlock(),
 		},
 		Attributes: map[string]schema.Attribute{
 			"cors_revision": corsRevisionAttribute(),
@@ -350,6 +355,12 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Versioning, same rule: a refusal is a warning, never a tainted bucket.
+	resp.Diagnostics.Append(r.applyVersioningOnCreate(ctx, created.ID, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Fetch credentials. The bucket is `active` per the poll above, so the API
 	// should hand them out — but a `write`-scoped key is denied by design.
 	//
@@ -425,6 +436,20 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 		state.CorsRevision = revisionValue(cors.Revision)
 	} else {
 		state.CorsRevision = types.StringNull()
+	}
+
+	// Versioning drift: only when the practitioner manages it here, like CORS.
+	if !state.Versioning.IsNull() {
+		v, err := r.client.GetBucketVersioning(ctx, got.ID)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read object bucket versioning",
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", got.ID, err.Error()))
+			return
+		}
+		if title, detail, warn := versioningStatusWarning(got.ID, v); warn {
+			resp.Diagnostics.AddWarning(title, detail)
+		}
+		state.Versioning = versioningFromAPI(v)
 	}
 
 	// Refresh credentials only when the bucket is `active` — in any other
@@ -548,6 +573,30 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	} else if !updateVisibility() || !updateCors() {
 		return
+	}
+
+	// Versioning, only when the practitioner manages it. Without the block the
+	// resource stops managing it: nothing is written (it is never disabled).
+	planV, d := versioningFromObject(ctx, plan.Versioning)
+	resp.Diagnostics.Append(d...)
+	stateV, d := versioningFromObject(ctx, state.Versioning)
+	resp.Diagnostics.Append(d...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	switch {
+	case planV == nil:
+		plan.Versioning = nullVersioning()
+	case versioningNeedsWrite(planV, stateV):
+		out, err := r.client.PutBucketVersioning(ctx, id, versioningRequest(planV))
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update versioning",
+				fmt.Sprintf("CETIC Cloud refused the versioning of bucket %s: %s", id, err.Error()))
+			return
+		}
+		plan.Versioning = versioningFromAPI(out)
+	default:
+		plan.Versioning = keptVersioning(planV, stateV)
 	}
 
 	// The revision is a computed attribute: known after apply, always. It is the
@@ -843,4 +892,48 @@ func (m useStateForUnknownInt64Modifier) PlanModifyInt64(_ context.Context, req 
 		return
 	}
 	resp.PlanValue = req.StateValue
+}
+
+// ModifyPlan reports at plan time what the platform would refuse or what has a
+// consequence the plan alone does not show (versioning, see versioning.go).
+func (r *objectBucketResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return // destroy
+	}
+	p := path.Root("versioning")
+	var planObj types.Object
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, p, &planObj)...)
+	planV, d := versioningFromObject(ctx, planObj)
+	resp.Diagnostics.Append(d...)
+	var stateV *versioningModel
+	creating := req.State.Raw.IsNull()
+	if !creating {
+		var stateObj types.Object
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, p, &stateObj)...)
+		stateV, d = versioningFromObject(ctx, stateObj)
+		resp.Diagnostics.Append(d...)
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	switch {
+	case planV != nil && creating && planV.Status.ValueString() == "Suspended":
+		resp.Diagnostics.AddAttributeError(p.AtName("status"), "A new bucket cannot be created with suspended versioning",
+			"A bucket that was never versioned has nothing to suspend. Use `status = \"Enabled\"`, or omit the "+
+				"`versioning` block.")
+	case planV == nil && stateV != nil:
+		resp.Diagnostics.AddAttributeWarning(p, "Removing `versioning` does not disable it",
+			fmt.Sprintf("Versioning cannot be disabled, only suspended. The bucket keeps its versioning (%s); "+
+				"this resource simply stops managing it. To stop creating versions, set `status = \"Suspended\"` "+
+				"instead.", stateV.Status.ValueString()))
+	case planV != nil && stateV != nil:
+		pd, sd := planV.NoncurrentVersionExpirationDays, stateV.NoncurrentVersionExpirationDays
+		if !pd.IsNull() && !pd.IsUnknown() && !sd.IsNull() && !sd.IsUnknown() && pd.ValueInt64() < sd.ValueInt64() {
+			resp.Diagnostics.AddAttributeWarning(p.AtName("noncurrent_version_expiration_days"),
+				"Shorter retention deletes previous versions sooner",
+				fmt.Sprintf("Retention goes from %d to %d days: previous versions older than %d days will be deleted.",
+					sd.ValueInt64(), pd.ValueInt64(), pd.ValueInt64()))
+		}
+	}
 }

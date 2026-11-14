@@ -809,6 +809,24 @@ func (c *Client) DeleteBucketCors(ctx context.Context, id, expectedRevision stri
 	return c.do(ctx, http.MethodDelete, path, nil, nil)
 }
 
+// GetBucketVersioning reads the versioning of a bucket.
+func (c *Client) GetBucketVersioning(ctx context.Context, id string) (*BucketVersioning, error) {
+	var out BucketVersioning
+	if err := c.do(ctx, http.MethodGet, "/v1/buckets/"+id+"/versioning", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PutBucketVersioning enables or suspends the versioning of a bucket.
+func (c *Client) PutBucketVersioning(ctx context.Context, id string, req BucketVersioningUpdateRequest) (*BucketVersioning, error) {
+	var out BucketVersioning
+	if err := c.do(ctx, http.MethodPut, "/v1/buckets/"+id+"/versioning", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GetObjectBucketCredentials returns the master S3 credentials for the
 // tenant in the bucket's region (covers all buckets in that region).
 // Requires bucket status == active. Sensitive — handle with care.

@@ -330,6 +330,25 @@ type BucketCorsUpdateRequest struct {
 	ExpectedRevision string           `json:"expected_revision,omitempty"`
 }
 
+// BucketVersioning is the versioning of a bucket (cetic-cloud-platform#1923).
+// Status: Enabled | Suspended, nil for a bucket that was never versioned.
+// SyncStatus: none | unmanaged | pending | applied | error — same contract as
+// the CORS status; `unmanaged` means versioning was set outside the platform.
+type BucketVersioning struct {
+	Status                          *string `json:"status"`
+	NoncurrentVersionExpirationDays *int64  `json:"noncurrent_version_expiration_days"`
+	SyncStatus                      string  `json:"sync_status"`
+	ErrorMessage                    *string `json:"error_message,omitempty"`
+}
+
+// BucketVersioningUpdateRequest enables or suspends versioning; it is never
+// disabled. Without NoncurrentVersionExpirationDays the platform keeps the
+// current retention (30 days for a bucket never versioned).
+type BucketVersioningUpdateRequest struct {
+	Status                          string `json:"status"`
+	NoncurrentVersionExpirationDays *int64 `json:"noncurrent_version_expiration_days,omitempty"`
+}
+
 // ObjectBucketCredentials returned by GET /v1/buckets/{id}/credentials.
 // Master S3 key is tenant-region-wide (covers all buckets of the tenant in
 // the region). Sensitive — never store in Terraform state.
