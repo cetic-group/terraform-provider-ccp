@@ -53,7 +53,7 @@ func (d *pipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 			"region":     schema.StringAttribute{Computed: true},
 			"type": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "How the IP reaches its resource: `edge`, `firewall` or `nat`.",
+				MarkdownDescription: "How the IP reaches its resource: `edge`, `firewall` or `nat`. `null` for the dedicated egress IP of a VPC, assigned and managed by the platform.",
 			},
 			"status":             schema.StringAttribute{Computed: true},
 			"container_id":       schema.StringAttribute{Computed: true},

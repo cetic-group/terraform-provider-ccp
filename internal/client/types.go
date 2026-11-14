@@ -49,7 +49,6 @@ type VPC struct {
 	// READ-ONLY description of the linked egress IP. Null while the VPC has
 	// none; a just-disabled IP may still show as `detaching`.
 	EgressIP       *string `json:"egress_ip"`
-	EgressIPType   *string `json:"egress_ip_type"`
 	EgressIPStatus *string `json:"egress_ip_status"`
 }
 

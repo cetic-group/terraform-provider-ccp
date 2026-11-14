@@ -260,10 +260,15 @@ func TestVPCDedicatedEgressLifecycle(t *testing.T) {
 	if len(r.RequiresReplace) != 0 {
 		t.Fatalf("activation : remplacement planifié %v (doit être en place)", r.RequiresReplace)
 	}
-	for _, a := range []string{"egress_ip", "egress_ip_type", "egress_ip_status"} {
+	for _, a := range []string{"egress_ip", "egress_ip_status"} {
 		if vpcAttr(planned, a).IsKnown() {
 			t.Errorf("activation : %s doit être « known after apply », planifié %v", a, vpcAttr(planned, a))
 		}
+	}
+	// Type jamais montré (cetic-cloud-platform#1977) : planifié null, même
+	// quand la fausse API (plateforme antérieure) l'envoie encore.
+	if v := vpcAttr(planned, "egress_ip_type"); !v.IsNull() {
+		t.Errorf("activation : egress_ip_type doit être planifié null, planifié %v", v)
 	}
 	for _, a := range []string{"id", "status", "created_at", "cidr"} {
 		if !vpcAttr(planned, a).Equal(vpcAttr(state, a)) {

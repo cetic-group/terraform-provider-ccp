@@ -56,3 +56,28 @@ func (egressStateModifier) PlanModifyString(ctx context.Context, req planmodifie
 	}
 	resp.PlanValue = req.StateValue
 }
+
+// alwaysNull plans `null` for an attribute the provider never fills any more
+// (`egress_ip_type`, cetic-cloud-platform#1977). Keeping the state value
+// instead would plan a stale kind that the apply then writes as `null`:
+// "Provider produced inconsistent result" (e.g. `apply -refresh=false`).
+func alwaysNull() planmodifier.String {
+	return alwaysNullModifier{}
+}
+
+type alwaysNullModifier struct{}
+
+func (alwaysNullModifier) Description(_ context.Context) string {
+	return "Always plans null (attribute no longer reported by the platform)."
+}
+
+func (m alwaysNullModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (alwaysNullModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if req.Plan.Raw.IsNull() { // destruction
+		return
+	}
+	resp.PlanValue = types.StringNull()
+}

@@ -6,6 +6,20 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Deprecated
+
+- `ccp_vpc` (resource and data source): `egress_ip_type` is always `null` and
+  will be removed in the next major version. The platform no longer reports
+  the kind of the dedicated egress IP, which it assigns and manages
+  (cetic-cloud-platform#1975, #1977). It is planned `null` too, so an
+  `apply -refresh=false` on a VPC whose state still holds a kind no longer
+  fails with "Provider produced inconsistent result".
+
+### Changed
+
+- `ccp_public_ip` data source: `type` is `null` for the dedicated egress IP of
+  a VPC.
+
 ### Added
 
 - `ccp_appgw_target_group`: bucket targets. The new `kind` argument (`upstream`,
