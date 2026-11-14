@@ -45,13 +45,12 @@ func TestEgressDecodedFromGetAndList(t *testing.T) {
 	}
 	for _, v := range []*client.VPC{got, &list[0]} {
 		if v.EgressIP == nil || *v.EgressIP != "203.0.113.5" ||
-			v.EgressIPType == nil || *v.EgressIPType != "edge" ||
 			v.EgressIPStatus == nil || *v.EgressIPStatus != "attached" {
-			t.Errorf("%s: egress mal décodé: %v %v %v", v.ID, v.EgressIP, v.EgressIPType, v.EgressIPStatus)
+			t.Errorf("%s: egress mal décodé: %v %v", v.ID, v.EgressIP, v.EgressIPStatus)
 		}
 	}
-	if v := list[1]; v.EgressIP != nil || v.EgressIPType != nil || v.EgressIPStatus != nil {
-		t.Errorf("vpc-2: null attendu sans IP de sortie, reçu %v %v %v", v.EgressIP, v.EgressIPType, v.EgressIPStatus)
+	if v := list[1]; v.EgressIP != nil || v.EgressIPStatus != nil {
+		t.Errorf("vpc-2: null attendu sans IP de sortie, reçu %v %v", v.EgressIP, v.EgressIPStatus)
 	}
 
 	if !got.DedicatedEgressIP || !list[0].DedicatedEgressIP || list[1].DedicatedEgressIP {
@@ -63,9 +62,13 @@ func TestEgressDecodedFromGetAndList(t *testing.T) {
 	if !m.DedicatedEgressIP.ValueBool() {
 		t.Errorf("data source: dedicated_egress_ip = true attendu, reçu %v", m.DedicatedEgressIP)
 	}
-	if m.EgressIP.ValueString() != "203.0.113.5" || m.EgressIPType.ValueString() != "edge" ||
-		m.EgressIPStatus.ValueString() != "attached" {
-		t.Errorf("data source: egress mal recopié: %v %v %v", m.EgressIP, m.EgressIPType, m.EgressIPStatus)
+	if m.EgressIP.ValueString() != "203.0.113.5" || m.EgressIPStatus.ValueString() != "attached" {
+		t.Errorf("data source: egress mal recopié: %v %v", m.EgressIP, m.EgressIPStatus)
+	}
+	// Type jamais montré (cetic-cloud-platform#1977), même si une plateforme
+	// antérieure l'envoie encore (la fixture le contient).
+	if !m.EgressIPType.IsNull() {
+		t.Errorf("data source: egress_ip_type doit rester null, reçu %v", m.EgressIPType)
 	}
 	m = stateFromVPC(context.Background(), &list[1])
 	if m.DedicatedEgressIP.IsNull() || m.DedicatedEgressIP.ValueBool() {

@@ -11,7 +11,7 @@
 // blocked). True: the platform assigns the VPC a dedicated public egress IP
 // synchronously (POST or PATCH), kept as long as the option stays on; turning
 // it off gives the IP back to the pool immediately, without any grace period.
-// `egress_ip`, `egress_ip_type` and `egress_ip_status` are read-only: they keep
+// `egress_ip` and `egress_ip_status` are read-only: they keep
 // their state value in the plan unless `dedicated_egress_ip` changes, in which
 // case they are unknown (see useStateUnlessEgressChanges). The provider does
 // not wait for the IP to be in service (`attached`): the address is known as
@@ -224,10 +224,11 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"egress_ip_type": schema.StringAttribute{
-				MarkdownDescription: "Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` without dedicated egress IP.",
+				MarkdownDescription: "**Deprecated**, always `null`. The platform no longer reports the kind of the dedicated egress IP.",
+				DeprecationMessage:  "The platform no longer reports the kind of the dedicated egress IP: it is assigned and managed by the platform (cetic-cloud-platform#1977). Always `null`; this attribute will be removed in the next major version.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
-					useStateUnlessEgressChanges(),
+					alwaysNull(),
 				},
 			},
 			"egress_ip_status": schema.StringAttribute{
@@ -439,17 +440,20 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	id := state.ID.ValueString()
 	patch, changed := buildVPCUpdate(plan, state)
 
-	var final *client.VPC
 	if !changed {
-		// Nothing the API can change in place: refresh and keep the state.
-		got, err := r.client.GetVPC(ctx, id)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to read VPC",
-				fmt.Sprintf("CETIC Cloud API error for id %s: %s", id, err.Error()))
-			return
-		}
-		final = got
-	} else {
+		// Nothing for the API to change (e.g. `egress_ip_type` planned null by
+		// `alwaysNull` over a state that still holds a kind,
+		// cetic-cloud-platform#1977): the new state IS the plan. No GET here:
+		// values that moved since the last refresh (`egress_ip_status`,
+		// `status`) would differ from the plan, and Terraform would fail with
+		// "Provider produced inconsistent result" (`apply -refresh=false`).
+		// The next refresh picks them up.
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
+	var final *client.VPC
+	{
 		want := *patch.DedicatedEgressIP
 		patched, err := r.client.UpdateVPC(ctx, id, patch)
 		if err != nil {
@@ -627,7 +631,10 @@ func applyVPCToModel(ctx context.Context, src *client.VPC, dst *vpcResourceModel
 
 	dst.DedicatedEgressIP = types.BoolValue(src.DedicatedEgressIP)
 	dst.EgressIP = types.StringPointerValue(src.EgressIP)
-	dst.EgressIPType = types.StringPointerValue(src.EgressIPType)
+	// Never read from the API (cetic-cloud-platform#1977): always null, even
+	// against an older platform that still sends it, so that plan and apply
+	// agree (`alwaysNull`).
+	dst.EgressIPType = types.StringNull()
 	dst.EgressIPStatus = types.StringPointerValue(src.EgressIPStatus)
 
 	tagValues := make([]string, 0, len(src.Tags))

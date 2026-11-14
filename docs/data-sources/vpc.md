@@ -49,5 +49,5 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `created_at` — RFC 3339 creation timestamp.
 - `dedicated_egress_ip` — `true` when the VPC has its own dedicated egress IP, `false` when it uses the shared egress of the platform (see [Dedicated egress IP](../resources/vpc.md#dedicated-egress-ip)).
 - `egress_ip` — Dedicated egress public IP of the VPC (`null` while `dedicated_egress_ip` is `false`).
-- `egress_ip_type` — `edge`, `firewall` or `nat` (`null` without dedicated egress IP).
+- `egress_ip_type` — **deprecated**, always `null` (the platform no longer reports the kind of the dedicated egress IP). Will be removed in the next major version.
 - `egress_ip_status` — `allocated`, `attaching`, `attached`, `detaching` or `error` (`null` without dedicated egress IP).

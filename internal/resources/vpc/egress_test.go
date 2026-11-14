@@ -10,7 +10,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
@@ -50,7 +53,7 @@ func TestDedicatedEgressIPIsAnInPlaceOptionDefaultingToFalse(t *testing.T) {
 
 func TestEgressAttributesAreReadOnlyWithConditionalModifier(t *testing.T) {
 	s := vpcSchema(t)
-	for _, name := range []string{"egress_ip", "egress_ip_type", "egress_ip_status"} {
+	for _, name := range []string{"egress_ip", "egress_ip_status"} {
 		attr, ok := s.Attributes[name].(schema.StringAttribute)
 		if !ok {
 			t.Fatalf("%s: attribut absent ou de mauvais type", name)
@@ -67,6 +70,42 @@ func TestEgressAttributesAreReadOnlyWithConditionalModifier(t *testing.T) {
 	}
 }
 
+func TestEgressIPTypeDeprecatedAlwaysNull(t *testing.T) {
+	attr, ok := vpcSchema(t).Attributes["egress_ip_type"].(schema.StringAttribute)
+	if !ok {
+		t.Fatal("egress_ip_type: attribut absent (retrait réservé à la prochaine version majeure)")
+	}
+	if !attr.Computed || attr.Optional || attr.DeprecationMessage == "" {
+		t.Error("egress_ip_type: Computed seul et déprécié attendus")
+	}
+	if len(attr.PlanModifiers) != 1 {
+		t.Fatal("egress_ip_type: un seul plan modifier attendu (alwaysNull)")
+	}
+	if _, ok := attr.PlanModifiers[0].(alwaysNullModifier); !ok {
+		t.Errorf("egress_ip_type: alwaysNull attendu, reçu %T (garder l'état planifierait un type que l'apply écrit null)", attr.PlanModifiers[0])
+	}
+	// État d'avant la mise à jour (type connu) : le plan vaut null.
+	req := planmodifier.StringRequest{
+		StateValue: types.StringValue("edge"), PlanValue: types.StringUnknown(),
+		Plan: tfsdk.Plan{Raw: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})},
+	}
+	resp := &planmodifier.StringResponse{PlanValue: req.PlanValue}
+	attr.PlanModifiers[0].PlanModifyString(context.Background(), req, resp)
+	if !resp.PlanValue.IsNull() {
+		t.Errorf("egress_ip_type: plan null attendu, reçu %v", resp.PlanValue)
+	}
+	// Destruction (plan null) : rien n'est touché.
+	destr := planmodifier.StringRequest{
+		StateValue: types.StringValue("edge"), PlanValue: types.StringValue("inchangé"),
+		Plan: tfsdk.Plan{Raw: tftypes.NewValue(tftypes.Object{}, nil)},
+	}
+	resp = &planmodifier.StringResponse{PlanValue: destr.PlanValue}
+	attr.PlanModifiers[0].PlanModifyString(context.Background(), destr, resp)
+	if resp.PlanValue.ValueString() != "inchangé" {
+		t.Errorf("destruction : plan inchangé attendu, reçu %v", resp.PlanValue)
+	}
+}
+
 func TestNameAndTagsStillForceReplacement(t *testing.T) {
 	s := vpcSchema(t)
 	if len(s.Attributes["name"].(schema.StringAttribute).PlanModifiers) == 0 {
@@ -78,9 +117,9 @@ func TestNameAndTagsStillForceReplacement(t *testing.T) {
 }
 
 func TestApplyVPCToModelEgress(t *testing.T) {
-	ip, typ, st := "203.0.113.5", "edge", "attached"
+	ip, st := "203.0.113.5", "attached"
 	src := &client.VPC{ID: "v", Name: "n", Region: "RNN", Status: "active", CreatedAt: time.Now(),
-		DedicatedEgressIP: true, EgressIP: &ip, EgressIPType: &typ, EgressIPStatus: &st}
+		DedicatedEgressIP: true, EgressIP: &ip, EgressIPStatus: &st}
 	var m vpcResourceModel
 	if d := applyVPCToModel(context.Background(), src, &m); d.HasError() {
 		t.Fatalf("apply: %v", d)
@@ -88,13 +127,15 @@ func TestApplyVPCToModelEgress(t *testing.T) {
 	if !m.DedicatedEgressIP.ValueBool() {
 		t.Error("dedicated_egress_ip non recopié")
 	}
-	if m.EgressIP.ValueString() != ip || m.EgressIPType.ValueString() != typ ||
-		m.EgressIPStatus.ValueString() != st {
-		t.Fatalf("valeurs mal recopiées: %v %v %v", m.EgressIP, m.EgressIPType, m.EgressIPStatus)
+	if m.EgressIP.ValueString() != ip || m.EgressIPStatus.ValueString() != st {
+		t.Fatalf("valeurs mal recopiées: %v %v", m.EgressIP, m.EgressIPStatus)
+	}
+	if !m.EgressIPType.IsNull() {
+		t.Fatalf("egress_ip_type doit rester null (cetic-cloud-platform#1977), reçu %v", m.EgressIPType)
 	}
 	// Option désactivée : l'IP est rendue, les trois passent à null.
 	src.DedicatedEgressIP = false
-	src.EgressIP, src.EgressIPType, src.EgressIPStatus = nil, nil, nil
+	src.EgressIP, src.EgressIPStatus = nil, nil
 	if d := applyVPCToModel(context.Background(), src, &m); d.HasError() {
 		t.Fatalf("apply: %v", d)
 	}

@@ -74,7 +74,8 @@ func (d *vpcDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 				Computed:            true,
 			},
 			"egress_ip_type": schema.StringAttribute{
-				MarkdownDescription: "Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` without dedicated egress IP.",
+				MarkdownDescription: "**Deprecated**, always `null`. The platform no longer reports the kind of the dedicated egress IP.",
+				DeprecationMessage:  "The platform no longer reports the kind of the dedicated egress IP: it is assigned and managed by the platform (cetic-cloud-platform#1977). Always `null`; this attribute will be removed in the next major version.",
 				Computed:            true,
 			},
 			"egress_ip_status": schema.StringAttribute{
@@ -173,7 +174,7 @@ func stateFromVPC(ctx context.Context, found *client.VPC) vpcDSModel {
 		DedicatedEgressIP: types.BoolValue(found.DedicatedEgressIP),
 
 		EgressIP:       types.StringPointerValue(found.EgressIP),
-		EgressIPType:   types.StringPointerValue(found.EgressIPType),
+		EgressIPType:   types.StringNull(), // never shown (cetic-cloud-platform#1977)
 		EgressIPStatus: types.StringPointerValue(found.EgressIPStatus),
 	}
 	if found.CIDR != nil {

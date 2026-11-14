@@ -10,7 +10,7 @@ import (
 
 // useStateUnlessEgressChanges keeps the state value of an `egress_*` attribute
 // in the plan, like UseStateForUnknown, EXCEPT when `dedicated_egress_ip`
-// changes: the IP, its type and its status are then decided by the platform
+// changes: the IP and its status are then decided by the platform
 // during apply, so they must stay unknown ("known after apply").
 //
 // Plain UseStateForUnknown would be wrong here: on `false` → `true` it would
@@ -55,4 +55,29 @@ func (egressStateModifier) PlanModifyString(ctx context.Context, req planmodifie
 		return
 	}
 	resp.PlanValue = req.StateValue
+}
+
+// alwaysNull plans `null` for an attribute the provider never fills any more
+// (`egress_ip_type`, cetic-cloud-platform#1977). Keeping the state value
+// instead would plan a stale kind that the apply then writes as `null`:
+// "Provider produced inconsistent result" (e.g. `apply -refresh=false`).
+func alwaysNull() planmodifier.String {
+	return alwaysNullModifier{}
+}
+
+type alwaysNullModifier struct{}
+
+func (alwaysNullModifier) Description(_ context.Context) string {
+	return "Always plans null (attribute no longer reported by the platform)."
+}
+
+func (m alwaysNullModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (alwaysNullModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if req.Plan.Raw.IsNull() { // destruction
+		return
+	}
+	resp.PlanValue = types.StringNull()
 }

@@ -122,7 +122,7 @@ In addition to all arguments above, the following attributes are exported:
 - `cidr` - The private address block of the VPC (the auto-allocated block when not set explicitly; `null` on legacy VPCs predating the field).
 - `status` - Current status of the VPC. Possible values: `pending`, `active`, `error`.
 - `egress_ip` - Dedicated egress public IP of the VPC. `null` while `dedicated_egress_ip` is `false` (shared egress). See [Dedicated egress IP](#dedicated-egress-ip).
-- `egress_ip_type` - Kind of the dedicated egress IP: `edge`, `firewall` or `nat`. `null` without dedicated egress IP.
+- `egress_ip_type` - **Deprecated**, always `null`: the platform no longer reports the kind of the dedicated egress IP, which it assigns and manages. Will be removed in the next major version.
 - `egress_ip_status` - Status of the dedicated egress IP: `allocated` (reserved, not yet in service), `attaching`, `attached` (in service), `detaching` (going back to the pool after the option was turned off) or `error`. `null` without dedicated egress IP.
 - `created_at` - Timestamp of creation (RFC3339).
 
