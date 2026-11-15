@@ -26,6 +26,12 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   instead of failing the apply.
   Requires the platform versioning API (`GET/PUT /v1/buckets/{id}/versioning`).
 
+## v7.4.0 (2026-11-15)
+
+A minor version. Every change below needs only the platform API of
+cetic-cloud-platform v4.30.0, in production since 2026-11-15
+(#1849, #1977, #1984).
+
 ### Deprecated
 
 - `ccp_vpc` (resource and data source): `egress_ip_type` is always `null` and
@@ -50,6 +56,16 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- New resource `ccp_registry_cleanup_schedule`: scheduled cleanup of the images
+  of a `ccp_registry` (cetic-cloud-platform#1984) — repository and tag
+  patterns, a criterion (`all`, `older_than_days`, `keep_last_n` with `value`),
+  an optional UTC `cron` (omitted: on demand only) and `enabled`. Up to 4 per
+  registry; matching images go to the recycle bin, purged after the grace
+  period. Names, patterns, cron and criterion are checked at plan time exactly
+  as the platform does. Every change is made in place except `registry_id`;
+  import with `<registry_id>/<schedule_id>`. Simulations and immediate runs
+  are not managed by Terraform. Requires platform v4.30.0.
+- `examples/registry`: a nightly cleanup schedule.
 - `ccp_appgw_target_group`: bucket targets. The new `kind` argument (`upstream`,
   the default, or `bucket`), `bucket_id` and `bucket_prefix` make an Application
   Gateway serve a public bucket, or one folder of it, under your own domain
