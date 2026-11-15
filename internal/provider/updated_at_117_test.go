@@ -203,6 +203,16 @@ func (h *harness117) configFrom(state tftypes.Value, set map[string]tftypes.Valu
 	return tftypes.NewValue(h.typ, m)
 }
 
+// unset leaves attributes out of the configuration (null), as a practitioner
+// who never wrote them: an Optional+Computed attribute then comes from the state.
+func unset(cfg tftypes.Value, names ...string) tftypes.Value {
+	m := attrsOf(cfg)
+	for _, n := range names {
+		m[n] = tftypes.NewValue(m[n].Type(), nil)
+	}
+	return tftypes.NewValue(cfg.Type(), m)
+}
+
 // proposed mimics Terraform core: configured values, the prior value where a
 // computed attribute is left null in the configuration (also inside a single
 // nested block present in both).
@@ -608,11 +618,15 @@ func TestVMInstanceRenameKeepsPublicIPAddressKnown_117(t *testing.T) {
 	h := newHarness117(t, ts.URL, "ccp_vm_instance")
 	state := h.imported("vm-1")
 
-	cfg := h.configFrom(state, map[string]tftypes.Value{"name": str117("web-2")})
-	if got := attrsOf(h.plan(state, cfg))["public_ip_address"]; !got.Equal(str117("203.0.113.7")) {
-		t.Fatalf("renommage : public_ip_address doit rester connue, planifiée %v", got)
+	for name, cfg := range map[string]tftypes.Value{
+		"public_ip_id écrit":  h.configFrom(state, map[string]tftypes.Value{"name": str117("web-2")}),
+		"public_ip_id absent": unset(h.configFrom(state, map[string]tftypes.Value{"name": str117("web-2")}), "public_ip_id", "disk_gb", "tags"),
+	} {
+		if got := attrsOf(h.plan(state, cfg))["public_ip_address"]; !got.Equal(str117("203.0.113.7")) {
+			t.Errorf("renommage (%s) : public_ip_address doit rester connue, planifiée %v", name, got)
+		}
 	}
-	h.updateInPlace(state, cfg, nil)
+	h.updateInPlace(state, unset(h.configFrom(state, map[string]tftypes.Value{"name": str117("web-2")}), "public_ip_id", "disk_gb", "tags"), nil)
 }
 
 // Sans changement, aucune ressource ne montre de diff (rien de « known after
@@ -644,4 +658,92 @@ func TestNoChangeNoDiff_117(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Volume attaché puis détaché : `status` et `attached_to_name` suivent
+// l'attachement, ils ne peuvent pas rester ceux de l'état au plan.
+func TestBlockVolumeAttachDetachIsConsistent_117(t *testing.T) {
+	api := newFakeAPI()
+	const p = "/v1/volumes/v-1"
+	api.objs[p] = map[string]any{
+		"id": "v-1", "name": "data", "region": "RNN", "size_gb": 10, "status": "available",
+		"attached_to_id": nil, "attached_to_type": nil, "attached_to_name": nil, "error_message": nil,
+		"tags": []string{}, "created_at": "2026-11-06T13:54:28Z", "updated_at": "2026-11-06T13:54:28Z",
+	}
+	api.writes["POST "+p+"/attach"] = func(b map[string]any) (string, int) {
+		api.objs[p]["status"], api.objs[p]["attached_to_name"] = "attached", "web"
+		api.objs[p]["attached_to_id"], api.objs[p]["attached_to_type"] = b["resource_id"], b["resource_type"]
+		api.bump(p)
+		return p, http.StatusOK
+	}
+	api.writes["POST "+p+"/detach"] = func(map[string]any) (string, int) {
+		api.objs[p]["status"], api.objs[p]["attached_to_name"] = "available", nil
+		api.objs[p]["attached_to_id"], api.objs[p]["attached_to_type"] = nil, nil
+		api.bump(p)
+		return p, http.StatusOK
+	}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newHarness117(t, ts.URL, "ccp_block_volume")
+	state := h.imported("v-1")
+
+	const vm = "11111111-1111-1111-1111-111111111111"
+	state = h.updateInPlace(state, h.configFrom(state, map[string]tftypes.Value{
+		"attached_to_id": str117(vm), "attached_to_type": str117("vm"),
+	}), nil)
+	assertCalled(t, api, "POST /v1/volumes/v-1/attach")
+	if got := attrsOf(state)["status"]; !got.Equal(str117("attached")) {
+		t.Fatalf("après attachement : status attached attendu, reçu %v", got)
+	}
+	null := tftypes.NewValue(tftypes.String, nil)
+	h.updateInPlace(state, h.configFrom(state, map[string]tftypes.Value{"attached_to_id": null, "attached_to_type": null}), nil)
+	assertCalled(t, api, "POST /v1/volumes/v-1/detach")
+}
+
+// Disque agrandi alors que la plateforme rend un statut transitoire : le
+// statut ne peut pas rester celui de l'état au plan.
+func TestVMInstanceDiskResizeTransitionalStatus_117(t *testing.T) {
+	api := newFakeAPI()
+	const p = "/v1/vm-instances/vm-1"
+	api.objs[p] = map[string]any{
+		"id": "vm-1", "name": "web", "region": "RNN", "plan": "s-1", "cores": 1, "memory_mb": 1024,
+		"disk_gb": 20, "template": "debian-12", "status": "running", "ip_address": "10.0.0.5",
+		"public_ip_address": nil, "vnet_id": "vn-1", "scale_set_id": nil, "user_data": nil,
+		"error_message": nil, "has_root_password": false, "tags": []string{}, "os_family": "linux",
+		"created_at": "2026-11-06T13:54:28Z", "updated_at": "2026-11-06T13:54:28Z",
+	}
+	api.lists["/v1/public-ips"] = []map[string]any{}
+	api.writes["POST "+p+"/resize-disk"] = func(b map[string]any) (string, int) {
+		api.objs[p]["disk_gb"], api.objs[p]["status"] = b["disk_gb"], "resizing"
+		api.bump(p)
+		return p, http.StatusOK
+	}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newHarness117(t, ts.URL, "ccp_vm_instance")
+	state := h.imported("vm-1")
+	h.updateInPlace(state, h.configFrom(state, map[string]tftypes.Value{"disk_gb": num117(40)}), nil)
+}
+
+func TestContainerInstanceDiskResizeTransitionalStatus_117(t *testing.T) {
+	api := newFakeAPI()
+	const p = "/v1/containers/ct-1"
+	api.objs[p] = map[string]any{
+		"id": "ct-1", "name": "app", "region": "RNN", "plan": "c-1", "cores": 1, "memory_mb": 512,
+		"disk_gb": 8, "template": "debian-12", "status": "running", "ip_address": "10.0.0.6",
+		"public_ip_address": nil, "vnet_id": "vn-1", "scale_set_id": nil, "user_data": nil,
+		"error_message": nil, "has_root_password": false, "tags": []string{},
+		"created_at": "2026-11-06T13:54:28Z", "updated_at": "2026-11-06T13:54:28Z",
+	}
+	api.lists["/v1/public-ips"] = []map[string]any{}
+	api.writes["POST "+p+"/resize-disk"] = func(b map[string]any) (string, int) {
+		api.objs[p]["disk_gb"], api.objs[p]["status"] = b["disk_gb"], "resizing"
+		api.bump(p)
+		return p, http.StatusOK
+	}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newHarness117(t, ts.URL, "ccp_container_instance")
+	state := h.imported("ct-1")
+	h.updateInPlace(state, h.configFrom(state, map[string]tftypes.Value{"disk_gb": num117(16)}), nil)
 }

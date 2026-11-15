@@ -3,22 +3,29 @@ package planmodifier
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 type useStateUnlessChanged struct{ watched []path.Path }
 
 // UseStateUnlessChanged keeps the prior state value of a computed string in the
-// plan, like UseStateForUnknown, EXCEPT when one of the watched (string) attributes
+// plan, like UseStateForUnknown, EXCEPT when one of the watched attributes
 // changes: the platform then sets the value during apply, so it must stay
 // unknown ("known after apply").
 //
 // Plain UseStateForUnknown freezes the old value in the plan, and the apply
 // fails with "Provider produced inconsistent result" once the platform returns
 // the new one (terraform-provider-ccp#117: `public_ip_address` when
-// `public_ip_id` is swapped).
+// `public_ip_id` is swapped, `status` of a volume when it is attached).
+//
+// A watched attribute is compared through the configuration when it is set
+// there. Left out of the configuration, its planned value is used: the
+// framework runs attribute plan modifiers in no guaranteed order, so an
+// Optional+Computed watched attribute may still be unknown here; it then counts
+// as unchanged, which holds only if it keeps its state value when unconfigured
+// (UseStateForUnknown) — the case of every attribute watched today.
 func UseStateUnlessChanged(watched ...path.Path) planmodifier.String {
 	return useStateUnlessChanged{watched: watched}
 }
@@ -41,13 +48,20 @@ func (m useStateUnlessChanged) PlanModifyString(ctx context.Context, req planmod
 		return
 	}
 	for _, p := range m.watched {
-		var planned, prior types.String
+		var configured, planned, prior attr.Value
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, p, &configured)...)
 		resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, p, &planned)...)
 		resp.Diagnostics.Append(req.State.GetAttribute(ctx, p, &prior)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		if planned.IsUnknown() || !planned.Equal(prior) {
+		next := planned
+		if !configured.IsNull() {
+			next = configured
+		} else if planned.IsUnknown() {
+			continue // unconfigured and kept from the state by its own modifier
+		}
+		if next.IsUnknown() || !next.Equal(prior) {
 			return
 		}
 	}

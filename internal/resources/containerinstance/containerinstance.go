@@ -309,7 +309,9 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 					"this will be `running`.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					// Known after apply when the disk is resized: the platform may report a
+					// transitional status (#117).
+					ccppm.UseStateUnlessChanged(path.Root("disk_gb")),
 				},
 			},
 			"ip_address": schema.StringAttribute{
