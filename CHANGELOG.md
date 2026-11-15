@@ -6,6 +6,12 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## v7.4.0 (2026-11-15)
+
+A minor version. Every change below needs only the platform API of
+cetic-cloud-platform v4.30.0, in production since 2026-11-15
+(#1849, #1977, #1984).
+
 ### Deprecated
 
 - `ccp_vpc` (resource and data source): `egress_ip_type` is always `null` and
