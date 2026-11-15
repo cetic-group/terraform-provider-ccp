@@ -29,6 +29,11 @@ type corpusCase struct {
 	Valeur       *int64   `json:"valeur"`
 	Cron         *string  `json:"cron"`
 	APIAccepts   bool     `json:"api_accepts"`
+	// APIAcceptsPatch: the same 7 fields sent as the provider's PATCH, judged
+	// by `CleanupScheduleUpdate` + the null refusals + `_valider_critere` of
+	// `update_cleanup_schedule`. The provider validates both writes with one
+	// set of rules, so both verdicts must match it.
+	APIAcceptsPatch *bool `json:"api_accepts_patch"`
 }
 
 func strList(v []string) types.List {
@@ -92,6 +97,13 @@ func TestValidation_MatchesThePlatformCorpus(t *testing.T) {
 	for i, c := range cases {
 		diags := validateModel(c.model())
 		goAccepts := !diags.HasError()
+		if c.APIAcceptsPatch == nil {
+			t.Fatalf("cas %d : verdict PATCH absent du corpus (régénérer avec gen_corpus.py)", i)
+		}
+		if *c.APIAcceptsPatch != c.APIAccepts {
+			t.Errorf("cas %d : POST et PATCH divergent côté API (%v / %v) — une seule validation ne suffit plus : %+v",
+				i, c.APIAccepts, *c.APIAcceptsPatch, c)
+		}
 		if c.APIAccepts {
 			accepted++
 		}

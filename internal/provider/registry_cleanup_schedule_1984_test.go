@@ -37,6 +37,8 @@ type fakeCleanupAPI struct {
 	posts   []map[string]any
 	patches []map[string]any
 	deletes int
+	// registryGone: la registry a été supprimée — la liste répond 404.
+	registryGone bool
 }
 
 func pyStripT(s string) string { return strings.TrimSpace(s) }
@@ -75,6 +77,8 @@ func (f *fakeCleanupAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	raw, _ := io.ReadAll(r.Body)
 	const base = "/v1/registries/reg-1/cleanup/schedules"
 	switch {
+	case r.Method == http.MethodGet && r.URL.Path == base && f.registryGone:
+		f.reply(w, http.StatusNotFound, map[string]any{"detail": "Registry introuvable."})
 	case r.Method == http.MethodGet && r.URL.Path == base:
 		f.reply(w, http.StatusOK, f.scheds)
 	case r.Method == http.MethodPost && r.URL.Path == base:
@@ -506,5 +510,137 @@ func TestRegistryCleanupScheduleValidateConfig(t *testing.T) {
 	}
 	if d := h.validate(tftypes.NewValue(h.typ, m)); hasErr(d) {
 		t.Errorf("configuration inconnue jugée : %v", d)
+	}
+}
+
+// Une réécriture que l'API normaliserait à l'identique (espaces autour du nom
+// ou d'un motif, cron reformaté, cron absent ↔ "") n'envoie AUCUN PATCH : un
+// PATCH, même vide, remet `last_dispatched_at` à maintenant et peut faire
+// sauter un passage dû. L'état prend le plan, sans diff ensuite.
+func TestRegistryCleanupScheduleNoOpRespellingSendsNoPatch(t *testing.T) {
+	api := &fakeCleanupAPI{}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newCleanupHarness(t, ts.URL)
+	null := tftypes.NewValue(h.typ, nil)
+	normal := map[string]any{"name": "nightly", "repo_patterns": []string{"app/*"}, "tag_patterns": []string{"*-rc-*", "*-dev"},
+		"cron": "0 3 * * *"}
+	with := func(over map[string]any) tftypes.Value {
+		m := map[string]any{}
+		for k, v := range normal {
+			m[k] = v
+		}
+		for k, v := range over {
+			m[k] = v
+		}
+		return h.cfg(m)
+	}
+	cfg := with(nil)
+	planned, _ := h.plan(null, cfg)
+	state := h.apply(null, planned, cfg)
+	dispatched := attrOf(state, "last_dispatched_at")
+
+	for _, tc := range []struct {
+		step string
+		over map[string]any
+	}{
+		{"nom avec espace", map[string]any{"name": " nightly"}},
+		{"motifs avec espaces", map[string]any{"name": " nightly", "repo_patterns": []string{" app/* "}}},
+		{"cron reformaté", map[string]any{"cron": "0  3 * * *"}},
+		{"cron absent", map[string]any{"cron": nil}},
+	} {
+		if tc.step == "cron absent" {
+			// Planification manuelle réelle (1 PATCH), puis "" ↔ absent sans PATCH.
+			cfg = with(map[string]any{"cron": nil})
+			planned, _ = h.plan(state, cfg)
+			state = h.apply(state, planned, cfg)
+			state = h.read(state)
+			dispatched = attrOf(state, "last_dispatched_at")
+			before := len(api.patches)
+			for _, c := range []any{"", nil, "   "} {
+				cfg = with(map[string]any{"cron": c})
+				planned, _ = h.plan(state, cfg)
+				state = h.apply(state, planned, cfg)
+				if len(api.patches) != before {
+					t.Errorf("cron %q : aucun PATCH attendu, reçu %v", c, api.patches[before:])
+				}
+				state = h.assertNoDiff(fmt.Sprintf("cron %q", c), state, cfg)
+			}
+			if !attrOf(state, "last_dispatched_at").Equal(dispatched) {
+				t.Errorf("last_dispatched_at a bougé sans PATCH")
+			}
+			continue
+		}
+		before := len(api.patches)
+		cfg = with(tc.over)
+		planned, _ = h.plan(state, cfg)
+		state = h.apply(state, planned, cfg)
+		if len(api.patches) != before {
+			t.Errorf("%s : aucun PATCH attendu, reçu %v", tc.step, api.patches[before:])
+		}
+		if !attrOf(state, "last_dispatched_at").Equal(dispatched) {
+			t.Errorf("%s : last_dispatched_at doit rester %v, reçu %v", tc.step, dispatched, attrOf(state, "last_dispatched_at"))
+		}
+		state = h.assertNoDiff(tc.step, state, cfg)
+	}
+	// Contrôle : un vrai changement part bien.
+	before := len(api.patches)
+	cfg = with(map[string]any{"cron": nil, "enabled": false})
+	planned, _ = h.plan(state, cfg)
+	h.apply(state, planned, cfg)
+	if len(api.patches) != before+1 {
+		t.Errorf("changement réel : 1 PATCH attendu, reçu %d", len(api.patches)-before)
+	}
+}
+
+// Registry supprimée : la liste répond 404, la planification sort de l'état
+// sans erreur (pas d'échec du refresh).
+func TestRegistryCleanupScheduleRegistryGone(t *testing.T) {
+	api := &fakeCleanupAPI{}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newCleanupHarness(t, ts.URL)
+	null := tftypes.NewValue(h.typ, nil)
+	cfg := h.cfg(nil)
+	planned, _ := h.plan(null, cfg)
+	state := h.apply(null, planned, cfg)
+	api.mu.Lock()
+	api.registryGone = true
+	api.mu.Unlock()
+	if got := h.read(state); !got.IsNull() {
+		t.Errorf("registry supprimée : état null attendu, reçu %v", got)
+	}
+}
+
+// Import avec des UUID en majuscules : l'API les rend en minuscules.
+func TestRegistryCleanupScheduleImportUppercaseIDs(t *testing.T) {
+	api := &fakeCleanupAPI{}
+	ts := httptest.NewServer(api)
+	defer ts.Close()
+	h := newCleanupHarness(t, ts.URL)
+	null := tftypes.NewValue(h.typ, nil)
+	cfg := h.cfg(nil)
+	planned, _ := h.plan(null, cfg)
+	h.apply(null, planned, cfg)
+	ir, err := h.srv.ImportResourceState(h.ctx, &tfprotov6.ImportResourceStateRequest{TypeName: cleanupType, ID: "REG-1/CS-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.fail("import", ir.Diagnostics)
+	imported := h.read(h.dec(ir.ImportedResources[0].State))
+	if imported.IsNull() {
+		t.Fatal("import en majuscules : planification introuvable")
+	}
+	if !attrOf(imported, "id").Equal(tftypes.NewValue(tftypes.String, "cs-1")) ||
+		!attrOf(imported, "registry_id").Equal(tftypes.NewValue(tftypes.String, "reg-1")) {
+		t.Errorf("import : UUID en minuscules attendus, reçu %v / %v", attrOf(imported, "id"), attrOf(imported, "registry_id"))
+	}
+	// Un état qui porte déjà l'UUID en majuscules (écrit à la main, ancien
+	// import) retrouve aussi sa planification : comparaison sans casse.
+	var m map[string]tftypes.Value
+	_ = imported.As(&m)
+	m["id"] = tftypes.NewValue(tftypes.String, "CS-1")
+	if got := h.read(tftypes.NewValue(h.typ, m)); got.IsNull() {
+		t.Error("état avec UUID en majuscules : planification perdue au refresh")
 	}
 }

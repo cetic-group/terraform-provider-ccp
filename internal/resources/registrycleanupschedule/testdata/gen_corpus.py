@@ -14,6 +14,7 @@ import json, random, sys
 sys.path.insert(0, '.')
 from pydantic import ValidationError
 from app.schemas.registry_retention import CleanupScheduleCreate as C
+from app.schemas.registry_retention import CleanupScheduleUpdate as U, _valider_critere
 
 random.seed(1984)
 BASE = dict(name="nightly", repo_patterns=["app/*"], tag_patterns=["*-rc-*"], critere="all", valeur=None, cron=None)
@@ -71,6 +72,22 @@ for c in cases:
         C(**body); ok = True
     except ValidationError:
         ok = False
-    out.append({**c, "api_accepts": ok})
+    # PATCH tel que l'envoie le provider : les 7 champs, toujours. Reproduit
+    # update_cleanup_schedule (registries.py) : schéma CleanupScheduleUpdate,
+    # refus des null sur les champs non nullables, puis _valider_critere sur
+    # les valeurs fusionnées — ici toutes celles du corps.
+    try:
+        u = U(**{**body, "enabled": True})
+        champs = u.model_fields_set
+        if any(n in champs and getattr(u, n) is None
+               for n in ("name", "repo_patterns", "tag_patterns", "critere", "enabled")):
+            raise ValueError("nul")
+        _valider_critere(u.critere, u.valeur, list(u.repo_patterns), list(u.tag_patterns))
+        ok_patch = True
+    except (ValidationError, ValueError):
+        ok_patch = False
+    out.append({**c, "api_accepts": ok, "api_accepts_patch": ok_patch})
 json.dump(out, sys.stdout, ensure_ascii=False, indent=0)
-print(file=sys.stderr, end=f"{len(out)} cas, {sum(o['api_accepts'] for o in out)} acceptés\n")
+print(file=sys.stderr, end=f"{len(out)} cas, {sum(o['api_accepts'] for o in out)} acceptés (POST), "
+      f"{sum(o['api_accepts_patch'] for o in out)} (PATCH), "
+      f"{sum(o['api_accepts'] != o['api_accepts_patch'] for o in out)} divergents\n")

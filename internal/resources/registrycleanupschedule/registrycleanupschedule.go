@@ -353,13 +353,50 @@ func (r *cleanupScheduleResource) Create(ctx context.Context, req resource.Creat
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
+// normalizedWrite is a write body as the platform stores it.
+func normalizedWrite(w client.RegistryCleanupScheduleWrite) client.RegistryCleanupScheduleWrite {
+	strip := func(l []string) []string {
+		out := make([]string, 0, len(l))
+		for _, p := range l {
+			out = append(out, pyStrip(p))
+		}
+		return out
+	}
+	w.Name = pyStrip(w.Name)
+	w.RepoPatterns, w.TagPatterns = strip(w.RepoPatterns), strip(w.TagPatterns)
+	if w.Cron != nil {
+		w.Cron = normalizeCron(*w.Cron)
+	}
+	return w
+}
+
+// sameWrite: would the platform store the same schedule from both bodies?
+func sameWrite(a, b client.RegistryCleanupScheduleWrite) bool {
+	a, b = normalizedWrite(a), normalizedWrite(b)
+	eqList := func(x, y []string) bool {
+		if len(x) != len(y) {
+			return false
+		}
+		for i := range x {
+			if x[i] != y[i] {
+				return false
+			}
+		}
+		return true
+	}
+	eqPtr := func(x, y *int64) bool { return (x == nil && y == nil) || (x != nil && y != nil && *x == *y) }
+	eqStr := func(x, y *string) bool { return (x == nil && y == nil) || (x != nil && y != nil && *x == *y) }
+	return a.Name == b.Name && eqList(a.RepoPatterns, b.RepoPatterns) && eqList(a.TagPatterns, b.TagPatterns) &&
+		a.Critere == b.Critere && eqPtr(a.Valeur, b.Valeur) && eqStr(a.Cron, b.Cron) && a.Enabled == b.Enabled
+}
+
 func (r *cleanupScheduleResource) find(ctx context.Context, registryID, id string) (*client.RegistryCleanupSchedule, error) {
 	list, err := r.client.ListRegistryCleanupSchedules(ctx, registryID)
 	if err != nil {
 		return nil, err
 	}
 	for i := range list {
-		if list[i].ID == id {
+		if strings.EqualFold(list[i].ID, id) {
 			return &list[i], nil
 		}
 	}
@@ -397,7 +434,19 @@ func (r *cleanupScheduleResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 	body := writeBody(ctx, plan, &resp.Diagnostics)
+	prior := writeBody(ctx, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	// A PATCH resets the scheduler barrier (`last_dispatched_at`) even when it
+	// changes nothing, which can skip a run that is due. A plan that only
+	// respells a value the platform normalizes (`" nightly"` vs `nightly`,
+	// `"0  3 * * *"`, no cron vs `""`) sends nothing: the state takes the plan,
+	// with the server-side attributes unchanged.
+	if sameWrite(body, prior) {
+		plan.ID, plan.Slot, plan.CreatedAt = state.ID, state.Slot, state.CreatedAt
+		plan.LastDispatchedAt, plan.UpdatedAt = state.LastDispatchedAt, state.UpdatedAt
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
 	}
 	updated, err := r.client.UpdateRegistryCleanupSchedule(ctx, state.RegistryID.ValueString(), state.ID.ValueString(), body)
@@ -430,6 +479,8 @@ func (r *cleanupScheduleResource) ImportState(ctx context.Context, req resource.
 			"Expected `<registry_id>/<schedule_id>`, got: "+req.ID)
 		return
 	}
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("registry_id"), parts[0])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+	// The API renders UUIDs in lowercase: an ID typed in uppercase must still
+	// find its schedule, and must not differ from `ccp_registry.id` in state.
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("registry_id"), strings.ToLower(parts[0]))...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), strings.ToLower(parts[1]))...)
 }
