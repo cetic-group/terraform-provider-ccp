@@ -20,7 +20,10 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its versioning and warns if it was set outside the platform (the first apply
   sets a retention, 30 days by default, and deletes older previous versions)
   or if the configured retention is shorter than the one in place. The
-  retention is only sent when it is written in the configuration.
+  retention is only sent when it is written in the configuration; when it is
+  not and a versioning write is planned, the plan shows it as known after
+  apply, so a retention changed in the console meanwhile is kept and recorded
+  instead of failing the apply.
   Requires the platform versioning API (`GET/PUT /v1/buckets/{id}/versioning`).
 
 ### Deprecated

@@ -931,6 +931,24 @@ func (r *objectBucketResource) ModifyPlan(ctx context.Context, req resource.Modi
 		return
 	}
 
+	// A retention absent from the configuration is not sent (see Update): the
+	// platform answers the one in place, which may differ from the state value
+	// UseStateForUnknown put in the plan (changed in the console, saved plan or
+	// `-refresh=false`). When a write is planned, the plan must therefore not
+	// promise that value — Terraform would reject the apply as an inconsistent
+	// result. Without a write, the state value stands.
+	if planV != nil && (stateV == nil || !planV.Status.Equal(stateV.Status)) {
+		daysPath := p.AtName("noncurrent_version_expiration_days")
+		var cfgDays types.Int64
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, daysPath, &cfgDays)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if cfgDays.IsNull() {
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, daysPath, types.Int64Unknown())...)
+		}
+	}
+
 	switch {
 	case planV != nil && creating && planV.Status.ValueString() == "Suspended":
 		resp.Diagnostics.AddAttributeError(p.AtName("status"), "A new bucket cannot be created with suspended versioning",

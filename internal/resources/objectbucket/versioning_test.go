@@ -473,6 +473,11 @@ func runModifyPlan(t *testing.T, state *objectBucketResourceModel, plan objectBu
 
 func runModifyPlanWith(t *testing.T, r *objectBucketResource, state *objectBucketResourceModel, plan objectBucketResourceModel) resource.ModifyPlanResponse {
 	t.Helper()
+	return runModifyPlanFull(t, r, state, plan, plan)
+}
+
+func runModifyPlanFull(t *testing.T, r *objectBucketResource, state *objectBucketResourceModel, plan, config objectBucketResourceModel) resource.ModifyPlanResponse {
+	t.Helper()
 	ctx := context.Background()
 	var sc resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
@@ -486,7 +491,12 @@ func runModifyPlanWith(t *testing.T, r *objectBucketResource, state *objectBucke
 			t.Fatal(d)
 		}
 	}
-	req := resource.ModifyPlanRequest{Plan: tfsdk.Plan{Raw: pl.Raw, Schema: sc.Schema}, State: st}
+	cf := tfsdk.State{Schema: sc.Schema}
+	if d := cf.Set(ctx, &config); d.HasError() {
+		t.Fatal(d)
+	}
+	req := resource.ModifyPlanRequest{Plan: tfsdk.Plan{Raw: pl.Raw, Schema: sc.Schema}, State: st,
+		Config: tfsdk.Config{Raw: cf.Raw, Schema: sc.Schema}}
 	resp := resource.ModifyPlanResponse{Plan: req.Plan}
 	r.ModifyPlan(ctx, req, &resp)
 	return resp
@@ -623,4 +633,64 @@ func TestModifyPlan_StateWithBlock_DoesNotReadTheBucket(t *testing.T) {
 		t.Fatal(resp.Diagnostics)
 	}
 	noVersioningCall(t, srv)
+}
+
+// ── Durée hors configuration dans le plan (re-revue #113) ───────────────────
+// Sans durée dans la configuration, UseStateForUnknown met la valeur de l'état
+// dans le plan. Si un PUT part, la plateforme renvoie la durée en place, qui
+// peut différer (console, plan sauvegardé, -refresh=false) : le plan ne doit pas
+// promettre la valeur de l'état, sinon Terraform rejette l'apply
+// (« inconsistent result after apply »). Vérifié aussi avec le vrai Terraform.
+
+func plannedDays(t *testing.T, resp resource.ModifyPlanResponse) types.Int64 {
+	t.Helper()
+	var d types.Int64
+	if diags := resp.Plan.GetAttribute(context.Background(), path.Root("versioning").AtName("noncurrent_version_expiration_days"), &d); diags.HasError() {
+		t.Fatal(diags)
+	}
+	return d
+}
+
+func TestModifyPlan_UnconfiguredRetention_UnknownWhenAWriteIsPlanned(t *testing.T) {
+	state := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	plan := withVersioning(model(false, nullRules()), vers("Suspended", i64(30))) // valeur reprise de l'état
+	config := withVersioning(model(false, nullRules()), vers("Suspended", nil))
+	resp := runModifyPlanFull(t, &objectBucketResource{}, &state, plan, config)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	if !plannedDays(t, resp).IsUnknown() {
+		t.Fatalf("the plan must not promise the state value when a PUT will answer the one in place: %v", plannedDays(t, resp))
+	}
+}
+
+func TestModifyPlan_UnconfiguredRetention_KeptWhenNothingIsWritten(t *testing.T) {
+	state := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	plan := withVersioning(model(true, nullRules()), vers("Enabled", i64(30)))
+	config := withVersioning(model(true, nullRules()), vers("Enabled", nil))
+	resp := runModifyPlanFull(t, &objectBucketResource{}, &state, plan, config)
+	if got := plannedDays(t, resp); got.IsUnknown() || got.ValueInt64() != 30 {
+		t.Fatalf("without a versioning write the state value stands (no spurious diff): %v", got)
+	}
+}
+
+func TestModifyPlan_ConfiguredRetention_KeptAsWritten(t *testing.T) {
+	state := withVersioning(model(false, nullRules()), vers("Enabled", i64(30)))
+	plan := withVersioning(model(false, nullRules()), vers("Suspended", i64(60)))
+	resp := runModifyPlanFull(t, &objectBucketResource{}, &state, plan, plan)
+	if got := plannedDays(t, resp); got.IsUnknown() || got.ValueInt64() != 60 {
+		t.Fatalf("a configured retention is planned as written: %v", got)
+	}
+}
+
+func TestModifyPlan_BlockAddedWithoutRetention_Unknown(t *testing.T) {
+	srv := testutil.NewTestServer(t, testutil.Routes{versioningGet(versioningBody("Enabled", 45, "applied"))})
+	defer srv.Close()
+	r := &objectBucketResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	state := model(false, nullRules())
+	plan := withVersioning(model(false, nullRules()), versUnknownDays("Enabled"))
+	resp := runModifyPlanFull(t, r, &state, plan, withVersioning(model(false, nullRules()), vers("Enabled", nil)))
+	if resp.Diagnostics.HasError() || !plannedDays(t, resp).IsUnknown() {
+		t.Fatalf("a block added without retention is known after apply: %v %v", resp.Diagnostics, plannedDays(t, resp))
+	}
 }
