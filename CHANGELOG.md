@@ -6,6 +6,13 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## v7.5.1 (2026-11-15)
+
+A patch version, with no change needed on the platform side. It fixes
+« Provider produced inconsistent result after apply » on in-place updates
+introduced long before v7.5.0 and made frequent by the `versioning` block
+(#117).
+
 ### Fixed
 
 - `ccp_object_bucket`, `ccp_block_volume`, `ccp_vm_instance`,
