@@ -214,9 +214,8 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"updated_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 timestamp of the last server-side update.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				// No UseStateForUnknown: every in-place update moves it on the platform side,
+				// so the plan must not promise the state value (#117).
 			},
 		},
 	}

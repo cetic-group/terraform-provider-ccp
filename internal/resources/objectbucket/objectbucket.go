@@ -193,9 +193,9 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 				MarkdownDescription: "Total size of the objects stored in the bucket, " +
 					"in bytes, as reported by the storage usage statistics.",
 				Computed: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64UseStateForUnknown(),
-				},
+				// No UseStateForUnknown: the usage statistics move on their own, and an
+				// in-place update re-reads them, so the plan must not promise the state
+				// value (#117).
 			},
 			"status": schema.StringAttribute{
 				MarkdownDescription: "Current lifecycle state. One of `creating`, " +
@@ -240,9 +240,8 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			"updated_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 timestamp of the last server-side update.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				// No UseStateForUnknown: every in-place update moves it on the platform side,
+				// so the plan must not promise the state value (#117).
 			},
 		},
 	}

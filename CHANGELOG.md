@@ -6,6 +6,17 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Fixed
+
+- `ccp_object_bucket`, `ccp_block_volume`, `ccp_vm_instance`,
+  `ccp_container_instance`: an in-place update no longer fails with
+  « Provider produced inconsistent result after apply » (#117). The plan
+  kept the state value of `updated_at`, which the platform moves at every
+  write; it is now « known after apply » when the resource is updated. Same
+  for the `size_bytes` of a bucket (usage statistics that move on their own),
+  and for `public_ip_address` of a VM or a container when `public_ip_id`
+  changes. A plan without any change still shows no difference.
+
 ## v7.5.0 (2026-11-15)
 
 A minor version. The change below needs only the platform API of
