@@ -6,6 +6,11 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## v7.5.0 (2026-11-15)
+
+A minor version. The change below needs only the platform API of
+cetic-cloud-platform v4.29.0, in production since 2026-11-14 (#1923).
+
 ### Added
 
 - `ccp_object_bucket`: optional `versioning` block — `status` (`Enabled` or
