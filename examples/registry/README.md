@@ -9,6 +9,8 @@ Provisions a complete CCR (CETIC Container Registry) stack:
   - `alice` — human admin, full access via the `*:*` ACL.
   - `ci-pull` — pipeline account scoped to `myapp/*` with `pull`+`push`.
 - Two `ccp_registry_acl` rules wiring users to repository patterns.
+- A `ccp_registry_cleanup_schedule` keeping the 5 most recent pre-release
+  tags of each `myapp/*` repository, every night at 03:00 UTC.
 
 ## Usage
 

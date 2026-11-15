@@ -77,6 +77,26 @@ resource "ccp_registry_acl" "ci_push_myapp" {
   actions      = ["pull", "push"]
 }
 
+# ─── Scheduled image cleanup ───────────────────────────────────────────────
+#
+# Every night at 03:00 UTC, keep the 5 most recent pre-release tags of each
+# `myapp/*` repository. Matching images go to the registry's recycle bin and
+# are only purged after its grace period — restorable until then.
+#
+# A scheduled run condemns images WITHOUT a prior simulation: simulate a new
+# schedule (console or API) before giving it a cron. Omit `cron` for a
+# schedule that only runs on demand.
+
+resource "ccp_registry_cleanup_schedule" "prereleases" {
+  registry_id   = ccp_registry.main.id
+  name          = "prereleases"
+  repo_patterns = ["myapp/*"]
+  tag_patterns  = ["*-rc-*", "*-dev"]
+  criterion     = "keep_last_n"
+  value         = 5
+  cron          = "0 3 * * *"
+}
+
 # ─── Outputs ───────────────────────────────────────────────────────────────
 
 output "registry_url" {
