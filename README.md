@@ -130,7 +130,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | Storage | `ccp_block_volume` | Resizable block storage. `size_gb` can grow; attach/detach via `attached_to_*`. |
 | Storage | `ccp_object_bucket` / `ccp_object_storage_key` | S3-compatible object storage buckets + scoped access keys. |
 | Database | `ccp_db_pg_instance` / `ccp_db_mysql_instance` / `ccp_db_valkey_instance` / `ccp_db_ferretdb_instance` | Managed PostgreSQL / MySQL-compatible / Redis-compatible (Valkey) / MongoDB-compatible (FerretDB v2). |
-| Registry | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` | Per-tenant CETIC Container Registry (Distribution + cesanta JWT). `admin_password` and user `password` returned once at create. |
+| Registry | `ccp_registry` / `ccp_registry_user` / `ccp_registry_acl` / `ccp_registry_cleanup_schedule` | Per-tenant CETIC Container Registry (Distribution + cesanta JWT). `admin_password` and user `password` returned once at create. Scheduled image cleanup (up to 4 per registry) through the recycle bin. |
 | Secrets | `ccp_secret` | Encrypted key/value store, projected as native Kubernetes Secrets via the `CCPSecret` CRD. `data` is Sensitive — kept in state. |
 | Scheduler | `ccp_schedule` | Weekly start/stop planner — powers a VM / container / scale set / K8s node pool / database instance off during declared windows to save on compute. Stops, never destroys. |
 | Email | `ccp_email_domain` / `ccp_email_account` / `ccp_email_alias` | Hosted mail — domain, mailboxes and aliases. A domain is created **on hold** until its ownership record is published; `password` is write only. |

@@ -121,6 +121,46 @@ type RegistryACLUpdateRequest struct {
 	Actions     []string `json:"actions,omitempty"`
 }
 
+// ─── Registry cleanup schedules (cetic-cloud-platform#1984) ─────────────────
+
+// RegistryCleanupSchedule mirrors `CleanupScheduleOut`. `Critere` / `Valeur`
+// keep the API's French field names; the Terraform schema exposes them as
+// `criterion` / `value`.
+type RegistryCleanupSchedule struct {
+	ID               string     `json:"id"`
+	Slot             int64      `json:"slot"`
+	Name             string     `json:"name"`
+	RepoPatterns     []string   `json:"repo_patterns"`
+	TagPatterns      []string   `json:"tag_patterns"`
+	Critere          string     `json:"critere"`
+	Valeur           *int64     `json:"valeur"`
+	Cron             *string    `json:"cron"`
+	Enabled          bool       `json:"enabled"`
+	LastDispatchedAt *time.Time `json:"last_dispatched_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+}
+
+// RegistryCleanupScheduleWrite is the body of both POST and PATCH
+// `/v1/registries/{id}/cleanup/schedules[/{schedule_id}]`.
+//
+// The provider always sends EVERY field, `valeur` and `cron` included as an
+// explicit `null`: on PATCH an absent field means "unchanged", while
+// `"cron": null` makes the schedule manual and `"valeur": null` clears the
+// value. Sending the whole desired state keeps the PATCH free of the API's
+// "`valeur` is required when `critere` changes" rule and of any
+// "absent = keep" drift. The API forbids extra fields (422): add nothing here
+// that the platform schema does not declare.
+type RegistryCleanupScheduleWrite struct {
+	Name         string   `json:"name"`
+	RepoPatterns []string `json:"repo_patterns"`
+	TagPatterns  []string `json:"tag_patterns"`
+	Critere      string   `json:"critere"`
+	Valeur       *int64   `json:"valeur"`
+	Cron         *string  `json:"cron"`
+	Enabled      bool     `json:"enabled"`
+}
+
 // ─── Status constants ─────────────────────────────────────────────────────────
 
 const (

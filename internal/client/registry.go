@@ -113,3 +113,35 @@ func (c *Client) UpdateRegistryACL(ctx context.Context, registryID, aclID string
 func (c *Client) DeleteRegistryACL(ctx context.Context, registryID, aclID string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/registries/"+registryID+"/acls/"+aclID, nil, nil)
 }
+
+// ─── Registry cleanup schedules (cetic-cloud-platform#1984) ─────────────────
+
+// ListRegistryCleanupSchedules returns the schedules of a registry, ordered by
+// slot. The API has no GET for a single schedule: readers look it up here.
+func (c *Client) ListRegistryCleanupSchedules(ctx context.Context, registryID string) ([]RegistryCleanupSchedule, error) {
+	var out []RegistryCleanupSchedule
+	if err := c.do(ctx, http.MethodGet, "/v1/registries/"+registryID+"/cleanup/schedules", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) CreateRegistryCleanupSchedule(ctx context.Context, registryID string, req RegistryCleanupScheduleWrite) (*RegistryCleanupSchedule, error) {
+	var out RegistryCleanupSchedule
+	if err := c.do(ctx, http.MethodPost, "/v1/registries/"+registryID+"/cleanup/schedules", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) UpdateRegistryCleanupSchedule(ctx context.Context, registryID, scheduleID string, req RegistryCleanupScheduleWrite) (*RegistryCleanupSchedule, error) {
+	var out RegistryCleanupSchedule
+	if err := c.do(ctx, http.MethodPatch, "/v1/registries/"+registryID+"/cleanup/schedules/"+scheduleID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteRegistryCleanupSchedule(ctx context.Context, registryID, scheduleID string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/registries/"+registryID+"/cleanup/schedules/"+scheduleID, nil, nil)
+}

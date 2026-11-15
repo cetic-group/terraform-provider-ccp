@@ -1,0 +1,13275 @@
+[
+{
+"name": "",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": " ",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "a",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": " aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": " aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "-a",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "_a",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "a-b c.d_e",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "é",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "aé",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "a\tb",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "a\n",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "\u001ca",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "a\u001f",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "Nightly 1",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "a/b",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": " a ",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "a ",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "a  b",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "1",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "a:b",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*?"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"??*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?*/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"APP/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a**b"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" "
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" app/* "
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/[x]"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app\\x"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"//*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"team/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*-dev"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a.b_c-d/e?"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*\n"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"\u001capp"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*?"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"A_b.c-1"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"a/b"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"**"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+" * "
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"v1+x"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"é*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"?"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*\u001f"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"a"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a0",
+"a1",
+"a2",
+"a3",
+"a4",
+"a5",
+"a6",
+"a7",
+"a8",
+"a9"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"a0",
+"a1",
+"a2",
+"a3",
+"a4",
+"a5",
+"a6",
+"a7",
+"a8",
+"a9"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a0",
+"a1",
+"a2",
+"a3",
+"a4",
+"a5",
+"a6",
+"a7",
+"a8",
+"a9",
+"a10"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"a0",
+"a1",
+"a2",
+"a3",
+"a4",
+"a5",
+"a6",
+"a7",
+"a8",
+"a9",
+"a10"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a",
+"a"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"a",
+"a"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" a",
+"a"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+" a",
+"a"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a",
+"b"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"a",
+"b"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "  ",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "\t",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0  3 * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": " 0 3 * * * ",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/5 * * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/0 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/00 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/99 * * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/100 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "60 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "59 23 31 12 *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 24 * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 0 * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 1 * 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * * 7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * * 0-6",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * * 6-0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * * 3-3",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1,2 * * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*,5 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5,* * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1-5/2 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0\t3 * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0\u001c3 * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * * *\u001f",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0                                                            3 * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * * *                                                        ",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "00 03 * * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "000 3 * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 */2 * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 */2 * 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 1-31 1-12 *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",1 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1, * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1,,2 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "a * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * JAN *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-1 * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1- * * * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 ? * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 L * *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "@daily",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * * *é",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 3 * * ٣",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 1 1 0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * 0 *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * 13 *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/5 */2 * * 1-5",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 * * 1,3,5",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 0 1,15 * *",
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-dev"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/*"
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*",
+"app"
+],
+"tag_patterns": [
+"v1",
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"v*"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*",
+"*"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 6,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3650,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "older_than_days",
+"valeur": 3651,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 0,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1000,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 1001,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",543 13/* 021 *65*3 6/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",58 -/-*9 44976 ,73 5*898",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "86516 * -22* 07538 *9-64",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "24*6* 7 ,8 7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/1 *3905 ,3 7 ,*6*2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "10 4811 9 3,1 /6-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/2 6* /-3 5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "- ,* 396 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5,144 5 4*456 /6 6-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*,12 /94 2 05/0 9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 8 316 544",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-5/ 84*3 *83,1 238 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "110 322 3 1 10",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",470 5 0 ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2/5 -, 45 /841",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "93 4/- 1436- - 4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3, 4/*1 2379 7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 29-8/ -70 728/ 5-21",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 1 - 07*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1231 897,0 1 // //15 6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "18 3 *442 69",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9 77, , 83 61205 0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "68 *9/ 458/- /1581 -7 *-*-5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3*093 195 5372 ,2/59 -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ 32 -18 3,95 5919",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6 0, 55 ,16",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*8- /5*8 21 6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*,9 4/ -92 /32* 58",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4,0, 13 239 59",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "86 43069 7*1/ 5942 889",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8, 8 6*,6 8/9 8,0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "805, 928/ 6*6* 0 -9*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "01 ,49 4 -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/-* 5 6 726 9-5*-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/8 43 8 6 77-8 3-,-6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/* 27 0842 *89 /4* /499",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",8 ,69/ ,88 ,6 68/89",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "569 /674 9643 37 /5,,0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "872 7737- 5 405 656*4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "18 *497, **0, /3158 *87",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/17 *68/9 *6 - 094*6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",6*, *0 3941 5943 8936 0478",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "76,63 5 5 0// ,,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "06- 494* 4/ 0 4*6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "328 * 7*-2 / /3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "77/6 ,4 * 5,68 /191 ,2625",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-129 - 84 561 137",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1/9** 180 9/4 70-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "912 1816, 5,-2 04 -5314",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5 ,*0 65,7 /,599 780",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "346 06 451- 8* 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "50 5 / 45/ 18 ,//,6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4 68,71 4 63*5 /",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*-,8- *648, 5, 5,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4 - 57721 9/ 7- 330/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/8- -4- 78* ,7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3-3,, 73 10/ 237 89",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9/469 5 3085 ,-28",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9/847 53 65 947",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6 3043* ,4 *35-9 38",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7 97,4 2 45 647/0 5/06,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8261 * 51 2 /7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-- 12*1 ,7- - 223/3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",*/36 5-63 0* 5,4 29",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2991- 16 ,3/2 8*729 083",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "58190 78/ ,3176 07 9-50",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "73 157 7 , 72 ,,,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3/* 3 0 2/93",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9,,9/ 59 -26 1/40 07 7-2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7054 8/-/ 7844 -3 4* 91",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "54*8 164 6, 85486 3*9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "- 9,/6 /0843 85,06 -82",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6*5 5958/ 271 40 -394",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "45 /,2 6*79 6181, 3443 50",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "50,73 /6-8 /-/7 -01 4455",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "26125 ,726 4*67- 7 571",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2-,28 45-1 15 8-987 2,*60",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8167 -14 ,*943 558 ,83/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9-- 3629 28,, 2538 8174",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "09 3-0 * 951 13797",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",5, *4 ,- 4 /795",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2502 -8487 88**8 *5 77-29",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* 9 9/778 93711 /1 05411",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "92 8* ,6 0-39 65",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",08 4*2 *4-41 6 766-/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*3 7-142 99-6 6/793 90-7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7 /1* 26 7,*/*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7 ,19, ,53/1 71, 81",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 9-/1- 78 --904 112 *69/8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 -7 ,,-30 -51*- 77327",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4670 4/ ,82* 44-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/0-68 7-19- ,13/- 1*7 * 6,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9* 8- 186 6 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "839 3/ 4--, 44*62 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6* * 4,0,3 0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "817 1//2 9,18 556 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7,6, 1965/ /,8 02 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "931,1 3622, 0/0* 08",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6*8 86/5 /68* 5/7* -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "634 0 * 64980",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "28 -*, 6615- *4 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "67/87 284* 211 61527 /7 *477",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9 6 5 0 5 5258",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3,423 *620 1/4/7 5 94",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "99484 35 7 /6 7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "14/ 8/89 64 8,842 1 3435,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0*67 48 31 / 989 253-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "97 ,53 2 -7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "94444 2 3853 *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4*, 246 7/63 *-86",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1, 11526 51-6 98/81 81871",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7-85 7221 7/8,3 -75 6413 ,6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4/39 84-9 2 1,-03 52551 ,421",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "34 -897 ,*7 6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "46 39889 29 654-4 8114/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/48 3 3*06 *13,6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1*5 11/ - -- 89*92",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "678 ,3*-3 *47- /71 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3*, 3327 7618 3/751 93926 847",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "672 6 9157 5 9/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1197 *3-, 1, 96253",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "- 6299/ 9*,1 17-02",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8589 26 -4 3675/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 14 6- 16-*3 /6*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4 9//3 64 04",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-44 , 27, 543 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-9-, ,7 49- 2 344",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "82 09 71/8 4*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8- 0**0, *1-4 9, 533",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "263 00/ /3235 34/2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8*5 1* ,56* 2 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1 2, 36 8- 587",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "15043 3,041 ,83 ,1/ 7195 -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/3926 46*38 8, 16,6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "182,2 7/4*9 2687/ *8960 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9*4-, 18724 8 698 ,005*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "98 /8 2/ -9-7, 0923",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/,5- 0,*, / 692 73 6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5 *4 8 9,81- 830/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ //*42 9921 6 997 11-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3-*3 24, 47 6/*1/ 6/*9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 1548 49864 76 4,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4218, 42 , ,/*97",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-869/ 2157 044 4, *-951",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-8-- 7,00 852 7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 140,, 9570 6 5 *34",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1/678 92-/3 *-47 ,* ,1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",, - 00 88-37",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3628 27 *- 18 67,6 ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* 856 095 ,, 0/3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*89-7 ,/1 142* - ,44",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "76 0*5 71-1 4 ,4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1 6132 3200 3*/-9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "646 *8 / 9 5/8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 8,4 ,-46* 7- 948 ,91*,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "720 22/ 95 37 , 5-5,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "07/ 4 334 5 73 6824",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ 19 3/ 94 690",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5337 /3288 -90 905 2*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",6,3 14 71* 24/9 200",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "442 /46 /2 0 29",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*1, 47, -2-9 *53 *1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/*4 8461- *-328 2-/19 0989 1611",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1141* -,487 018 988-1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "22 4/ 15 4*0* 0637",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/74-9 9594 14*3 2,17 9,7,3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "28 *392* 5 77 4/ 39",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "63437 0375- -29 1997 *-4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "83* ,893 -,1 66 5094",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "071 * 3/-2 * 7,-0-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "796 7 32 0 5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "97051 781/7 0*6* 75 -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "39*/2 2*- , 0/6 2**0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "34/2 0996 *38 9134 ,*3 80,2/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/91 17 8 212/ *00",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2122 9/* 08- 3 8/129",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5/ 0 ,12/4 45- 631",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "78,8 , 8 30 17*-3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "035 6 *2 262/ 8823",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "732/ 34 410/3 329",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6663/ 833 1*62 410-0 776",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/8* 824- 08- 51 /48,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9, -2 1 01,91",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/33 8 ,3 472 288",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1 ,770 451-, *08 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*5 5183 /9 ,6*64 8327",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1*7 87 60 * 5 58",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "850, 264*/ 0001 58850 41*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",, -98 5-- 8 45 6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*/963 8 15/-9 9*36* ,6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*,3 - 33 *-*0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/, 54-,6 8 06 /10",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5038 36/9 * *75- 00-9 4951",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "62 85,45 1- 0 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ", 4-32 /8 362 ,-/ ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "247/8 778 322*2 83131 ,978 3,/08",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "***, 36 ,*7 28- 0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* 220* 846/* 5/ 8*-2/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "25 / 67-49 4/19/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*2717 694 1514 01 //537",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* 4/-*/ - 05 ,1718",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3451 43/0 * ,,3, ***",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "96 7 *2 119 3**8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ 9 77 66 **3,5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "98 41 9 97 850-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",3 **77 5411 55285",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "887 989- 2 546 -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",58/ 57 32-/3 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0--6 14 40/,4 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "94347 **-3 5-25 /58,2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "023 95 49 36*0 81-/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",1/6 /684 *268- 2612",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/533 *6 17 2-44 /1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "40 75-7 72*/ 9* 17,*5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2 820 5,112 2- ,0165 24",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "722, 30 16* 866 019/ 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9/5 * 91114 77 /38",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2/46 2 92 //75, 564",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4021 6 /1, // /7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2-62 73,62 6 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "41*6* 526 6*08 ,214* 53/ 4/810",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",1,6 39 ,92, 8927- 0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ /-/8 945/3 ,002 5/1-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7* 7 / 42-66 6/2,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/99 75609 3/82 4 14*28",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "75* 59990 905 7",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ", 6,/16 - 768 4,-5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "19 -5/2 35 ,8463 , 60",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "262 29,/ 2* /*/66",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-833 52 /6224 8,9 5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9*84 63637 -96,6 , 8,4*9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 86*-3 2/746 7 --2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2 2676 5/01 9807 *1/93",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9 0*1 6646 /4-6 76",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "**80 2 95 42",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "53/* /020/ - ,/0 3872",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "13 -43 4,4 ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 -8/, 5,672 93 64",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3207- ,/* 27 7 6*0 *5/*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "426- 6 9345 5 191",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8- 17480 3462 695* 3-4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8-4 2824 10/3 1-5 4/8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ 3 43*0 /2 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3*07 *2 /6,0 -0 71",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-6 8597 14-93 304- 49-2,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5065 38146 81 *3/2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9 * 553/ 0 540-4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 81 6,7 819 8184 3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*8456 58043 /6 1-30- ,0,25",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* 0// 28 96",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "686 /249 7,7** 363 -6492",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "94- 1-9,3 56 6*04 **",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 57556 7-1* 0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*09 3853 7 ,8*2* 7,-,8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "79 0 90 9,22 9,4/ /",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*2 1- ,3838 5 /0744",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ 1,/3, 11294 0-82",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "82 66-0 *2 *,- 84",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "053 *-5 7* 8267 *028",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9559 98 9/ ,24/ 7/34",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5 1 *-*-7 697 4 05992",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 ,, //53 9808/ 676",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0637 ,/0 */3 27/48 1,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/6 5160, ,8 -19*7 540,6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-*82 605 *, 2066 /",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",355 859,9 -98 7 *, ,724",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3-9 ,427 8 12- ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",7/6 8 6-, * 75 0-/2-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "90 6 39 3-779 1,012",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "585 12 1293 08 7-178 //78",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "6,6/ --818 *92* 473 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "91- 72,00 ,0 13",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7326, 2 ,*2-8 5619",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/1 5086 2 79*,7 53- 99",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ / 3644 *4 0904",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "67/ /4 /*0 725 /9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "51* * 35*3 3,*39 53014 4*50",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* 5 66 *,42- 1, *6-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4/ *510, / 29645",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "82010 0 /831 0 95",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",125 -199 *60/, 17035 , 49-18",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4,/7 3999* 5 560 81*19",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ", 6889 2 24 37",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "80 8-, 97 711* / /3470",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5 *6285 69767 ,, 186",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1-7 2337 3,- 2853/ -8196",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2499 -*-00 38 /213 ,/9/9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "54,,8 938-5 0- /,19 //",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "94 88321 /2*53 47441 26 ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7234 ,95 -57 855 619",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "35,1/ -/54 18/ /2//6 -15,,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "73* *7 287 ,,6*4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*68,0 2 8319 935 67 /9/9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ", 2-499 78-73 9,8 290",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5 6*8 -36 7/8 9*616",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "45, / 5 7584 *0 *22",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "54 79181 504 1 8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1-7 3*244 /90/ 4909 *8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "636, 1/66, 7, *4406 -",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "35 21-59 -4/6 0 6746-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "37002 13/ 820 ,7-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*43 1-9 /7 /-1 *204",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "* * ,* 3//4, *4,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "930 *5/ - /6 5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1374- 1 99 1877",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "55 * 6,,84 61",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1-,-, / -*4,* *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 * 4644 73/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "660 4 1 0- 1**1 /",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",991 792* 15578 ,79",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7 * 44 0*- 92",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-1 30 -0401 2 39 5,4,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "89*69 51 4 6526",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "53 60*,0 976, 1, 8503",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7 -50 * 7*,19 76/6*",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-414/ *48,8 134, 4*6,- 92559",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "46 4 8 69455 -8,4 6-,1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3/148 39-* // 50",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "63/73 01* 1- **34",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-,7 1,601 7 -4-* 900",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "67 22 /45/5 -6 /9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "24-31 5-11 7 18 4,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ 7 1352- 8743 *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "77037 62 *313 0381, 868,8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/ -942 03,,3 2789 25",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "01 06 8 3785",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/3 ,59*0 9 46 5 93",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5 92910 48, *626",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "09 91/9 2031 * 84",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4/991 79466 7 305 /3",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/0*6 7 2-14 4 25",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "14 22 /299 -2 5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "644/ 0,, 653-0 *8",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-- 86/63 390/ 13 */",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "95 8 92 *1 86908",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "283 4 *5 248 800-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2/5 78/ 4 * 97",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "345-6 6,5 79 8/9 54106 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "29 8*7 0-3/2 525*, 31",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2 02 5520 303",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",933 37- 1/5 7 7// 1,55-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-21,7 7 4,062 1-*67",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7*0 */9 9, ,-/ 00742 5*-46",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "5*67 70-36 /8- 995 /06*,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-2 * 3382 0-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*,310 7* -1- 4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-,7 38217 , 9/-40 1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 *7 0/93/ 293 2162",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4*7, 630-0 15814 329 1956",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "278 95 *9196 20** 9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "76 797 / 6 50",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "04 5179 5,9 3/1 5,4, ,1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/, - ,081- - 1-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "12587 19/ /5- 2* 2814",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4246 , 4 /2 4266 /365",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-394 0,3-/ ,5350 9// 425",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8947 8 35*0 *7 ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ", 6*5/4 65 095 2/,/9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*4 -5-8 27*9 * 872",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "18613 90//5 ,664 7*/ ,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "1/7 73 82652 9 ,/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "935 -*8,- 8679- 725*/ 265",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/8*3 8 , 135,1 795",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*-8,4 - 3 -853 70/5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "05834 0, 80282 25*96",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "4// *6 777 2 -2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-9 67* 3 38 -7166",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "268/ 394 3 ,18,-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2377- 031 84 4 8 *4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2 -9 436 3,83* *0505",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*717* *7/8 -999 6- /892",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*,-7 /33 7973, -0/7 9*4",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2 31 4/*46 1*,52 7868/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "7, 28*-0 9 9 -*85,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0 27/8 ///9 91 00-",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "0,,/9 819 / 0,6 *1",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3*8 *6 6-4 4 016",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-45 1*1 68 ,* 6,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/638 1525 ,2 5 2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 880*1 6 2 7*72 8842",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "427 10509 2704 5/4/- 6 51",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "9 -8/ 55689 4 /1-9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",8, 010 29574 14 9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "59-33 705 *,, ,*0 85,2",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "46 -23 /38 6 2814 7*096",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*1 233 -2*3- 991, 9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",79 3 ,,80 /0 /04",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*761 6-0 6 147,* *",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": ",4-,5 628 16 1-*8 --9",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "2/993 8,,66 91,-/ 32/8 77413",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "*3- 0 4**,3 4-- ,/292",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "788 68 12// 68",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "3 83 9/*0, 7 8,,/",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/* 243 , 4 , 6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "8 478 5,04 06-0",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "62666 3,6 5, 42/ 033,",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "01 0, 580,8 /6",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "-124 ,-*8 -44*, 412",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "969-4 3/- 26 -0//4 *6 5",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"app/*"
+],
+"tag_patterns": [
+"*-rc-*"
+],
+"critere": "all",
+"valeur": null,
+"cron": "/372 ,8353 21292 ,24- 6/-34",
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"éb"
+],
+"tag_patterns": [
+"0*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"9-aa-"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-"
+],
+"tag_patterns": [
+"-0b.A/"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"-"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A9b 9"
+],
+"tag_patterns": [
+"?."
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é0 "
+],
+"tag_patterns": [
+"a*/"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-A**"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"A0a"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0/"
+],
+"tag_patterns": [
+"Zb"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"Z_zé0"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"zZ/A"
+],
+"tag_patterns": [
+"? / ?é"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"? "
+],
+"tag_patterns": [
+"a "
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"?*"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aAZ"
+],
+"tag_patterns": [
+"bb?."
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" éé"
+],
+"tag_patterns": [
+"a_./"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/_Z"
+],
+"tag_patterns": [
+"A0*/a"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z"
+],
+"tag_patterns": [
+"0.._*"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"bZzz"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"00Zéé"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z* "
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"b?_"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z-0_9"
+],
+"tag_patterns": [
+"_.a-"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0"
+],
+"tag_patterns": [
+"_/90"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" ab?--"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z9"
+],
+"tag_patterns": [
+"-é"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"  "
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"--"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"bz0_0"
+],
+"tag_patterns": [
+"é9__"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"9ZA-??"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"-09Z?"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"/.b*é"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"z_0"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"."
+],
+"tag_patterns": [
+"é*A"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0b"
+],
+"tag_patterns": [
+"0"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"b9"
+],
+"tag_patterns": [
+"aa?b"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é?0*?/"
+],
+"tag_patterns": [
+"-"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-"
+],
+"tag_patterns": [
+"z.A_"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" A"
+],
+"tag_patterns": [
+".?"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0."
+],
+"tag_patterns": [
+"éZé "
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-.9?."
+],
+"tag_patterns": [
+"bb*a09"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"éb_90é"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z*"
+],
+"tag_patterns": [
+"9ZbAa"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"0.Z"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/._  0"
+],
+"tag_patterns": [
+"?"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"ba"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"? Z_/é"
+],
+"tag_patterns": [
+"z"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9?z"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A/"
+],
+"tag_patterns": [
+"9a"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"  -_."
+],
+"tag_patterns": [
+"é9z"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" _0é"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"0"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"/*z9-A"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z99.9"
+],
+"tag_patterns": [
+"_A?éZ"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0/é"
+],
+"tag_patterns": [
+"é*A.a"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"."
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9Z.0b"
+],
+"tag_patterns": [
+"-"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"/a0*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0-/"
+],
+"tag_patterns": [
+"z0 "
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"."
+],
+"tag_patterns": [
+"*-.?"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Zaz"
+],
+"tag_patterns": [
+"**9.//"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"-Z9a"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"/9-"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"zA"
+],
+"tag_patterns": [
+"b*/Z"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z99"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"az"
+],
+"tag_patterns": [
+"0b/"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"//_"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*z--"
+],
+"tag_patterns": [
+"a/a--"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"b Az"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-é"
+],
+"tag_patterns": [
+"-?bé"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"?"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0ZZz0"
+],
+"tag_patterns": [
+"A./"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?0_-0 "
+],
+"tag_patterns": [
+"bA"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"?Z"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a*a"
+],
+"tag_patterns": [
+"9 b"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z*-a Z"
+],
+"tag_patterns": [
+".0"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"bZ_/"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"ba0*"
+],
+"tag_patterns": [
+"9"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_"
+],
+"tag_patterns": [
+"/"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a0090"
+],
+"tag_patterns": [
+"*9z."
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A*_"
+],
+"tag_patterns": [
+"9/"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_ ééZ"
+],
+"tag_patterns": [
+"? ?_"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"z"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z"
+],
+"tag_patterns": [
+"Z9-_"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"éZAbéé"
+],
+"tag_patterns": [
+"é_"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a9é"
+],
+"tag_patterns": [
+"0a0*9?"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"0"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é.*Z"
+],
+"tag_patterns": [
+"9b?_?-"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"0Z0.-"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" Z9éz"
+],
+"tag_patterns": [
+"ab90?"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/-b_z-"
+],
+"tag_patterns": [
+"/ 9A."
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*_"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"  Za"
+],
+"tag_patterns": [
+"az0a"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aZ A9"
+],
+"tag_patterns": [
+"-a"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0"
+],
+"tag_patterns": [
+"90*abA"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"ZAé9"
+],
+"tag_patterns": [
+"9z0"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A90a"
+],
+"tag_patterns": [
+"/Z*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"b"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z*Az0/"
+],
+"tag_patterns": [
+"Z*Z00*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/.A0 _"
+],
+"tag_patterns": [
+" é.é_"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"b/Aé*a"
+],
+"tag_patterns": [
+"0?Za/"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?_ZAé9"
+],
+"tag_patterns": [
+"zb?aA"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"bA."
+],
+"tag_patterns": [
+"*_A"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0a"
+],
+"tag_patterns": [
+"*a?Z_-"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"._"
+],
+"tag_patterns": [
+"aA"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A0?9"
+],
+"tag_patterns": [
+"?-/"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-9 Z"
+],
+"tag_patterns": [
+"aA"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A9- 0"
+],
+"tag_patterns": [
+"Zé.Z9"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?za*"
+],
+"tag_patterns": [
+"a"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"  Z/z"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"za*ZA"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_"
+],
+"tag_patterns": [
+"  .A_"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_0Z"
+],
+"tag_patterns": [
+"._A"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A?AZ0"
+],
+"tag_patterns": [
+"9"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+" "
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z .z-b"
+],
+"tag_patterns": [
+"A"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0??*"
+],
+"tag_patterns": [
+"*?ZA"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_?A"
+],
+"tag_patterns": [
+"z"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a "
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"A 0é0"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aZz-?"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z/9aZz"
+],
+"tag_patterns": [
+"b.0z"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é*_Z"
+],
+"tag_patterns": [
+"zb"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/-"
+],
+"tag_patterns": [
+"*ba*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"zAZ"
+],
+"tag_patterns": [
+"b"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a.é ?z"
+],
+"tag_patterns": [
+"*990/"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0/"
+],
+"tag_patterns": [
+"0*0Zz_"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?a/z/"
+],
+"tag_patterns": [
+"*9Z*Z/"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/9a?"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-"
+],
+"tag_patterns": [
+"*9_?z"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a??._"
+],
+"tag_patterns": [
+"9a0"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" é-z"
+],
+"tag_patterns": [
+"0Az"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"zAé*"
+],
+"tag_patterns": [
+"?_9z0"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+". A"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"./"
+],
+"tag_patterns": [
+"A"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9Z"
+],
+"tag_patterns": [
+"éA"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*z"
+],
+"tag_patterns": [
+"?A?Z-9"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"AZ?b "
+],
+"tag_patterns": [
+"z--A?"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a_-9"
+],
+"tag_patterns": [
+"Z b?*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/ZéA"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"b"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a?Z"
+],
+"tag_patterns": [
+"/"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Za9?"
+],
+"tag_patterns": [
+"z"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-"
+],
+"tag_patterns": [
+"ab0a"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?0._//"
+],
+"tag_patterns": [
+"*--0"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*/* 0"
+],
+"tag_patterns": [
+"/aA--_"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é__? "
+],
+"tag_patterns": [
+"0-_"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9Z"
+],
+"tag_patterns": [
+"A."
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"abZzZ0"
+],
+"tag_patterns": [
+". "
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?0"
+],
+"tag_patterns": [
+"b?A"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z0A a-"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z/.? 9"
+],
+"tag_patterns": [
+"ZA9"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"zAa0"
+],
+"tag_patterns": [
+"b/z.z?"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"A?a"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*0Z0.z"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A. /"
+],
+"tag_patterns": [
+"baZa"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Zé b"
+],
+"tag_patterns": [
+"? 9"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"za..A"
+],
+"tag_patterns": [
+" ."
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9"
+],
+"tag_patterns": [
+"- z"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+".ZZ"
+],
+"tag_patterns": [
+"_"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z."
+],
+"tag_patterns": [
+"A"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/9_A é"
+],
+"tag_patterns": [
+"?é"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?Abz9"
+],
+"tag_patterns": [
+"/Z 09z"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/a0 "
+],
+"tag_patterns": [
+"./Z_*-"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"AZa?é"
+],
+"tag_patterns": [
+"Zz0 _ "
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9é_a?"
+],
+"tag_patterns": [
+"/*z Zz"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_a.9"
+],
+"tag_patterns": [
+"zéZ bZ"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0-A "
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"--éAZZ"
+],
+"tag_patterns": [
+"-*_A*"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"ba .a"
+],
+"tag_patterns": [
+"_9a?**"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z"
+],
+"tag_patterns": [
+"?z900Z"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"Z"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9."
+],
+"tag_patterns": [
+"*bAéZ "
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aaz9b"
+],
+"tag_patterns": [
+"_0? _ "
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9/9"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"--"
+],
+"tag_patterns": [
+"a.9.z"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é.*"
+],
+"tag_patterns": [
+"_AZ."
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"."
+],
+"tag_patterns": [
+"/*-?z9"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Ab"
+],
+"tag_patterns": [
+"0-Az"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" b"
+],
+"tag_patterns": [
+"A/z/"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" b_*?"
+],
+"tag_patterns": [
+" A.?a"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é0Z-Z-"
+],
+"tag_patterns": [
+"b900é"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/zézé"
+],
+"tag_patterns": [
+" _0a9"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"a9A-"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é0___"
+],
+"tag_patterns": [
+"z"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a?A"
+],
+"tag_patterns": [
+"Z.-"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9?é"
+],
+"tag_patterns": [
+"/é/"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?"
+],
+"tag_patterns": [
+"9A"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Zz"
+],
+"tag_patterns": [
+"b_9?//"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-9Z-Z-"
+],
+"tag_patterns": [
+"zA"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"*?//Z0"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"./*- ."
+],
+"tag_patterns": [
+"zA0b_."
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A-/za_"
+],
+"tag_patterns": [
+".9* _"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a 9Aa-"
+],
+"tag_patterns": [
+"é__A"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_/ZAZé"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" "
+],
+"tag_patterns": [
+".?"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+".z"
+],
+"tag_patterns": [
+"ZzbZ."
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"b0*"
+],
+"tag_patterns": [
+"aZ*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_é"
+],
+"tag_patterns": [
+"/9a "
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"09-"
+],
+"tag_patterns": [
+"b_"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9Z/?"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z/z/"
+],
+"tag_patterns": [
+"_b."
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0 00?z"
+],
+"tag_patterns": [
+" *Z*"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"A*-9.b"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z 9A?"
+],
+"tag_patterns": [
+" Z"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-? "
+],
+"tag_patterns": [
+"*b9z/é"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"zz/?zz"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?"
+],
+"tag_patterns": [
+"é9"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-éZ_"
+],
+"tag_patterns": [
+"Z"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"é*a/"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*-"
+],
+"tag_patterns": [
+"?b/"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_"
+],
+"tag_patterns": [
+".é_é "
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"ZzAbA"
+],
+"tag_patterns": [
+"éaz99b"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_"
+],
+"tag_patterns": [
+"-*"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?/a"
+],
+"tag_patterns": [
+"éé9A0A"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é9* -0"
+],
+"tag_patterns": [
+"?.0a9/"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_0/"
+],
+"tag_patterns": [
+"ZAZ*"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"_Z_z"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?"
+],
+"tag_patterns": [
+"é?a"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" .Z"
+],
+"tag_patterns": [
+"*A  "
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0/9"
+],
+"tag_patterns": [
+" ?z"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"Zzz"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"./"
+],
+"tag_patterns": [
+"0"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9ba*-z"
+],
+"tag_patterns": [
+".b"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-b*0"
+],
+"tag_patterns": [
+"0Aé??A"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A0A"
+],
+"tag_patterns": [
+"?A/A*"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_-"
+],
+"tag_patterns": [
+"Az?"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0_éb_9"
+],
+"tag_patterns": [
+"z?"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/é*_z"
+],
+"tag_patterns": [
+"éé"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_bé"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"*.a/"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"éz*.9Z"
+],
+"tag_patterns": [
+"A-A//"
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/-b9"
+],
+"tag_patterns": [
+"-ba Aé"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0? "
+],
+"tag_patterns": [
+"_Z-9"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"_ z"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é/_Az"
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"b0 ??é"
+],
+"tag_patterns": [
+".*Z_.0"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+""
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"za"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-909A"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+".-?éz_"
+],
+"tag_patterns": [
+"-"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?/9 "
+],
+"tag_patterns": [
+"éZ../."
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"é"
+],
+"tag_patterns": [
+"b99"
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"*9"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0é-?ab"
+],
+"tag_patterns": [
+"/?/."
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_.z*"
+],
+"tag_patterns": [
+"éb. a-"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_9é-"
+],
+"tag_patterns": [
+"/"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" _9Z"
+],
+"tag_patterns": [
+"0 "
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"?_A"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z?b9 é"
+],
+"tag_patterns": [
+"bb.__*"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a9*é"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z"
+],
+"tag_patterns": [
+"_"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+".z-aA"
+],
+"tag_patterns": [
+"?.9é"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" .A?*z"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_0?.0"
+],
+"tag_patterns": [
+"z0 *ZA"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9*9-"
+],
+"tag_patterns": [
+"-Az_-."
+],
+"critere": "keep_last_n",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A**"
+],
+"tag_patterns": [
+"Z*?_Ab"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" z??.0"
+],
+"tag_patterns": [
+"-"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A"
+],
+"tag_patterns": [
+"-"
+],
+"critere": "older_than_days",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*z-"
+],
+"tag_patterns": [
+"0z."
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"*"
+],
+"tag_patterns": [
+"9Z"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/éé_.-"
+],
+"tag_patterns": [
+"0 9é.a"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z"
+],
+"tag_patterns": [
+"b._"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"aZé."
+],
+"tag_patterns": [
+"99"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+".a"
+],
+"tag_patterns": [
+"b"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/*A a"
+],
+"tag_patterns": [
+"?"
+],
+"critere": "keep_last_n",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z "
+],
+"tag_patterns": [
+"Z"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"..b?Z_"
+],
+"tag_patterns": [
+"_zAa"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+" Z_.a"
+],
+"tag_patterns": [
+"z?éb"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_.9"
+],
+"tag_patterns": [
+"?"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"* é_é"
+],
+"tag_patterns": [
+"*"
+],
+"critere": "all",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"a"
+],
+"tag_patterns": [
+"z*. _é"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"zé"
+],
+"tag_patterns": [
+"? a"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"?"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0?9é"
+],
+"tag_patterns": [
+""
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0Z"
+],
+"tag_patterns": [
+"*Z.b*9"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"ZZ"
+],
+"tag_patterns": [
+"0Z_"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/"
+],
+"tag_patterns": [
+"/"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"Z*"
+],
+"tag_patterns": [
+""
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-?Zz"
+],
+"tag_patterns": [
+"/"
+],
+"critere": "all",
+"valeur": 7,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"9_A"
+],
+"tag_patterns": [
+"a0a."
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"éa_"
+],
+"tag_patterns": [
+"a_/"
+],
+"critere": "keep_last_n",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+" b/9z"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0_ _9"
+],
+"tag_patterns": [
+"A"
+],
+"critere": "older_than_days",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"A__-/z"
+],
+"tag_patterns": [
+"b *_"
+],
+"critere": "keep_last_n",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+""
+],
+"tag_patterns": [
+"é"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"-? b"
+],
+"tag_patterns": [
+"A"
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"/*."
+],
+"tag_patterns": [
+"Zba.Z0"
+],
+"critere": "keep_last_n",
+"valeur": 3,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"09/Z0"
+],
+"tag_patterns": [
+"9Az a"
+],
+"critere": "older_than_days",
+"valeur": null,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"_?"
+],
+"tag_patterns": [
+"-"
+],
+"critere": "all",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z*0-"
+],
+"tag_patterns": [
+"."
+],
+"critere": "older_than_days",
+"valeur": 1,
+"cron": null,
+"api_accepts": true,
+"api_accepts_patch": true
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"z"
+],
+"tag_patterns": [
+"ZA"
+],
+"critere": "all",
+"valeur": 3,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+},
+{
+"name": "nightly",
+"repo_patterns": [
+"0?Z?"
+],
+"tag_patterns": [
+"0"
+],
+"critere": "older_than_days",
+"valeur": 30,
+"cron": null,
+"api_accepts": false,
+"api_accepts_patch": false
+}
+]

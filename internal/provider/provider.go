@@ -96,6 +96,7 @@ import (
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/quotarequest"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registry"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registryacl"
+	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registrycleanupschedule"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/registryuser"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/schedule"
 	"github.com/cetic-group/terraform-provider-ccp/internal/resources/secret"
@@ -248,6 +249,7 @@ func (p *ccpProvider) Resources(_ context.Context) []func() resource.Resource {
 		registry.New,
 		registryuser.New,
 		registryacl.New,
+		registrycleanupschedule.New,
 		iamrole.New,
 		iamroleassignment.New,
 		serviceaccount.New,
