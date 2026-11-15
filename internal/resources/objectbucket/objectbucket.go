@@ -14,6 +14,8 @@
 //   - region      RequiresReplace
 //   - tags        RequiresReplace (no PATCH endpoint for tags)
 //   - is_public   mutable in place (synchronous PATCH)
+//   - cors_rule   mutable in place, opt-in (cors.go)
+//   - versioning  mutable in place, opt-in, never disabled (versioning.go)
 //
 // Credentials (`access_key`, `secret_key`) are fetched via the
 // `/credentials` endpoint after the bucket reaches `active` and stored in
@@ -49,6 +51,7 @@ var (
 	_ resource.ResourceWithConfigure      = (*objectBucketResource)(nil)
 	_ resource.ResourceWithImportState    = (*objectBucketResource)(nil)
 	_ resource.ResourceWithValidateConfig = (*objectBucketResource)(nil)
+	_ resource.ResourceWithModifyPlan     = (*objectBucketResource)(nil)
 )
 
 // New returns a freshly-constructed ccp_object_bucket resource.
@@ -72,6 +75,7 @@ type objectBucketResourceModel struct {
 	IsPublic     types.Bool   `tfsdk:"is_public"`
 	CorsRule     types.List   `tfsdk:"cors_rule"`
 	CorsRevision types.String `tfsdk:"cors_revision"`
+	Versioning   types.Object `tfsdk:"versioning"`
 	Tags         types.List   `tfsdk:"tags"`
 	EndpointURL  types.String `tfsdk:"endpoint_url"`
 	SizeBytes    types.Int64  `tfsdk:"size_bytes"`
@@ -112,7 +116,8 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			"`is_public` flag is mutable in place; `name`, `region`, and " +
 			"`tags` force replacement.",
 		Blocks: map[string]schema.Block{
-			"cors_rule": corsRuleBlock(),
+			"cors_rule":  corsRuleBlock(),
+			"versioning": versioningBlock(),
 		},
 		Attributes: map[string]schema.Attribute{
 			"cors_revision": corsRevisionAttribute(),
@@ -350,6 +355,12 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Versioning, same rule: a refusal is a warning, never a tainted bucket.
+	resp.Diagnostics.Append(r.applyVersioningOnCreate(ctx, created.ID, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Fetch credentials. The bucket is `active` per the poll above, so the API
 	// should hand them out — but a `write`-scoped key is denied by design.
 	//
@@ -425,6 +436,20 @@ func (r *objectBucketResource) Read(ctx context.Context, req resource.ReadReques
 		state.CorsRevision = revisionValue(cors.Revision)
 	} else {
 		state.CorsRevision = types.StringNull()
+	}
+
+	// Versioning drift: only when the practitioner manages it here, like CORS.
+	if !state.Versioning.IsNull() {
+		v, err := r.client.GetBucketVersioning(ctx, got.ID)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read object bucket versioning",
+				fmt.Sprintf("CETIC Cloud API error for id %s: %s", got.ID, err.Error()))
+			return
+		}
+		if title, detail, warn := versioningStatusWarning(got.ID, v); warn {
+			resp.Diagnostics.AddWarning(title, detail)
+		}
+		state.Versioning = versioningFromAPI(v)
 	}
 
 	// Refresh credentials only when the bucket is `active` — in any other
@@ -548,6 +573,44 @@ func (r *objectBucketResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	} else if !updateVisibility() || !updateCors() {
 		return
+	}
+
+	// Versioning, only when the practitioner manages it. Without the block the
+	// resource stops managing it: nothing is written (it is never disabled).
+	planV, d := versioningFromObject(ctx, plan.Versioning)
+	resp.Diagnostics.Append(d...)
+	stateV, d := versioningFromObject(ctx, state.Versioning)
+	resp.Diagnostics.Append(d...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// The retention is only sent when it is written in the configuration. Unset,
+	// the plan carries the state value (UseStateForUnknown), which a saved plan or
+	// `-refresh=false` may hold stale: sending it would overwrite a retention
+	// changed in the console in the meantime.
+	if planV != nil {
+		var cfgDays types.Int64
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("versioning").AtName("noncurrent_version_expiration_days"), &cfgDays)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if cfgDays.IsNull() {
+			planV.NoncurrentVersionExpirationDays = types.Int64Unknown()
+		}
+	}
+	switch {
+	case planV == nil:
+		plan.Versioning = nullVersioning()
+	case versioningNeedsWrite(planV, stateV):
+		out, err := r.client.PutBucketVersioning(ctx, id, versioningRequest(planV))
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update versioning",
+				fmt.Sprintf("CETIC Cloud refused the versioning of bucket %s: %s", id, err.Error()))
+			return
+		}
+		plan.Versioning = versioningFromAPI(out)
+	default:
+		plan.Versioning = keptVersioning(planV, stateV)
 	}
 
 	// The revision is a computed attribute: known after apply, always. It is the
@@ -843,4 +906,112 @@ func (m useStateForUnknownInt64Modifier) PlanModifyInt64(_ context.Context, req 
 		return
 	}
 	resp.PlanValue = req.StateValue
+}
+
+// ModifyPlan reports at plan time what the platform would refuse or what has a
+// consequence the plan alone does not show (versioning, see versioning.go).
+func (r *objectBucketResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return // destroy
+	}
+	p := path.Root("versioning")
+	var planObj types.Object
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, p, &planObj)...)
+	planV, d := versioningFromObject(ctx, planObj)
+	resp.Diagnostics.Append(d...)
+	var stateV *versioningModel
+	creating := req.State.Raw.IsNull()
+	if !creating {
+		var stateObj types.Object
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, p, &stateObj)...)
+		stateV, d = versioningFromObject(ctx, stateObj)
+		resp.Diagnostics.Append(d...)
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// A retention absent from the configuration is not sent (see Update): the
+	// platform answers the one in place, which may differ from the state value
+	// UseStateForUnknown put in the plan (changed in the console, saved plan or
+	// `-refresh=false`). When a write is planned, the plan must therefore not
+	// promise that value — Terraform would reject the apply as an inconsistent
+	// result. Without a write, the state value stands.
+	if planV != nil && (stateV == nil || !planV.Status.Equal(stateV.Status)) {
+		daysPath := p.AtName("noncurrent_version_expiration_days")
+		var cfgDays types.Int64
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, daysPath, &cfgDays)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if cfgDays.IsNull() {
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, daysPath, types.Int64Unknown())...)
+		}
+	}
+
+	switch {
+	case planV != nil && creating && planV.Status.ValueString() == "Suspended":
+		resp.Diagnostics.AddAttributeError(p.AtName("status"), "A new bucket cannot be created with suspended versioning",
+			"A bucket that was never versioned has nothing to suspend. Use `status = \"Enabled\"`, or omit the "+
+				"`versioning` block.")
+	case planV == nil && stateV != nil:
+		resp.Diagnostics.AddAttributeWarning(p, "Removing `versioning` does not disable it",
+			fmt.Sprintf("Versioning cannot be disabled, only suspended. The bucket keeps its versioning (%s); "+
+				"this resource simply stops managing it. To stop creating versions, set `status = \"Suspended\"` "+
+				"instead.", stateV.Status.ValueString()))
+	case planV != nil && stateV != nil:
+		warnShorterRetention(resp, p, planV.NoncurrentVersionExpirationDays, stateV.NoncurrentVersionExpirationDays)
+	case planV != nil && !creating:
+		// Block added to an existing bucket, or bucket imported: the state knows
+		// nothing of the versioning in place, so read it before the first write.
+		r.warnOnTakeOver(ctx, req, resp, p, planV)
+	}
+}
+
+// warnShorterRetention warns when the planned retention is shorter than the one in place.
+func warnShorterRetention(resp *resource.ModifyPlanResponse, p path.Path, planned, current types.Int64) {
+	if planned.IsNull() || planned.IsUnknown() || current.IsNull() || current.IsUnknown() || planned.ValueInt64() >= current.ValueInt64() {
+		return
+	}
+	resp.Diagnostics.AddAttributeWarning(p.AtName("noncurrent_version_expiration_days"),
+		"Shorter retention deletes previous versions sooner",
+		fmt.Sprintf("Retention goes from %d to %d days: previous versions older than %d days will be deleted.",
+			current.ValueInt64(), planned.ValueInt64(), planned.ValueInt64()))
+}
+
+// warnOnTakeOver reads the versioning of an existing bucket the state does not
+// manage yet. Versioning set outside the platform usually has no expiration: its
+// previous versions are kept forever, and the first write sets a retention that
+// deletes the older ones. The platform refuses a shorter retention only when one
+// of the client's own lifecycle rules sets one.
+func (r *objectBucketResource) warnOnTakeOver(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse, p path.Path, planV *versioningModel) {
+	if r.client == nil {
+		return // provider not configured (validate-only run)
+	}
+	var id types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &id)...)
+	if resp.Diagnostics.HasError() || id.IsNull() || id.IsUnknown() {
+		return
+	}
+	cur, err := r.client.GetBucketVersioning(ctx, id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeWarning(p, "Could not read the current versioning",
+			fmt.Sprintf("Bucket %s: %s. If versioning was set outside the platform, the apply sets a retention "+
+				"and deletes previous versions older than it.", id.ValueString(), err.Error()))
+		return
+	}
+	if cur.SyncStatus == "unmanaged" {
+		set := int64(versioningDefaultDays)
+		if d := planV.NoncurrentVersionExpirationDays; !d.IsNull() && !d.IsUnknown() {
+			set = d.ValueInt64()
+		}
+		resp.Diagnostics.AddAttributeWarning(p, "Taking over versioning set outside the platform deletes older versions",
+			fmt.Sprintf("Bucket %s has versioning set outside the platform, whose previous versions may be kept "+
+				"forever. The apply sets a retention of %d days: previous versions older than %d days will be "+
+				"deleted. Set `noncurrent_version_expiration_days` to keep them longer.", id.ValueString(), set, set))
+		return
+	}
+	if cur.NoncurrentVersionExpirationDays != nil {
+		warnShorterRetention(resp, p, planV.NoncurrentVersionExpirationDays, types.Int64Value(*cur.NoncurrentVersionExpirationDays))
+	}
 }

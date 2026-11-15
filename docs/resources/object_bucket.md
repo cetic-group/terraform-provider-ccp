@@ -46,6 +46,18 @@ resource "ccp_object_bucket" "uploads" {
   }
 }
 
+# Versioning: every overwrite or deletion keeps the previous version of the
+# object for 90 days. Suspend it with status = "Suspended"; it is never disabled.
+resource "ccp_object_bucket" "documents" {
+  name   = "acme-documents"
+  region = "RNN"
+
+  versioning {
+    status                             = "Enabled"
+    noncurrent_version_expiration_days = 90
+  }
+}
+
 output "assets_endpoint" {
   value = ccp_object_bucket.assets.endpoint_url
 }
@@ -72,6 +84,10 @@ output "assets_endpoint" {
   - `max_age_seconds` - (Optional) How long the browser may cache the preflight answer, `0`–`86400`. Default `3600`.
   - `description` - (Optional) Free-form label, 1–200 characters, no leading or trailing space.
 
+- `versioning` - (Optional) Versioning of the bucket. Without this block, versioning is **not managed** by this resource: a setting made from the console or the CLI is left untouched.
+  - `status` - (Required) `Enabled` or `Suspended`. A suspended bucket stops creating versions and keeps the existing ones. A new bucket cannot be created `Suspended` (the plan refuses it: there is nothing to suspend).
+  - `noncurrent_version_expiration_days` - (Optional, Computed) Days a previous version is kept before being deleted, `1`–`3650`. When unset, the platform keeps the current value (`30` for a bucket never versioned or whose versioning was set outside the platform) and the state records it. A lifecycle rule of your own that keeps previous versions longer makes the platform refuse a shorter value; the error says which minimum to use.
+
 A bucket accepts up to 100 rules in the schema; the platform applies its own, usually lower, limit (20 by default) and may refuse `localhost` origins or wildcards. Limits that depend only on the configuration are reported at `terraform validate` / `plan`; those that depend on the platform settings are reported at apply time.
 
 ### Behaviour to know
@@ -81,6 +97,12 @@ A bucket accepts up to 100 rules in the schema; the platform applies its own, us
 - **Rules are applied to the bucket when the apply returns.** If the platform saved them but could not apply them, the next refresh reports a warning with the reason; the platform retries on its own. A change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan.
 - **Concurrent changes.** Each write sends the revision recorded in the state at the last refresh (`cors_revision`), so a change made by someone else after your `plan` — including between the `plan` and the `apply` of a saved plan — is refused instead of overwritten: run `terraform plan` again to see it. A state created before this attribute existed has no revision yet; the first write then reads the current one just before writing, and records it.
 - **Making a bucket private** while removing its `*` rule in the same apply works: the rules are written before the visibility.
+- **Versioning is never disabled, only suspended.** S3 cannot return a bucket to "never versioned". Removing the `versioning` block only stops managing it: the bucket keeps its versioning as it is, and the plan says so with a warning. To stop creating versions, set `status = "Suspended"`.
+- **The retention is only sent when you write it.** Without `noncurrent_version_expiration_days` in the configuration, changing `status` leaves the retention in place — even with a saved plan or `-refresh=false`, a retention changed in the console meanwhile is not overwritten. Changing the retention does not change the status.
+- **Taking over versioning set outside the platform deletes older versions.** Adding the block to a bucket whose versioning was set with an S3 client — often without any expiration, so previous versions are kept forever — sets a retention at the first apply: the configured one, otherwise 30 days. Previous versions older than that are deleted. The plan warns about it (it reads the bucket's versioning when the block is added to an existing or imported bucket), and also warns when the configured retention is shorter than the one in place. Set `noncurrent_version_expiration_days` high enough to keep them.
+- **Shortening the retention deletes previous versions sooner.** The plan warns when `noncurrent_version_expiration_days` goes down.
+- **Versioning keeps previous versions, which take space** until they expire.
+- **A versioning refusal at creation does not replace the bucket.** Terraform keeps the bucket and reports a warning; the next apply reads the real versioning and applies the block again. If the platform saved the versioning but could not apply it yet, the next refresh reports a warning; the platform retries on its own.
 
 ## Attributes Reference
 

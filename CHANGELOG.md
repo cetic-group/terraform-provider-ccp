@@ -6,6 +6,26 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- `ccp_object_bucket`: optional `versioning` block — `status` (`Enabled` or
+  `Suspended`) and `noncurrent_version_expiration_days` (1–3650, kept as is
+  when unset, 30 for a bucket never versioned) (cetic-cloud-platform#1923).
+  Like `cors_rule`, it is opt-in: without the block a setting made from the
+  console or the CLI is left untouched. Versioning is never disabled:
+  removing the block stops managing it, with a plan warning. The plan also
+  refuses creating a bucket `Suspended` and warns when the retention is
+  shortened. A refusal at creation is a warning, never a replaced bucket.
+  When the block is added to an existing or imported bucket, the plan reads
+  its versioning and warns if it was set outside the platform (the first apply
+  sets a retention, 30 days by default, and deletes older previous versions)
+  or if the configured retention is shorter than the one in place. The
+  retention is only sent when it is written in the configuration; when it is
+  not and a versioning write is planned, the plan shows it as known after
+  apply, so a retention changed in the console meanwhile is kept and recorded
+  instead of failing the apply.
+  Requires the platform versioning API (`GET/PUT /v1/buckets/{id}/versioning`).
+
 ## v7.4.0 (2026-11-15)
 
 A minor version. Every change below needs only the platform API of
