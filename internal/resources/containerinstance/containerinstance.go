@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccppm "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/cetic-group/terraform-provider-ccp/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -308,7 +309,9 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 					"this will be `running`.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					// Known after apply when the disk is resized: the platform may report a
+					// transitional status (#117).
+					ccppm.UseStateUnlessChanged(path.Root("disk_gb")),
 				},
 			},
 			"ip_address": schema.StringAttribute{
@@ -323,7 +326,9 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 				MarkdownDescription: "Public IPv4 address attached to the container, if any.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					// Known after apply when `public_ip_id` changes: the platform
+					// returns the new address (#117).
+					ccppm.UseStateUnlessChanged(path.Root("public_ip_id")),
 				},
 			},
 			"scale_set_id": schema.StringAttribute{
@@ -358,9 +363,8 @@ func (r *containerInstanceResource) Schema(_ context.Context, _ resource.SchemaR
 			"updated_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 timestamp of the last server-side update.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				// No UseStateForUnknown: every in-place update moves it on the platform side,
+				// so the plan must not promise the state value (#117).
 			},
 		},
 	}

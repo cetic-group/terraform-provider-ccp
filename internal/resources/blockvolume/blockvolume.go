@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccppm "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -186,7 +187,9 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 					"`available`, `attached`, `detaching`, `deleting`, or `error`.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					// Known after apply when the attachment changes: the volume becomes attached
+					// or available (#117).
+					ccppm.UseStateUnlessChanged(path.Root("attached_to_id"), path.Root("attached_to_type")),
 				},
 			},
 			"attached_to_name": schema.StringAttribute{
@@ -194,7 +197,8 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 					"if any.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					// Known after apply when the attachment changes (#117).
+					ccppm.UseStateUnlessChanged(path.Root("attached_to_id"), path.Root("attached_to_type")),
 				},
 			},
 			"error_message": schema.StringAttribute{
@@ -214,9 +218,8 @@ func (r *blockVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"updated_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 timestamp of the last server-side update.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				// No UseStateForUnknown: every in-place update moves it on the platform side,
+				// so the plan must not promise the state value (#117).
 			},
 		},
 	}
