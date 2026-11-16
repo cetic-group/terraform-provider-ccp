@@ -40,6 +40,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -69,27 +70,32 @@ type objectBucketResource struct {
 // objectBucketResourceModel mirrors the schema below 1-to-1. Tag names must
 // match the schema attribute keys exactly.
 type objectBucketResourceModel struct {
-	ID           types.String `tfsdk:"id"`
-	Name         types.String `tfsdk:"name"`
-	Region       types.String `tfsdk:"region"`
-	IsPublic     types.Bool   `tfsdk:"is_public"`
-	CorsRule     types.List   `tfsdk:"cors_rule"`
-	CorsRevision types.String `tfsdk:"cors_revision"`
-	Versioning   types.Object `tfsdk:"versioning"`
-	Tags         types.List   `tfsdk:"tags"`
-	EndpointURL  types.String `tfsdk:"endpoint_url"`
-	SizeBytes    types.Int64  `tfsdk:"size_bytes"`
-	Status       types.String `tfsdk:"status"`
-	ErrorMessage types.String `tfsdk:"error_message"`
-	AccessKey    types.String `tfsdk:"access_key"`
-	SecretKey    types.String `tfsdk:"secret_key"`
-	CreatedAt    types.String `tfsdk:"created_at"`
-	UpdatedAt    types.String `tfsdk:"updated_at"`
+	ID             types.String `tfsdk:"id"`
+	Name           types.String `tfsdk:"name"`
+	Region         types.String `tfsdk:"region"`
+	IsPublic       types.Bool   `tfsdk:"is_public"`
+	EncryptionMode types.String `tfsdk:"encryption_mode"`
+	CorsRule       types.List   `tfsdk:"cors_rule"`
+	CorsRevision   types.String `tfsdk:"cors_revision"`
+	Versioning     types.Object `tfsdk:"versioning"`
+	Tags           types.List   `tfsdk:"tags"`
+	EndpointURL    types.String `tfsdk:"endpoint_url"`
+	SizeBytes      types.Int64  `tfsdk:"size_bytes"`
+	Status         types.String `tfsdk:"status"`
+	ErrorMessage   types.String `tfsdk:"error_message"`
+	AccessKey      types.String `tfsdk:"access_key"`
+	SecretKey      types.String `tfsdk:"secret_key"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
 }
 
 // bucketNamePattern matches the API constraint: S3-compliant DNS names,
 // lowercase alphanumerics and hyphens, must start and end with an
 // alphanumeric, length 3..63.
+// encryptionModePattern is a format check only: the platform validates the
+// value, so a new mode needs no provider release.
+var encryptionModePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+
 var bucketNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$`)
 
 // Polling parameters.
@@ -166,6 +172,24 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 				Default:  booldefault.StaticBool(false),
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"encryption_mode": schema.StringAttribute{
+				MarkdownDescription: "Chiffrement des fichiers du bucket, choisi à la création et non modifiable : " +
+					"`none` (défaut) ou `sse_c` (clé fournie par vous à chaque lecture et écriture ; " +
+					"CETIC ne la connaît jamais et ne peut pas la récupérer). " +
+					"Un bucket à clé client reste toujours privé. Changer ce mode force le remplacement du bucket.",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("none"),
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						encryptionModePattern,
+						"must start with a lowercase letter and contain only lowercase letters, digits and underscores",
+					),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"tags": schema.ListAttribute{
@@ -281,6 +305,11 @@ func (r *objectBucketResource) Create(ctx context.Context, req resource.CreateRe
 		Region:   plan.Region.ValueString(),
 		IsPublic: plan.IsPublic.ValueBool(),
 		Tags:     tags,
+	}
+	// "none" is the platform default: leaving it out keeps the payload of
+	// configurations that never set the attribute unchanged.
+	if m := plan.EncryptionMode.ValueString(); m != "" && m != "none" {
+		createReq.EncryptionMode = m
 	}
 
 	created, err := r.client.CreateObjectBucket(ctx, createReq)
@@ -830,6 +859,12 @@ func applyBucketToModel(ctx context.Context, src *client.ObjectBucket, dst *obje
 	dst.Region = types.StringValue(src.Region)
 	dst.IsPublic = types.BoolValue(src.IsPublic)
 	dst.SizeBytes = types.Int64Value(src.SizeBytes)
+	// An older platform does not return the field: that means "none".
+	if src.EncryptionMode == "" {
+		dst.EncryptionMode = types.StringValue("none")
+	} else {
+		dst.EncryptionMode = types.StringValue(src.EncryptionMode)
+	}
 	dst.Status = types.StringValue(src.Status)
 	dst.EndpointURL = stringPtrToValue(src.EndpointURL)
 	dst.ErrorMessage = stringPtrToValue(src.ErrorMessage)

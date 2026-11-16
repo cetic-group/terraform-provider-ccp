@@ -6,6 +6,14 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- `ccp_object_bucket`: new `encryption_mode` attribute (`none` by default, or
+  `sse_c`): files encrypted with a key you provide on every read and write.
+  CETIC never knows the key and cannot recover it. The mode is chosen at
+  creation; changing it replaces the bucket. Existing buckets read as `none`
+  without any difference in the plan (cetic-cloud-platform#1995).
+
 ## v7.5.1 (2026-11-15)
 
 A patch version, with no change needed on the platform side. It fixes

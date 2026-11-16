@@ -281,17 +281,20 @@ const (
 // ObjectBucket represents an S3 bucket.
 // Status: creating | active | deleting | error.
 type ObjectBucket struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Region       string    `json:"region"`
-	EndpointURL  *string   `json:"endpoint_url,omitempty"`
-	SizeBytes    int64     `json:"size_bytes"`
-	Status       string    `json:"status"`
-	IsPublic     bool      `json:"is_public"`
-	ErrorMessage *string   `json:"error_message,omitempty"`
-	Tags         []string  `json:"tags"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Region      string  `json:"region"`
+	EndpointURL *string `json:"endpoint_url,omitempty"`
+	SizeBytes   int64   `json:"size_bytes"`
+	Status      string  `json:"status"`
+	IsPublic    bool    `json:"is_public"`
+	// EncryptionMode is "none" or "sse_c"; absent from older platform
+	// versions, which means "none".
+	EncryptionMode string    `json:"encryption_mode,omitempty"`
+	ErrorMessage   *string   `json:"error_message,omitempty"`
+	Tags           []string  `json:"tags"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type ObjectBucketCreateRequest struct {
@@ -299,6 +302,8 @@ type ObjectBucketCreateRequest struct {
 	Region   string   `json:"region"`
 	IsPublic bool     `json:"is_public"`
 	Tags     []string `json:"tags,omitempty"`
+	// EncryptionMode is sent only when it is not the default ("none").
+	EncryptionMode string `json:"encryption_mode,omitempty"`
 }
 
 type ObjectBucketUpdateRequest struct {
