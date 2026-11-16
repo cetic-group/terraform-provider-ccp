@@ -80,7 +80,7 @@ output "assets_endpoint" {
 
 ### Optional
 
-- `encryption_mode` - (Optional, Forces new resource) Encryption of the bucket's files, chosen at creation and not changeable: `none` (default) or `sse_c` (a key you provide on every read and write; CETIC never knows it and cannot recover it). A bucket with a customer key always stays private (`is_public` cannot be `true`). Changing it forces replacement of the bucket, which deletes the bucket and all its files; copy them first. The platform may refuse `sse_c` if it is not enabled for your account.
+- `encryption_mode` - (Optional, Forces new resource) Encryption of the bucket's files, chosen at creation and not changeable: `none` or `sse_c` (a key you provide on every read and write; CETIC never knows it and cannot recover it). A bucket with a customer key always stays private (`is_public` cannot be `true`). Left out, the existing mode is kept (`none` for a new bucket), which is what you want when importing a bucket. Setting a different value than the existing one forces replacement of the bucket, which deletes the bucket and all its files; copy them first. The platform may refuse `sse_c` if the platform has not enabled it.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ### Blocks
@@ -106,7 +106,7 @@ A bucket accepts up to 100 rules in the schema; the platform applies its own, us
 - **Rules are applied to the bucket when the apply returns.** If the platform saved them but could not apply them, the next refresh reports a warning with the reason; the platform retries on its own. A change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan.
 - **Concurrent changes.** Each write sends the revision recorded in the state at the last refresh (`cors_revision`), so a change made by someone else after your `plan` — including between the `plan` and the `apply` of a saved plan — is refused instead of overwritten: run `terraform plan` again to see it. A state created before this attribute existed has no revision yet; the first write then reads the current one just before writing, and records it.
 - **Making a bucket private** while removing its `*` rule in the same apply works: the rules are written before the visibility.
-- **Changing `encryption_mode` forces replacement of the bucket, which deletes the bucket and all its files; copy them first.**
+- **Omitting `encryption_mode` keeps the mode of the existing bucket.** Changing it to another value forces replacement of the bucket, which deletes the bucket and all its files; copy them first.
 - **With `encryption_mode = "sse_c"`, losing the key means losing the files.** CETIC does not keep your key: if you lose it, the files are permanently unreadable and nobody, including CETIC, can recover them. Store the key safely, outside this bucket.
 - **Versioning is never disabled, only suspended.** S3 cannot return a bucket to "never versioned". Removing the `versioning` block only stops managing it: the bucket keeps its versioning as it is, and the plan says so with a warning. To stop creating versions, set `status = "Suspended"`.
 - **The retention is only sent when you write it.** Without `noncurrent_version_expiration_days` in the configuration, changing `status` leaves the retention in place — even with a saved plan or `-refresh=false`, a retention changed in the console meanwhile is not overwritten. Changing the retention does not change the status.

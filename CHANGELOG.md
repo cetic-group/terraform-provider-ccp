@@ -8,11 +8,13 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- `ccp_object_bucket`: new `encryption_mode` attribute (`none` by default, or
+- `ccp_object_bucket`: new `encryption_mode` attribute (`none` or
   `sse_c`): files encrypted with a key you provide on every read and write.
   CETIC never knows the key and cannot recover it. The mode is chosen at
-  creation; changing it forces replacement of the bucket, which deletes it and
-  all its files. Existing buckets read as `none`
+  creation. There is no default: leaving the attribute out keeps the existing
+  mode (`none` for a new bucket, and the real mode of an imported bucket).
+  Setting a different value forces replacement of the bucket, which deletes it
+  and all its files; copy them first. Existing buckets read as `none`
   without any difference in the plan (cetic-cloud-platform#1995).
 
 ## v7.5.1 (2026-11-15)

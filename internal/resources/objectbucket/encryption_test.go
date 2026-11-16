@@ -33,8 +33,8 @@ func encryptionAttr(t *testing.T) rschema.StringAttribute {
 
 func TestSchema_EncryptionMode(t *testing.T) {
 	a := encryptionAttr(t)
-	if !a.Optional || !a.Computed || a.Default == nil {
-		t.Fatal("encryption_mode must be optional, computed, with a default")
+	if !a.Optional || !a.Computed || a.Default != nil {
+		t.Fatal("encryption_mode must be optional and computed, without a default: omitting it keeps the existing mode")
 	}
 	if len(a.Validators) == 0 || len(a.PlanModifiers) == 0 {
 		t.Fatal("encryption_mode needs a format validator and RequiresReplace")
@@ -76,6 +76,39 @@ func replaceVerdict(t *testing.T, state, plan types.String) bool {
 		m.PlanModifyString(context.Background(), req, resp)
 	}
 	return resp.RequiresReplace
+}
+
+// omittedPlan runs the real plan modifiers for an attribute left out of the
+// configuration: the framework presents an unknown plan value and a null config.
+func omittedPlan(t *testing.T, state types.String) (types.String, bool) {
+	t.Helper()
+	a := encryptionAttr(t)
+	req := planmodifier.StringRequest{
+		Path: path.Root("encryption_mode"), PlanValue: types.StringUnknown(), StateValue: state,
+		ConfigValue: types.StringNull(),
+	}
+	req.State.Raw = nonNullRaw(t)
+	req.Plan.Raw = nonNullRaw(t)
+	resp := &planmodifier.StringResponse{PlanValue: types.StringUnknown()}
+	for _, m := range a.PlanModifiers {
+		req.PlanValue = resp.PlanValue
+		m.PlanModifyString(context.Background(), req, resp)
+	}
+	return resp.PlanValue, resp.RequiresReplace
+}
+
+func TestEncryptionMode_OmittedKeepsExistingMode(t *testing.T) {
+	plan, replace := omittedPlan(t, types.StringValue("sse_c"))
+	if replace || plan.ValueString() != "sse_c" {
+		t.Fatalf("omitted on an sse_c bucket: plan=%v replace=%v, want sse_c without replacement", plan, replace)
+	}
+	plan, replace = omittedPlan(t, types.StringValue("none"))
+	if replace || plan.ValueString() != "none" {
+		t.Fatalf("omitted on a none bucket: plan=%v replace=%v", plan, replace)
+	}
+	if _, replace = omittedPlan(t, types.StringNull()); replace {
+		t.Fatal("omitted on a state without the attribute must not replace")
+	}
 }
 
 func TestEncryptionMode_ReplacementMatrix(t *testing.T) {
@@ -129,6 +162,35 @@ func TestEncryptionMode_ExistingStateWithoutAttributePlansNoReplace(t *testing.T
 	}
 	if resp.RequiresReplace {
 		t.Fatal("an existing bucket must not be replaced when the attribute first appears")
+	}
+}
+
+func TestCreate_EncryptionModeOmittedSendsNothingAndEndsNone(t *testing.T) {
+	var posted map[string]any
+	routes := createRoutes()
+	routes[0] = testutil.Route{Method: "POST", Path: "/v1/buckets", Status: 201,
+		BodyFn: func(t *testing.T, body []byte) (int, any) {
+			if err := json.Unmarshal(body, &posted); err != nil {
+				t.Fatal(err)
+			}
+			return 201, bucketBody(false) // the API reports no mode or "none"
+		}}
+	srv := testutil.NewTestServer(t, routes)
+	defer srv.Close()
+	plan := model(false, nullRules())
+	plan.ID, plan.CorsRevision = types.StringUnknown(), types.StringUnknown()
+	plan.EncryptionMode = types.StringUnknown() // omitted on create
+	resp := runCreate(t, srv, plan)
+	if resp.Diagnostics.HasError() {
+		t.Fatal(resp.Diagnostics)
+	}
+	if _, has := posted["encryption_mode"]; has {
+		t.Fatalf("encryption_mode must not be sent when omitted: %v", posted)
+	}
+	var got types.String
+	resp.State.GetAttribute(context.Background(), path.Root("encryption_mode"), &got)
+	if got.ValueString() != "none" {
+		t.Fatalf("state = %v, want none", got)
 	}
 }
 

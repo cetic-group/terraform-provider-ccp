@@ -40,7 +40,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -192,13 +191,13 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"encryption_mode": schema.StringAttribute{
 				MarkdownDescription: "Encryption of the bucket's files, chosen at creation and not changeable in place: " +
-					"`none` (default) or `sse_c` (a key you provide on every read and write; " +
+					"`none` or `sse_c` (a key you provide on every read and write; " +
 					"CETIC never knows the key and cannot recover it). " +
 					"A bucket with a customer key always stays private. " +
-					"Changing this value forces replacement of the bucket, which deletes the bucket and all its files; copy them first.",
+					"Left out, the existing mode is kept (`none` for a new bucket), which also suits an imported bucket. " +
+					"Setting a different value than the existing one forces replacement of the bucket, which deletes the bucket and all its files; copy them first.",
 				Optional: true,
 				Computed: true,
-				Default:  stringdefault.StaticString("none"),
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						encryptionModePattern,
@@ -206,6 +205,7 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 					),
 				},
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					encryptionModeRequiresReplace(),
 				},
 			},
