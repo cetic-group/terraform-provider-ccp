@@ -58,6 +58,14 @@ resource "ccp_object_bucket" "documents" {
   }
 }
 
+# Customer-provided key (SSE-C): you send your own encryption key with every
+# read and write. CETIC never knows it and cannot recover it.
+resource "ccp_object_bucket" "confidential" {
+  name            = "acme-confidential"
+  region          = "RNN"
+  encryption_mode = "sse_c"
+}
+
 output "assets_endpoint" {
   value = ccp_object_bucket.assets.endpoint_url
 }
@@ -72,6 +80,7 @@ output "assets_endpoint" {
 
 ### Optional
 
+- `encryption_mode` - (Optional, Forces new resource) Encryption of the bucket's files, chosen at creation and not changeable: `none` or `sse_c` (a key you provide on every read and write; CETIC never knows it and cannot recover it). A bucket with a customer key always stays private (`is_public` cannot be `true`). Left out, the existing mode is kept (`none` for a new bucket), which is what you want when importing a bucket. Setting a different value than the existing one forces replacement of the bucket, which deletes the bucket and all its files; copy them first. The platform may refuse `sse_c` if the platform has not enabled it.
 - `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
 
 ### Blocks
@@ -97,6 +106,8 @@ A bucket accepts up to 100 rules in the schema; the platform applies its own, us
 - **Rules are applied to the bucket when the apply returns.** If the platform saved them but could not apply them, the next refresh reports a warning with the reason; the platform retries on its own. A change made outside Terraform to a bucket that has `cors_rule` blocks appears as a difference at the next plan.
 - **Concurrent changes.** Each write sends the revision recorded in the state at the last refresh (`cors_revision`), so a change made by someone else after your `plan` — including between the `plan` and the `apply` of a saved plan — is refused instead of overwritten: run `terraform plan` again to see it. A state created before this attribute existed has no revision yet; the first write then reads the current one just before writing, and records it.
 - **Making a bucket private** while removing its `*` rule in the same apply works: the rules are written before the visibility.
+- **Omitting `encryption_mode` keeps the mode of the existing bucket.** Changing it to another value forces replacement of the bucket, which deletes the bucket and all its files; copy them first.
+- **With `encryption_mode = "sse_c"`, losing the key means losing the files.** CETIC does not keep your key: if you lose it, the files are permanently unreadable and nobody, including CETIC, can recover them. Store the key safely, outside this bucket.
 - **Versioning is never disabled, only suspended.** S3 cannot return a bucket to "never versioned". Removing the `versioning` block only stops managing it: the bucket keeps its versioning as it is, and the plan says so with a warning. To stop creating versions, set `status = "Suspended"`.
 - **The retention is only sent when you write it.** Without `noncurrent_version_expiration_days` in the configuration, changing `status` leaves the retention in place — even with a saved plan or `-refresh=false`, a retention changed in the console meanwhile is not overwritten. Changing the retention does not change the status.
 - **Taking over versioning set outside the platform deletes older versions.** Adding the block to a bucket whose versioning was set with an S3 client — often without any expiration, so previous versions are kept forever — sets a retention at the first apply: the configured one, otherwise 30 days. Previous versions older than that are deleted. The plan warns about it (it reads the bucket's versioning when the block is added to an existing or imported bucket), and also warns when the configured retention is shorter than the one in place. Set `noncurrent_version_expiration_days` high enough to keep them.
@@ -109,6 +120,7 @@ A bucket accepts up to 100 rules in the schema; the platform applies its own, us
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the bucket.
+- `encryption_mode` - The encryption mode of the bucket as reported by the platform (`none` when the platform does not report one).
 - `cors_revision` - Revision of the CORS rules as of the last refresh or write; null when no `cors_rule` block is managed. Used internally to refuse a write when the rules changed elsewhere in the meantime.
 - `endpoint_url` - S3 endpoint URL for this region (e.g. `https://s3-rnn.cloud.cetic-group.com`). Use this as the `endpoint_url` in your S3 client configuration.
 - `access_key` - S3 access key. **Sensitive.** Null when the API key running Terraform is not allowed to read it — see the note below.

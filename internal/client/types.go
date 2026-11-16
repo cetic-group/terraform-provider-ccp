@@ -292,6 +292,9 @@ type ObjectBucket struct {
 	Tags         []string  `json:"tags"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	// EncryptionMode is "none" or "sse_c"; absent from older platform
+	// versions, which means "none".
+	EncryptionMode string `json:"encryption_mode,omitempty"`
 }
 
 type ObjectBucketCreateRequest struct {
@@ -299,6 +302,8 @@ type ObjectBucketCreateRequest struct {
 	Region   string   `json:"region"`
 	IsPublic bool     `json:"is_public"`
 	Tags     []string `json:"tags,omitempty"`
+	// EncryptionMode is sent only when it is not the default ("none").
+	EncryptionMode string `json:"encryption_mode,omitempty"`
 }
 
 type ObjectBucketUpdateRequest struct {
