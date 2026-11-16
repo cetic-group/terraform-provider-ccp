@@ -10,6 +10,7 @@ import (
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -62,42 +63,72 @@ func TestEncryptionMode_FormatValidation(t *testing.T) {
 	}
 }
 
-func TestEncryptionMode_ChangeForcesReplacement(t *testing.T) {
+func replaceVerdict(t *testing.T, state, plan types.String) bool {
+	t.Helper()
 	a := encryptionAttr(t)
 	req := planmodifier.StringRequest{
-		Path:        path.Root("encryption_mode"),
-		PlanValue:   types.StringValue("sse_c"),
-		StateValue:  types.StringValue("none"),
-		ConfigValue: types.StringValue("sse_c"),
+		Path: path.Root("encryption_mode"), PlanValue: plan, StateValue: state, ConfigValue: plan,
 	}
-	resp := &planmodifier.StringResponse{PlanValue: req.PlanValue}
-	// RequiresReplace ignores a create (null state raw): give it a non-null state.
 	req.State.Raw = nonNullRaw(t)
 	req.Plan.Raw = nonNullRaw(t)
+	resp := &planmodifier.StringResponse{PlanValue: plan}
 	for _, m := range a.PlanModifiers {
 		m.PlanModifyString(context.Background(), req, resp)
 	}
-	if !resp.RequiresReplace {
-		t.Fatal("none -> sse_c must plan a replacement")
+	return resp.RequiresReplace
+}
+
+func TestEncryptionMode_ReplacementMatrix(t *testing.T) {
+	s := types.StringValue
+	for _, tc := range []struct {
+		name        string
+		state, plan types.String
+		replace     bool
+	}{
+		{"none to sse_c", s("none"), s("sse_c"), true},
+		{"sse_c to none", s("sse_c"), s("none"), true},
+		{"same value", s("none"), s("none"), false},
+		// ⚠️ State written before the attribute existed, no refresh: never replace.
+		{"null prior, plan none", types.StringNull(), s("none"), false},
+		{"null prior, plan sse_c", types.StringNull(), s("sse_c"), false},
+		{"unknown plan", s("none"), types.StringUnknown(), false},
+		{"unknown prior", types.StringUnknown(), s("none"), false},
+	} {
+		if got := replaceVerdict(t, tc.state, tc.plan); got != tc.replace {
+			t.Errorf("%s: RequiresReplace = %v, want %v", tc.name, got, tc.replace)
+		}
 	}
 }
 
-func TestEncryptionMode_SameValueNoReplacement(t *testing.T) {
+// Realistic prior state: every other attribute set, encryption_mode null.
+func TestEncryptionMode_ExistingStateWithoutAttributePlansNoReplace(t *testing.T) {
+	ctx := context.Background()
+	var sc resource.SchemaResponse
+	(&objectBucketResource{}).Schema(ctx, resource.SchemaRequest{}, &sc)
+	st := tfsdk.State{Schema: sc.Schema}
+	prior := model(false, nullRules())
+	prior.EncryptionMode = types.StringNull()
+	if d := st.Set(ctx, &prior); d.HasError() {
+		t.Fatal(d)
+	}
+	var stateVal types.String
+	st.GetAttribute(ctx, path.Root("encryption_mode"), &stateVal)
+	if !stateVal.IsNull() {
+		t.Fatalf("setup: prior state must carry a null mode, got %v", stateVal)
+	}
 	a := encryptionAttr(t)
 	req := planmodifier.StringRequest{
-		Path:        path.Root("encryption_mode"),
-		PlanValue:   types.StringValue("none"),
-		StateValue:  types.StringValue("none"),
+		Path: path.Root("encryption_mode"), PlanValue: types.StringValue("none"), StateValue: stateVal,
 		ConfigValue: types.StringNull(),
 	}
-	req.State.Raw = nonNullRaw(t)
-	req.Plan.Raw = nonNullRaw(t)
+	req.State.Raw = st.Raw
+	req.Plan.Raw = st.Raw
 	resp := &planmodifier.StringResponse{PlanValue: req.PlanValue}
 	for _, m := range a.PlanModifiers {
-		m.PlanModifyString(context.Background(), req, resp)
+		m.PlanModifyString(ctx, req, resp)
 	}
 	if resp.RequiresReplace {
-		t.Fatal("an unchanged mode must not replace the bucket")
+		t.Fatal("an existing bucket must not be replaced when the attribute first appears")
 	}
 }
 

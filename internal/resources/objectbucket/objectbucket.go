@@ -74,7 +74,6 @@ type objectBucketResourceModel struct {
 	Name           types.String `tfsdk:"name"`
 	Region         types.String `tfsdk:"region"`
 	IsPublic       types.Bool   `tfsdk:"is_public"`
-	EncryptionMode types.String `tfsdk:"encryption_mode"`
 	CorsRule       types.List   `tfsdk:"cors_rule"`
 	CorsRevision   types.String `tfsdk:"cors_revision"`
 	Versioning     types.Object `tfsdk:"versioning"`
@@ -87,16 +86,17 @@ type objectBucketResourceModel struct {
 	SecretKey      types.String `tfsdk:"secret_key"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
+	EncryptionMode types.String `tfsdk:"encryption_mode"`
 }
 
 // bucketNamePattern matches the API constraint: S3-compliant DNS names,
 // lowercase alphanumerics and hyphens, must start and end with an
 // alphanumeric, length 3..63.
+var bucketNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$`)
+
 // encryptionModePattern is a format check only: the platform validates the
 // value, so a new mode needs no provider release.
 var encryptionModePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-
-var bucketNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$`)
 
 // Polling parameters.
 //
@@ -107,6 +107,22 @@ const (
 	createPollTimeout = 90 * time.Second
 	deletePollTimeout = 120 * time.Second
 )
+
+// encryptionModeRequiresReplace replaces the bucket only when a known prior
+// mode differs from the planned one. A null prior value (state written before
+// this attribute existed, read without refresh) must never plan a replacement:
+// that would delete a bucket and its files.
+func encryptionModeRequiresReplace() planmodifier.String {
+	return stringplanmodifier.RequiresReplaceIf(
+		func(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+			resp.RequiresReplace = !req.StateValue.IsNull() && !req.StateValue.IsUnknown() &&
+				!req.PlanValue.IsNull() && !req.PlanValue.IsUnknown() &&
+				!req.StateValue.Equal(req.PlanValue)
+		},
+		"Changing the encryption mode replaces the bucket.",
+		"Changing the encryption mode replaces the bucket.",
+	)
+}
 
 func (r *objectBucketResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "ccp_object_bucket"
@@ -175,10 +191,11 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"encryption_mode": schema.StringAttribute{
-				MarkdownDescription: "Chiffrement des fichiers du bucket, choisi à la création et non modifiable : " +
-					"`none` (défaut) ou `sse_c` (clé fournie par vous à chaque lecture et écriture ; " +
-					"CETIC ne la connaît jamais et ne peut pas la récupérer). " +
-					"Un bucket à clé client reste toujours privé. Changer ce mode force le remplacement du bucket.",
+				MarkdownDescription: "Encryption of the bucket's files, chosen at creation and not changeable in place: " +
+					"`none` (default) or `sse_c` (a key you provide on every read and write; " +
+					"CETIC never knows the key and cannot recover it). " +
+					"A bucket with a customer key always stays private. " +
+					"Changing this value forces replacement of the bucket, which deletes the bucket and all its files; copy them first.",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString("none"),
@@ -189,7 +206,7 @@ func (r *objectBucketResource) Schema(_ context.Context, _ resource.SchemaReques
 					),
 				},
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					encryptionModeRequiresReplace(),
 				},
 			},
 			"tags": schema.ListAttribute{
