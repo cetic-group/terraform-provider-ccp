@@ -216,7 +216,7 @@ In addition to all arguments above, the following attributes are exported.
 ### Cluster
 
 - `id` - UUID of the cluster.
-- `status` - Current status. Possible values: `provisioning`, `active`, `upgrading`, `error`.
+- `status` - Current status. Possible values: `creating`, `provisioning`, `active`, `updating`, `error`, `deleting`.
 - `kubeconfig` - (Sensitive) Kubeconfig file content (YAML) for accessing the cluster with `kubectl`. Store securely.
 - `endpoint` - Kubernetes API server endpoint URL (e.g. `https://10.0.1.5:6443`).
 

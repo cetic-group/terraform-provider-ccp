@@ -66,7 +66,7 @@ output "vpn_endpoint" {
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the gateway.
-- `status` - Lifecycle status: `provisioning`, `active`, `error`, or `deleting`. Read-only and volatile.
+- `status` - Lifecycle status: `creating`, `provisioning`, `active`, `error`, or `deleting`. Read-only and volatile.
 - `endpoint_host` - Public WireGuard endpoint hostname (or IP) clients connect to. Populated once the appliance finishes provisioning.
 - `endpoint_port` - UDP port of the WireGuard endpoint. Populated once the appliance finishes provisioning.
 - `public_key` - WireGuard public key of the gateway, needed in each peer's config. Populated once the appliance finishes provisioning.

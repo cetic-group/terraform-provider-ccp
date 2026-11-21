@@ -38,7 +38,7 @@ output "mongo_endpoint" {
 Retrieve the admin password through the dedicated CLI / API endpoint (not exposed as a Terraform attribute):
 
 ```bash
-cetic db ferretdb credentials <instance_id>
+cetic db mongo credentials <instance_id>
 ```
 
 ## Argument Reference
