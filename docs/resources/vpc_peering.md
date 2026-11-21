@@ -27,10 +27,9 @@ resource "ccp_vpc" "staging" {
 }
 
 resource "ccp_vpc_peering" "prod_to_staging" {
-  name    = "prod-to-staging"
+  name     = "prod-to-staging"
   vpc_a_id = ccp_vpc.prod.id
   vpc_b_id = ccp_vpc.staging.id
-  tags    = ["env:prod", "purpose:cross-vpc"]
 }
 ```
 
@@ -42,11 +41,9 @@ resource "ccp_vpc_peering" "prod_to_staging" {
 - `vpc_a_id` - UUID of one VPC. Order at create-time is free; once stored, any change (including swapping with `vpc_b_id`) forces replacement.
 - `vpc_b_id` - UUID of the other VPC. Must be different from `vpc_a_id`. Forces replacement on change.
 
-### Optional
-
-- `tags` - List of free-form tags (max 60, max 50 chars each).
-
 ## Attributes Reference
+
+- `tags` - Tags returned by the API (read-only: a VPC peering cannot be tagged).
 
 - `id` - UUID of the VPC peering.
 - `status` - One of `pending`, `active`, `deleting`, `error`.

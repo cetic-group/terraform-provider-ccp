@@ -1239,10 +1239,9 @@ type VpcPeering struct {
 }
 
 type VpcPeeringCreateRequest struct {
-	Name   string   `json:"name"`
-	VpcAID string   `json:"vpc_a_id"`
-	VpcBID string   `json:"vpc_b_id"`
-	Tags   []string `json:"tags,omitempty"`
+	Name   string `json:"name"`
+	VpcAID string `json:"vpc_a_id"`
+	VpcBID string `json:"vpc_b_id"`
 }
 
 // ─── Support Ticket ────────────────────────────────────────────────────────
