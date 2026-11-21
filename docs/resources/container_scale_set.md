@@ -32,7 +32,7 @@ resource "ccp_container_scale_set" "api_workers" {
 
 ### Required
 
-- `name` - (Required) Name of the scale set.
+- `name` - (Required, Forces new resource) Name of the scale set. The API cannot rename a scale set: changing it **replaces the scale set and its instances**.
 - `region` - (Required, Forces new resource) Region where the scale set is created. One of: `RNN`, `PAR`, `ABJ`.
 - `plan` - (Required) Instance plan key for each container, e.g. `small`, `c-nano` (CPU family), `m-medium` (memory family). Validated server-side against the live plan catalog — no hardcoded list.
 - `template` - (Required, Forces new resource) Template key for the container OS image (e.g. `ubuntu-24.04`).
@@ -47,7 +47,7 @@ resource "ccp_container_scale_set" "api_workers" {
 - `bastion_access` - (Optional, Forces new resource) Allow SSH access to every container through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
 - `docker` - (Optional, Forces new resource) Required to run Docker on every container (enables nesting; opt-in). Defaults to `false`.
 - `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB applied to every container. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for scale sets, so changing this value forces replacement of the whole scale set.
-- `tags` - (Optional) List of free-form tags (max 60, max 50 chars each).
+- `tags` - (Optional, updated in place) List of free-form tags (max 60, max 50 chars each).
 
 ## Attributes Reference
 

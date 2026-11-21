@@ -672,13 +672,21 @@ type ContainerScaleSetCreateRequest struct {
 	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
+// ContainerScaleSetUpdateRequest is the body of PATCH /v1/container-scale-sets/{id}.
+// The API's ScaleSetUpdate takes neither `name` nor `tags` (they were sent and
+// silently ignored, cetic-cloud-platform#2004): tags go through SetTags.
 type ContainerScaleSetUpdateRequest struct {
-	Name             *string  `json:"name,omitempty"`
-	MinInstances     *int     `json:"min_instances,omitempty"`
-	MaxInstances     *int     `json:"max_instances,omitempty"`
-	DesiredInstances *int     `json:"desired_instances,omitempty"`
-	AutoRepair       *bool    `json:"auto_repair,omitempty"`
-	Tags             []string `json:"tags,omitempty"`
+	MinInstances     *int  `json:"min_instances,omitempty"`
+	MaxInstances     *int  `json:"max_instances,omitempty"`
+	DesiredInstances *int  `json:"desired_instances,omitempty"`
+	AutoRepair       *bool `json:"auto_repair,omitempty"`
+}
+
+// TagsSetRequest is the body of PUT /v1/tags (replaces every tag of a resource).
+type TagsSetRequest struct {
+	ResourceType string   `json:"resource_type"`
+	ResourceID   string   `json:"resource_id"`
+	Tags         []string `json:"tags"`
 }
 
 type ContainerScaleSetScaleRequest struct {

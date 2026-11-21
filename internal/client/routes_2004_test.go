@@ -103,3 +103,31 @@ func TestSupportTicketCreateEtCloture(t *testing.T) {
 		t.Fatalf("appels = %v", *calls)
 	}
 }
+
+// Le PATCH d'un container scale set ignore `name` et `tags` : ils ne sont plus
+// envoyés ; les tags passent par PUT /v1/tags.
+func TestContainerScaleSetTagsParPutTags(t *testing.T) {
+	raw, _ := json.Marshal(ContainerScaleSetUpdateRequest{})
+	if string(raw) != `{}` {
+		t.Fatalf("PATCH vide attendu, reçu %s", raw)
+	}
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/v1/tags" {
+			t.Errorf("appel inattendu %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	c := New(srv.URL, "ccp_live_test", "test")
+	if err := c.SetTags(context.Background(), "container_scale_set", "css1", nil); err != nil {
+		t.Fatal(err)
+	}
+	if body["resource_type"] != "container_scale_set" || body["resource_id"] != "css1" {
+		t.Fatalf("corps = %v", body)
+	}
+	if tags, ok := body["tags"].([]any); !ok || len(tags) != 0 {
+		t.Fatalf("tags vides attendus (liste, pas null) : %v", body["tags"])
+	}
+}

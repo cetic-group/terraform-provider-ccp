@@ -1051,6 +1051,16 @@ func (c *Client) UpdateContainerScaleSet(ctx context.Context, id string, req Con
 	return &out, nil
 }
 
+// SetTags replaces every tag of a resource (PUT /v1/tags). Used for resources
+// whose PATCH ignores `tags`.
+func (c *Client) SetTags(ctx context.Context, resourceType, id string, tags []string) error {
+	if tags == nil {
+		tags = []string{}
+	}
+	return c.do(ctx, http.MethodPut, "/v1/tags",
+		TagsSetRequest{ResourceType: resourceType, ResourceID: id, Tags: tags}, nil)
+}
+
 func (c *Client) DeleteContainerScaleSet(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/container-scale-sets/"+id, nil, nil)
 }

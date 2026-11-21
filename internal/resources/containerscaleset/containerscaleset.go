@@ -78,9 +78,13 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Name (1-80 chars, alphanumerics + `-` + `_`).",
-				Required:            true,
-				Validators:          []validator.String{stringvalidator.LengthBetween(1, 80)},
+				MarkdownDescription: "Name (1-80 chars, alphanumerics + `-` + `_`). Forces replacement: " +
+					"the API cannot rename a scale set.",
+				Required:   true,
+				Validators: []validator.String{stringvalidator.LengthBetween(1, 80)},
+				// Le PATCH de l'API n'accepte pas `name` : le changement était
+				// annoncé puis ignoré (cetic-cloud-platform#2004).
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "Region code (RNN, PAR, ABJ). Forces replacement.",
@@ -389,10 +393,6 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	id := state.ID.ValueString()
 
 	var upd client.ContainerScaleSetUpdateRequest
-	if !plan.Name.Equal(state.Name) {
-		v := plan.Name.ValueString()
-		upd.Name = &v
-	}
 	if !plan.MinInstances.Equal(state.MinInstances) {
 		v := int(plan.MinInstances.ValueInt64())
 		upd.MinInstances = &v
@@ -409,12 +409,17 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		v := plan.AutoRepair.ValueBool()
 		upd.AutoRepair = &v
 	}
-	if !plan.Tags.Equal(state.Tags) {
+	// Les tags passent par PUT /v1/tags : le PATCH du scale set les ignore
+	// (cetic-cloud-platform#2004).
+	if !plan.Tags.IsUnknown() && !plan.Tags.Equal(state.Tags) {
 		tags := []string{}
-		if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		if !plan.Tags.IsNull() {
 			plan.Tags.ElementsAs(ctx, &tags, false)
 		}
-		upd.Tags = tags
+		if err := r.client.SetTags(ctx, "container_scale_set", id, tags); err != nil {
+			resp.Diagnostics.AddError("Failed to update Container Scale Set tags", err.Error())
+			return
+		}
 	}
 
 	updated, err := r.client.UpdateContainerScaleSet(ctx, id, upd)
