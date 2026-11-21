@@ -80,8 +80,11 @@ func (c *Client) CreateRegistryUser(ctx context.Context, registryID string, req 
 	return &out, nil
 }
 
-func (c *Client) DeleteRegistryUser(ctx context.Context, registryID, username string) error {
-	return c.do(ctx, http.MethodDelete, "/v1/registries/"+registryID+"/users/"+username, nil, nil)
+// DeleteRegistryUser deletes a registry user by its UUID: the API route is
+// `/users/{user_id}` (the username in the path got a 422 and the user was
+// never deleted, cetic-cloud-platform#2004).
+func (c *Client) DeleteRegistryUser(ctx context.Context, registryID, userID string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/registries/"+registryID+"/users/"+userID, nil, nil)
 }
 
 // ─── Registry ACLs ────────────────────────────────────────────────────────────

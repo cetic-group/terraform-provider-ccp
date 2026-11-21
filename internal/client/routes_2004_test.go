@@ -131,3 +131,13 @@ func TestContainerScaleSetTagsParPutTags(t *testing.T) {
 		t.Fatalf("tags vides attendus (liste, pas null) : %v", body["tags"])
 	}
 }
+
+// La suppression d'un utilisateur de registre passe par son UUID.
+func TestDeleteRegistryUserParUUID(t *testing.T) {
+	c, calls := fakeAPI(t, map[string]any{
+		"DELETE /v1/registries/r1/users/11111111-2222-3333-4444-555555555555": map[string]any{},
+	})
+	if err := c.DeleteRegistryUser(context.Background(), "r1", "11111111-2222-3333-4444-555555555555"); err != nil {
+		t.Fatalf("DeleteRegistryUser : %v (%v)", err, *calls)
+	}
+}

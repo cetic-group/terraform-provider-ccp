@@ -191,7 +191,7 @@ func (r *registryUserResource) Delete(ctx context.Context, req resource.DeleteRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := r.client.DeleteRegistryUser(ctx, state.RegistryID.ValueString(), state.Username.ValueString())
+	err := r.client.DeleteRegistryUser(ctx, state.RegistryID.ValueString(), state.ID.ValueString())
 	if err != nil && !client.IsNotFound(err) {
 		resp.Diagnostics.AddError("Failed to delete registry user", err.Error())
 	}
