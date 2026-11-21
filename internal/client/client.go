@@ -1406,20 +1406,39 @@ func (c *Client) DeleteApiKey(ctx context.Context, id string) error {
 
 // ─── Org Member ────────────────────────────────────────────────────────────
 
+// GetOrgMember reads a member from the organisation list: the API has no
+// `GET /v1/members/{id}` route, so the previous direct GET failed on every
+// refresh (cetic-cloud-platform#2004). An absent id is reported as a 404 so
+// that Read drops the resource from state.
 func (c *Client) GetOrgMember(ctx context.Context, id string) (*OrgMember, error) {
-	var out OrgMember
-	if err := c.do(ctx, http.MethodGet, "/v1/members/"+id, nil, &out); err != nil {
+	var list []OrgMember
+	if err := c.do(ctx, http.MethodGet, "/v1/members", nil, &list); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	for i := range list {
+		if list[i].ID == id {
+			return &list[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Detail: "membre introuvable",
+		Method: http.MethodGet, Path: "/v1/members"}
 }
 
+// CreateOrgMember invites a member in the active organisation. The API answers
+// `{email, memberships: [...]}` (one membership per organisation), not a bare
+// member: decoding it as OrgMember left the id empty.
 func (c *Client) CreateOrgMember(ctx context.Context, req OrgMemberCreateRequest) (*OrgMember, error) {
-	var out OrgMember
+	var out struct {
+		Email       string      `json:"email"`
+		Memberships []OrgMember `json:"memberships"`
+	}
 	if err := c.do(ctx, http.MethodPost, "/v1/members", req, &out); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	if len(out.Memberships) == 0 {
+		return nil, fmt.Errorf("invitation de %s : réponse sans membership", req.Email)
+	}
+	return &out.Memberships[0], nil
 }
 
 func (c *Client) UpdateOrgMember(ctx context.Context, id string, req OrgMemberUpdateRequest) (*OrgMember, error) {
@@ -1520,12 +1539,20 @@ func (c *Client) DeleteObjectStorageKey(ctx context.Context, id string) error {
 
 // ─── Quota Request ─────────────────────────────────────────────────────────
 
+// GetQuotaRequest reads a request from the list: the API has no
+// `GET /v1/quotas/requests/{id}` route (cetic-cloud-platform#2004).
 func (c *Client) GetQuotaRequest(ctx context.Context, id string) (*QuotaRequest, error) {
-	var out QuotaRequest
-	if err := c.do(ctx, http.MethodGet, "/v1/quotas/requests/"+id, nil, &out); err != nil {
+	var list []QuotaRequest
+	if err := c.do(ctx, http.MethodGet, "/v1/quotas/requests", nil, &list); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	for i := range list {
+		if list[i].ID == id {
+			return &list[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Detail: "demande de quota introuvable",
+		Method: http.MethodGet, Path: "/v1/quotas/requests"}
 }
 
 func (c *Client) CreateQuotaRequest(ctx context.Context, req QuotaRequestCreateRequest) (*QuotaRequest, error) {
