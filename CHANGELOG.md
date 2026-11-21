@@ -6,6 +6,40 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Fixed (cetic-cloud-platform#2004)
+
+- `ccp_vpc`: changing `name` or `tags` no longer **recreates the VPC** (and
+  destroys its content): they are updated in place by `PATCH /v1/vpcs/{id}`.
+- `ccp_org_member` and `ccp_quota_request` read the resource from the list
+  (the API has no `GET` by id: every refresh failed); `ccp_org_member` reads
+  the creation response (`memberships`).
+- `ccp_support_ticket`: creation reads `{ticket: …}` (the id was empty),
+  categories are those of the API (`technical`, `billing`, `abuse`,
+  `feature_request`, `other`), and destroy closes the ticket.
+- `ccp_service_account`: `expires_at` is stable after apply (the API counts
+  days) and changing it replaces the account.
+- `ccp_registry`: `name` and `image_tag` force replacement (the API cannot
+  change them).
+- `ccp_container_scale_set`: `name` forces replacement; `tags` are updated by
+  `PUT /v1/tags` (the PATCH ignored both).
+- `ccp_vpc_peering`: `tags` are read-only (the API cannot tag a peering).
+- `ccp_vnet_firewall_rule`: `comment`, `position` and `enabled` force
+  replacement (the API has no PATCH for a rule; updates failed).
+- `ccp_commit`: `two_years` and `three_years` accepted; `auto_renew` cannot be
+  changed after creation (no API update).
+- `ccp_registry_user`: destroy deletes by UUID (the username got a 422).
+- `ccp_registry_acl`: action `all` instead of `*` (refused by the API).
+- Documentation aligned with the API: firewall values, registry, statuses,
+  VPN peer model, built-in roles, node pool `min_size`.
+
+### Changed
+
+- Attributes that now force replacement (they were silently ignored by the
+  API): `ccp_registry.name`, `ccp_registry.image_tag`,
+  `ccp_container_scale_set.name`, `ccp_service_account.expires_at`,
+  `ccp_vnet_firewall_rule.comment|position|enabled`. `ccp_vpc_peering.tags`
+  can no longer be set.
+
 ## v7.5.1 (2026-11-15)
 
 A patch version, with no change needed on the platform side. It fixes
