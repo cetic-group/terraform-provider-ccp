@@ -8,6 +8,7 @@ package vnetfirewallrule
 import (
 	"context"
 	"fmt"
+	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
@@ -101,12 +102,17 @@ func (r *fwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"position": schema.Int64Attribute{
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Priorité de la règle (ordre d'évaluation croissant). Forces replacement.",
+				Optional: true,
+				Computed: true,
+				MarkdownDescription: "Priorité de la règle à la création (ordre d'évaluation croissant). " +
+					"Ensuite, l'ordre se règle dans la console (réordonnancement par pas de 10) : un écart " +
+					"est signalé, jamais par une recréation.",
+				// Pas de RequiresReplace : le réordonnancement de la console renumérote
+				// toutes les règles ; chaque règle à position fixée aurait été recréée
+				// au plan suivant (revue de terraform-provider-ccp#121).
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
-					int64planmodifier.RequiresReplace(),
+					ccpplanmodifier.CreateOnlyInt64("position"),
 				},
 			},
 			"enabled": schema.BoolAttribute{

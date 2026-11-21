@@ -1,9 +1,9 @@
 // Package vpc implements the ccp_vpc Terraform resource.
 //
 // A VPC in CETIC Cloud is an isolated private network (its gateway is
-// provisioned lazily on first VNet creation). `name`, `region`, `cidr` and
-// `tags` force replacement on change. Only `dedicated_egress_ip` is updated in
-// place, through PATCH /v1/vpcs/{id}, and Update sends that field alone.
+// provisioned lazily on first VNet creation). `region` and `cidr` force
+// replacement on change. `name`, `tags` and `dedicated_egress_ip` are updated
+// in place through PATCH /v1/vpcs/{id}; Update sends only what changed.
 //
 // Internet egress (cetic-cloud-platform#1734, decision of 2026-11-03):
 // `dedicated_egress_ip` is an option, false by default. False: the VPC uses
@@ -121,8 +121,8 @@ func (r *vpcResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CETIC Cloud VPC. A VPC is a regional layer-3 boundary " +
-			"(an isolated private network with an optional per-VPC NAT gateway). Any change to " +
-			"`name`, `region`, `cidr` or `tags` forces replacement; `dedicated_egress_ip` is " +
+			"(an isolated private network with an optional per-VPC NAT gateway). A change to " +
+			"`region` or `cidr` forces replacement; `name`, `tags` and `dedicated_egress_ip` are " +
 			"updated in place. Creation is asynchronous: the provider polls until the VPC reaches " +
 			"the `active` state (or up to 90 seconds).",
 		Attributes: map[string]schema.Attribute{
@@ -458,7 +458,16 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 				fmt.Sprintf("CETIC Cloud rejected the update of VPC %s: %s", id, err.Error()))
 			return
 		}
-		final = patched
+		// Seuls `name` et `tags` ont changé : on ne reporte qu'eux. `status`
+		// et `egress_ip_status` viennent de l'état dans le plan ; les reprendre
+		// de la réponse, s'ils ont bougé depuis le dernier refresh, rendrait
+		// l'état incohérent (revue de terraform-provider-ccp#121, même cas que
+		// la branche `!changed`).
+		// Le PATCH a enregistré exactement `name` et `tags` du plan (l'API ne
+		// normalise pas ces champs sur cette route) : le plan devient l'état.
+		_ = patched
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
 	} else {
 		want := *patch.DedicatedEgressIP
 		patched, err := r.client.UpdateVPC(ctx, id, patch)
@@ -500,11 +509,9 @@ func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool
 		changed = true
 	}
 	if !plan.Tags.IsUnknown() && !plan.Tags.IsNull() && !plan.Tags.Equal(state.Tags) {
-		tags := []string{}
-		for _, e := range plan.Tags.Elements() {
-			if s, ok := e.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
-				tags = append(tags, s.ValueString())
-			}
+		tags, _ := tagsFromList(context.Background(), plan.Tags)
+		if tags == nil {
+			tags = []string{}
 		}
 		req.Tags = &tags
 		changed = true

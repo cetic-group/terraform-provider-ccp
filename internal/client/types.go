@@ -64,8 +64,8 @@ type VPCCreateRequest struct {
 }
 
 // VPCUpdateRequest — PATCH /v1/vpcs/{id}. A nil field is left out of the
-// body and the API keeps its current value. Only `dedicated_egress_ip` is
-// changed in place by the provider: `name` and `tags` force replacement.
+// body and the API keeps its current value. `name`, `tags` and
+// `dedicated_egress_ip` are changed in place by the provider.
 type VPCUpdateRequest struct {
 	Name              *string   `json:"name,omitempty"`
 	Tags              *[]string `json:"tags,omitempty"`

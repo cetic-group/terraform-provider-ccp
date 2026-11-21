@@ -68,8 +68,9 @@ output "ci_sa_token" {
 - `description` - (Optional) Free-form description (max 512 chars).
 - `expires_at` - (Optional, Forces new resource) RFC 3339 timestamp after
   which the token is rejected by the API. Omit for no expiry. The API counts
-  whole days, so the effective expiry may differ by up to a day; the
-  configured value is kept in state.
+  whole days, so the effective expiry may differ by less than two days, a
+  difference Terraform ignores (also for states written by older provider
+  versions).
 
 ## Attributes Reference
 

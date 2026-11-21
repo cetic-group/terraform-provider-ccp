@@ -35,10 +35,16 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Attributes that now force replacement (they were silently ignored by the
-  API): `ccp_registry.name`, `ccp_registry.image_tag`,
-  `ccp_container_scale_set.name`, `ccp_service_account.expires_at`,
-  `ccp_vnet_firewall_rule.comment|position|enabled`. `ccp_vpc_peering.tags`
-  can no longer be set.
+  API): `ccp_registry.name`, `ccp_container_scale_set.name`,
+  `ccp_service_account.expires_at` (beyond a two-day tolerance),
+  `ccp_vnet_firewall_rule.comment|enabled`. `ccp_vpc_peering.tags` can no
+  longer be set.
+- Applied at creation only, a later difference is a plan warning (never a
+  replacement): `ccp_registry.image_tag`, `ccp_vnet_firewall_rule.position`.
+- `ccp_container_scale_set.tags` must be normalized (lowercase, no
+  duplicates); `ccp_commit.auto_renew` changes are refused at plan time;
+  `ccp_support_ticket` warns when the support plan caps the priority;
+  `ccp_org_member` keeps the configured e-mail case.
 
 ## v7.5.1 (2026-11-15)
 

@@ -1520,14 +1520,20 @@ func (c *Client) GetSupportTicket(ctx context.Context, id string) (*SupportTicke
 // CreateSupportTicket opens a ticket. The API answers `{ticket: {...},
 // max_priority_allowed, ...}` (TicketGatedResponse): decoding it as a bare
 // ticket left the id empty (cetic-cloud-platform#2004).
-func (c *Client) CreateSupportTicket(ctx context.Context, req SupportTicketCreateRequest) (*SupportTicket, error) {
-	var out struct {
-		Ticket SupportTicket `json:"ticket"`
-	}
+func (c *Client) CreateSupportTicket(ctx context.Context, req SupportTicketCreateRequest) (*SupportTicketCreated, error) {
+	var out SupportTicketCreated
 	if err := c.do(ctx, http.MethodPost, "/v1/support/tickets", req, &out); err != nil {
 		return nil, err
 	}
-	return &out.Ticket, nil
+	return &out, nil
+}
+
+// SupportTicketCreated is the creation response: the ticket and, when the
+// support plan capped the requested priority, what was asked for and why.
+type SupportTicketCreated struct {
+	Ticket             SupportTicket `json:"ticket"`
+	PriorityCappedFrom *string       `json:"priority_capped_from,omitempty"`
+	UpgradeMessage     *string       `json:"upgrade_message,omitempty"`
 }
 
 // CloseSupportTicket closes a ticket; idempotent on the API side (an already

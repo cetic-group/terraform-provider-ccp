@@ -17,6 +17,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
@@ -128,13 +129,18 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"image_tag": schema.StringAttribute{
 				MarkdownDescription: "Tag of the upstream `registry` image to deploy. Defaults to the " +
-					"backoffice-managed default (currently `2.8`). Forces replacement: the API " +
-					"cannot change it on an existing registry.",
+					"backoffice-managed default (currently `2.8`). Applied at creation only: the API " +
+					"cannot change it on an existing registry, and the back-office may raise it; a " +
+					"different value is reported as a warning, never by a replacement (which would " +
+					"destroy the images).",
 				Optional: true,
 				Computed: true,
+				// Pas de RequiresReplace : une montée d'image par le back-office
+				// aurait planifié la destruction du registre et de ses images
+				// (revue de terraform-provider-ccp#121).
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
+					ccpplanmodifier.CreateOnlyString("image_tag"),
 				},
 			},
 			"gc_schedule_cron": schema.StringAttribute{

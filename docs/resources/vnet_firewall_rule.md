@@ -9,7 +9,7 @@ description: |-
 
 Manages a firewall rule for a VNet. Rules are applied per-instance on all compute resources attached to the VNet when the VNet's isolation mode is enabled. Rules evaluate in ascending `position` order — the first matching rule wins.
 
-~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. The API has no update for a rule: changing any argument recreates the rule.
+~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. The API has no update for a rule: changing `comment`, `enabled` or a match/action argument recreates the rule. Set `lifecycle { create_before_destroy = true }` to avoid a window without the rule. `position` is applied at creation only: reordering is done in the console (it renumbers every rule by steps of 10), and a different value is reported as a plan warning, never by a recreation.
 
 ## Example Usage
 
@@ -68,7 +68,7 @@ resource "ccp_vnet_firewall_rule" "allow_ssh_ops" {
 - `dest_cidr` - (Optional, Forces new resource) Destination CIDR to match. Defaults to `0.0.0.0/0` (all destinations).
 - `dport` - (Optional, Forces new resource) Destination port or port range (e.g. `80`, `8000:9000`). Only applicable to `tcp` and `udp` protocols.
 - `enabled` - (Optional, Forces new resource) Whether the rule is currently active. Defaults to `true`.
-- `position` - (Optional, Computed, Forces new resource) Evaluation order — lower values are evaluated first (0 to 10000). Defaults to `0`.
+- `position` - (Optional, Computed) Evaluation order at creation — lower values are evaluated first (0 to 10000). Defaults to `0`. Not changed afterwards (see the note above).
 - `comment` - (Optional, Forces new resource) Human-readable description of the rule's purpose (max 200 chars).
 
 ## Attributes Reference

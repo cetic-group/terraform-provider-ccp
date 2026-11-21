@@ -32,9 +32,14 @@ func TestAttributsModifiablesForcentLeRemplacement(t *testing.T) {
 			}
 		}
 	}
-	for _, nom := range []string{"comment", "position", "enabled"} {
+	for _, nom := range []string{"comment", "enabled"} {
 		if !strings.Contains(strings.Join(descs[nom], " "), "recreate") {
 			t.Errorf("%s doit forcer le remplacement", nom)
 		}
+	}
+	// `position` : fixée à la création, jamais recréée (le réordonnancement de
+	// la console renumérote toutes les règles, revue de #121).
+	if strings.Contains(strings.Join(descs["position"], " "), "recreate") {
+		t.Error("position ne doit pas forcer le remplacement")
 	}
 }

@@ -47,7 +47,7 @@ resource "ccp_container_scale_set" "api_workers" {
 - `bastion_access` - (Optional, Forces new resource) Allow SSH access to every container through the tenant Bastion (opt-in). Defaults to `false`. Requires a Bastion configured for the organization.
 - `docker` - (Optional, Forces new resource) Required to run Docker on every container (enables nesting; opt-in). Defaults to `false`.
 - `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB applied to every container. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for scale sets, so changing this value forces replacement of the whole scale set.
-- `tags` - (Optional, updated in place) List of free-form tags (max 60, max 50 chars each).
+- `tags` - (Optional, updated in place) List of free-form tags (max 60, max 50 chars each), already normalized: lowercase, no surrounding spaces, no duplicates (the API normalizes them).
 
 ## Attributes Reference
 

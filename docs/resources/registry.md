@@ -93,10 +93,11 @@ resource "ccp_registry" "public" {
 - `expose_private` - (Optional) When `true`, the registry is reachable from peer
   VNets / VPN clients via the private gateway (cert via DNS-01). Defaults to
   `true`. Mutable in place. At least one of `expose_public` / `expose_private` should be `true`.
-- `image_tag` - (Optional, Computed, Forces new resource) Tag of the upstream
-  `registry` image to deploy. Defaults to the platform-managed default
-  (currently `2.8`). The API cannot change it on an existing registry:
-  changing it **replaces the registry and its images**.
+- `image_tag` - (Optional, Computed) Tag of the upstream `registry` image to
+  deploy at creation. Defaults to the platform-managed default (currently
+  `2.8`). Applied at creation only: the API cannot change it on an existing
+  registry, and the back-office may raise it. A different value is reported as
+  a plan warning, never by a replacement.
 - `storage_gb` - (Optional, Computed) Provisioned storage quota in GB, distinct
   from `storage_used_gb` (actual blob usage). Defaults to the platform-managed
   default when omitted. **Mutable in place** — growing this value resizes the

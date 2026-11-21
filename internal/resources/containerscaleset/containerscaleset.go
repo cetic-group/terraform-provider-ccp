@@ -9,6 +9,8 @@ package containerscaleset
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"regexp"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/snatvalidator"
@@ -188,6 +190,18 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"tags": schema.ListAttribute{
+				// PUT /v1/tags normalise (minuscules, espaces retirés, sans
+				// doublon) : une valeur non normalisée rendait l'état incohérent
+				// après apply puis un diff permanent (revue de
+				// terraform-provider-ccp#121). On l'exige déjà normalisée.
+				MarkdownDescription: "Free-form tags, already normalized: lowercase, no surrounding " +
+					"spaces, no duplicates (the API normalizes them). Updated in place.",
+				Validators: []validator.List{
+					listvalidator.UniqueValues(),
+					listvalidator.ValueStringsAre(stringvalidator.RegexMatches(
+						regexp.MustCompile(`^[^A-Z\s](?:[^A-Z]*[^A-Z\s])?$`),
+						"must be lowercase, without surrounding spaces (the API normalizes tags)")),
+				},
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,

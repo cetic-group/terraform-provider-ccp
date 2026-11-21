@@ -122,9 +122,20 @@ func (r *ticketResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Failed to create support ticket", err.Error())
 		return
 	}
-	plan.ID = types.StringValue(created.ID)
-	plan.Status = types.StringValue(created.Status)
-	plan.CreatedAt = types.StringValue(created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	// Le plan de support peut abaisser la priorité demandée : le dire, sans
+	// changer `priority` (attribut configuré : l'état doit égaler le plan).
+	// Revue de terraform-provider-ccp#121.
+	if created.PriorityCappedFrom != nil {
+		detail := fmt.Sprintf("Requested priority %q was capped by your support plan to %q.",
+			*created.PriorityCappedFrom, created.Ticket.Priority)
+		if created.UpgradeMessage != nil {
+			detail += " " + *created.UpgradeMessage
+		}
+		resp.Diagnostics.AddWarning("Support ticket priority capped", detail)
+	}
+	plan.ID = types.StringValue(created.Ticket.ID)
+	plan.Status = types.StringValue(created.Ticket.Status)
+	plan.CreatedAt = types.StringValue(created.Ticket.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

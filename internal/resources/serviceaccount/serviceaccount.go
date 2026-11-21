@@ -23,6 +23,7 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
+	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
@@ -72,9 +73,8 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"~> **`token` is returned only at creation** and never re-emitted by the API. It is written " +
 			"to the Terraform state and is `Sensitive`. To rotate it, `terraform taint` this resource: " +
 			"the destroy + create cycle issues a fresh token.\n\n" +
-			"`name` and `description` are mutable in place; changing `expires_at` replaces the " +
-			"service account (new token). Terraform will issue a PATCH " +
-			"rather than a replace.",
+			"`name` and `description` are mutable in place (Terraform issues a PATCH); changing " +
+			"`expires_at` replaces the service account (new token).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned UUID of the service account.",
@@ -94,14 +94,19 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"expires_at": schema.StringAttribute{
 				MarkdownDescription: "Optional RFC 3339 timestamp after which the service account token is " +
 					"rejected by the API. The API counts whole days: the effective expiry may differ " +
-					"by up to a day; the configured value is kept in state. Changing it replaces " +
-					"the service account.",
+					"by less than two days, a difference Terraform ignores. Changing it beyond that " +
+					"replaces the service account.",
 				Optional: true,
 				Computed: true,
 				// L'API n'a pas de PATCH pour l'expiration : sans RequiresReplace,
 				// un changement était annoncé puis ignoré (cetic-cloud-platform#2004).
+				// La tolérance passe AVANT RequiresReplace : un état écrit par une
+				// version précédente contient l'heure exacte de l'API, et le
+				// premier plan après la montée remplacerait le compte (revue de
+				// terraform-provider-ccp#121).
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+					ccpplanmodifier.TimeWithinTolerance(expiryTolerance),
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
@@ -241,21 +246,17 @@ func (r *serviceAccountResource) Create(ctx context.Context, req resource.Create
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
+// expiryTolerance : l'API arrondit en jours entiers, et l'heure de création
+// s'ajoute : l'écart peut atteindre presque deux jours.
+const expiryTolerance = 48 * time.Hour
+
 // keepConfiguredExpiry garde la date configurée tant que celle de l'API
-// désigne le même instant à un jour près : l'API convertit en jours entiers
+// désigne le même instant à moins de deux jours près : l'API convertit en jours entiers
 // (`expires_in_days`), et relire sa valeur exacte provoquait « inconsistent
 // result after apply » puis un remplacement à chaque plan
 // (cetic-cloud-platform#2004).
 func keepConfiguredExpiry(configured, api types.String) types.String {
-	if configured.IsNull() || configured.IsUnknown() || api.IsNull() || api.IsUnknown() {
-		return api
-	}
-	c, err1 := time.Parse(time.RFC3339, configured.ValueString())
-	a, err2 := time.Parse(time.RFC3339, api.ValueString())
-	if err1 != nil || err2 != nil {
-		return api
-	}
-	if d := a.Sub(c); d < 48*time.Hour && d > -48*time.Hour {
+	if ccpplanmodifier.SameInstant(configured, api, expiryTolerance) {
 		return configured
 	}
 	return api

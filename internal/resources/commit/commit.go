@@ -25,6 +25,8 @@ var (
 
 func New() resource.Resource { return &commitResource{} }
 
+var _ resource.ResourceWithModifyPlan = &commitResource{}
+
 type commitResource struct{ client *client.Client }
 
 type commitModel struct {
@@ -139,6 +141,26 @@ func (r *commitResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 	state = commitFromAPI(c)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// ModifyPlan refuse un changement d'`auto_renew` dès `terraform plan` : sans
+// lui, le plan annonçait une modification sur place qui échouait à l'apply
+// (revue de terraform-provider-ccp#121).
+func (r *commitResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return // création ou destruction
+	}
+	var plan, state commitModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !plan.AutoRenew.IsUnknown() && !plan.AutoRenew.Equal(state.AutoRenew) {
+		resp.Diagnostics.AddAttributeError(path.Root("auto_renew"), "auto_renew cannot be changed",
+			"The platform has no update for a commitment's auto_renew (and does not renew "+
+				"commitments automatically yet). Revert the value.")
+	}
 }
 
 func (r *commitResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

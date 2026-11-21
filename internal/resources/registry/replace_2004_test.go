@@ -14,7 +14,9 @@ import (
 func TestNameEtImageTagForcentLeRemplacement(t *testing.T) {
 	var resp resource.SchemaResponse
 	New().Schema(context.Background(), resource.SchemaRequest{}, &resp)
-	for _, nom := range []string{"name", "image_tag"} {
+	// `image_tag` : appliqué à la création seulement, sans remplacement (une
+	// montée par le back-office aurait détruit le registre, revue de #121).
+	for _, nom := range []string{"name"} {
 		attr, ok := resp.Schema.Attributes[nom].(schema.StringAttribute)
 		if !ok {
 			t.Fatalf("%s : attribut chaîne attendu", nom)
@@ -27,6 +29,16 @@ func TestNameEtImageTagForcentLeRemplacement(t *testing.T) {
 		}
 		if !trouve {
 			t.Errorf("%s doit forcer le remplacement", nom)
+		}
+	}
+}
+
+func TestImageTagNeForcePasLeRemplacement(t *testing.T) {
+	var resp resource.SchemaResponse
+	New().Schema(context.Background(), resource.SchemaRequest{}, &resp)
+	for _, m := range resp.Schema.Attributes["image_tag"].(schema.StringAttribute).PlanModifiers {
+		if strings.Contains(strings.ToLower(m.Description(context.Background())), "recreate") {
+			t.Fatal("image_tag ne doit pas forcer le remplacement")
 		}
 	}
 }

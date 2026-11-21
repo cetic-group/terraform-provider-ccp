@@ -8,6 +8,7 @@ package orgmember
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -92,7 +93,13 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 
 func setState(m *memberResourceModel, x *client.OrgMember) {
 	m.ID = types.StringValue(x.ID)
-	m.Email = types.StringValue(x.Email)
+	// L'API enregistre l'e-mail en minuscules : garder la casse de la
+	// configuration tant qu'il s'agit du même e-mail, sinon l'apply finit en
+	// « inconsistent result » puis remplace le membre à chaque plan (revue de
+	// terraform-provider-ccp#121).
+	if m.Email.IsNull() || m.Email.IsUnknown() || !strings.EqualFold(m.Email.ValueString(), x.Email) {
+		m.Email = types.StringValue(x.Email)
+	}
 	m.Role = types.StringValue(x.Role)
 	m.Accepted = types.BoolValue(x.AcceptedAt != nil)
 	if x.AcceptedAt != nil {

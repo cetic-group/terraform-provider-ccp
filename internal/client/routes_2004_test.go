@@ -88,13 +88,17 @@ func TestSupportTicketCreateEtCloture(t *testing.T) {
 		"POST /v1/support/tickets": map[string]any{
 			"ticket":               map[string]any{"id": "t1", "subject": "Aide", "status": "open", "created_at": "2026-11-21T10:00:00Z"},
 			"max_priority_allowed": "normal",
+			"priority_capped_from": "urgent",
 		},
 		"POST /v1/support/tickets/t1/close": map[string]any{"id": "t1", "status": "closed"},
 	})
 	tk, err := c.CreateSupportTicket(context.Background(), SupportTicketCreateRequest{
 		Subject: "Aide", Body: "x", Category: "other", Priority: "normal"})
-	if err != nil || tk.ID != "t1" {
+	if err != nil || tk.Ticket.ID != "t1" {
 		t.Fatalf("CreateSupportTicket = %+v, %v", tk, err)
+	}
+	if tk.PriorityCappedFrom == nil || *tk.PriorityCappedFrom != "urgent" {
+		t.Fatalf("priority_capped_from non lu : %+v", tk)
 	}
 	if err := c.CloseSupportTicket(context.Background(), "t1"); err != nil {
 		t.Fatalf("CloseSupportTicket : %v", err)
