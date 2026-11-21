@@ -106,13 +106,31 @@ func TestEgressIPTypeDeprecatedAlwaysNull(t *testing.T) {
 	}
 }
 
-func TestNameAndTagsStillForceReplacement(t *testing.T) {
+// cetic-cloud-platform#2004 : PATCH /v1/vpcs/{id} change `name` et `tags` sur
+// place. Le remplacement détruisait le VPC (et son contenu) pour un simple
+// renommage ; l'ancien test figeait ce remplacement.
+func TestNameAndTagsAreUpdatedInPlace(t *testing.T) {
 	s := vpcSchema(t)
-	if len(s.Attributes["name"].(schema.StringAttribute).PlanModifiers) == 0 {
-		t.Error("name : RequiresReplace attendu (non géré en place par le provider)")
+	for _, m := range s.Attributes["name"].(schema.StringAttribute).PlanModifiers {
+		if strings.Contains(m.Description(context.Background()), "recreate") {
+			t.Error("name ne doit plus forcer le remplacement")
+		}
 	}
-	if len(s.Attributes["tags"].(schema.ListAttribute).PlanModifiers) == 0 {
-		t.Error("tags : RequiresReplace attendu (non géré en place par le provider)")
+	for _, m := range s.Attributes["tags"].(schema.ListAttribute).PlanModifiers {
+		if strings.Contains(m.Description(context.Background()), "recreate") {
+			t.Error("tags ne doit plus forcer le remplacement")
+		}
+	}
+	tags := func(v ...string) types.List {
+		l, _ := types.ListValueFrom(context.Background(), types.StringType, v)
+		return l
+	}
+	state := vpcResourceModel{Name: types.StringValue("old"), Tags: tags("a"), DedicatedEgressIP: types.BoolValue(false)}
+	plan := vpcResourceModel{Name: types.StringValue("new"), Tags: tags("a", "b"), DedicatedEgressIP: types.BoolValue(false)}
+	req, changed := buildVPCUpdate(plan, state)
+	raw, _ := json.Marshal(req)
+	if !changed || string(raw) != `{"name":"new","tags":["a","b"]}` {
+		t.Fatalf("PATCH attendu {name, tags} seuls, reçu %s (changed=%v)", raw, changed)
 	}
 }
 

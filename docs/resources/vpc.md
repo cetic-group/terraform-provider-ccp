@@ -105,13 +105,13 @@ removed.
 
 ### Required
 
-- `name` - (Required) Name of the VPC. Must be unique within the region.
+- `name` - (Required, updated in place) Name of the VPC. Must be unique within the region.
 - `region` - (Required, Forces new resource) Region where the VPC is created. One of: `RNN` (Rennes), `PAR` (Paris), `ABJ` (Abidjan).
 
 ### Optional
 
 - `cidr` - (Optional, Computed, Forces new resource) Private address block of the VPC (RFC1918, mask `/16` to `/24`, e.g. `10.1.0.0/16`). Auto-allocated by the platform when omitted. VNets created inside the VPC must be sub-ranges of this block. Immutable after creation — changing it forces replacement.
-- `tags` - (Optional) List of free-form tags (max 60, max 50 chars each). Example: `["env:prod", "team:infra"]`.
+- `tags` - (Optional, updated in place) List of free-form tags (max 60, max 50 chars each). Example: `["env:prod", "team:infra"]`.
 - `dedicated_egress_ip` - (Optional, Computed, updated in place) Give the VPC its own dedicated public egress IP. Defaults to `false` (shared egress, outbound TCP port 25 blocked). Setting it back to `false`, or removing it, **releases the IP immediately**. Billed as a public IP. Not available on VPCs that predate the current network architecture. See [Dedicated egress IP](#dedicated-egress-ip).
 
 ## Attributes Reference

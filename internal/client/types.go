@@ -67,7 +67,9 @@ type VPCCreateRequest struct {
 // body and the API keeps its current value. Only `dedicated_egress_ip` is
 // changed in place by the provider: `name` and `tags` force replacement.
 type VPCUpdateRequest struct {
-	DedicatedEgressIP *bool `json:"dedicated_egress_ip,omitempty"`
+	Name              *string   `json:"name,omitempty"`
+	Tags              *[]string `json:"tags,omitempty"`
+	DedicatedEgressIP *bool     `json:"dedicated_egress_ip,omitempty"`
 }
 
 // VNet represents a VNet resource (nested under VPC). Status: active | deleting | error.

@@ -143,9 +143,9 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						"must contain only letters, digits, underscores, or hyphens",
 					),
 				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+				// Pas de RequiresReplace : PATCH /v1/vpcs/{id} renomme sur place.
+				// Le remplacement détruisait le VPC et tout son contenu pour un
+				// simple renommage (cetic-cloud-platform#2004).
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "CETIC Cloud region. One of `RNN` (Rennes, France), " +
@@ -173,15 +173,13 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"tags": schema.ListAttribute{
-				MarkdownDescription: "Free-form labels attached to the VPC. The API has no " +
-					"endpoint to mutate tags after creation, so changes here force replacement.",
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				// Same order as `cidr`: UseStateForUnknown before RequiresReplace.
+				MarkdownDescription: "Free-form labels attached to the VPC. Mutable in place.",
+				Optional:            true,
+				Computed:            true,
+				ElementType:         types.StringType,
+				// Modifiés sur place par PATCH (cetic-cloud-platform#2004).
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
-					listplanmodifier.RequiresReplace(),
 				},
 			},
 			"status": schema.StringAttribute{
@@ -425,10 +423,10 @@ func (r *vpcResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update only handles `dedicated_egress_ip`: every other user-settable
-// attribute carries RequiresReplace. The PATCH body carries that field alone
-// (buildVPCUpdate), and only when it changes. The platform assigns or
-// releases the IP within the request; nothing is awaited afterwards.
+// Update handles `name`, `tags` and `dedicated_egress_ip`, the attributes the
+// API changes in place; the others carry RequiresReplace. The PATCH body
+// carries only what changed (buildVPCUpdate). The platform assigns or
+// releases the egress IP within the request; nothing is awaited afterwards.
 func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state vpcResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -453,7 +451,15 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	var final *client.VPC
-	{
+	if patch.DedicatedEgressIP == nil {
+		patched, err := r.client.UpdateVPC(ctx, id, patch)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update the VPC",
+				fmt.Sprintf("CETIC Cloud rejected the update of VPC %s: %s", id, err.Error()))
+			return
+		}
+		final = patched
+	} else {
 		want := *patch.DedicatedEgressIP
 		patched, err := r.client.UpdateVPC(ctx, id, patch)
 		if err != nil {
@@ -482,19 +488,34 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// buildVPCUpdate returns the PATCH body for the attributes updated in place,
-// and whether anything changed. Only `dedicated_egress_ip` is sent, and only
-// when the plan differs from the state: `name` and `tags` force replacement,
-// so they never reach Update with a different value.
+// buildVPCUpdate returns the PATCH body for the attributes updated in place
+// (`name`, `tags`, `dedicated_egress_ip`), and whether anything changed. Each
+// field is sent only when the plan differs from the state.
 func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool) {
 	var req client.VPCUpdateRequest
-	if plan.DedicatedEgressIP.IsUnknown() || plan.DedicatedEgressIP.IsNull() ||
-		plan.DedicatedEgressIP.Equal(state.DedicatedEgressIP) {
-		return req, false
+	changed := false
+	if !plan.Name.IsUnknown() && !plan.Name.IsNull() && !plan.Name.Equal(state.Name) {
+		v := plan.Name.ValueString()
+		req.Name = &v
+		changed = true
 	}
-	want := plan.DedicatedEgressIP.ValueBool()
-	req.DedicatedEgressIP = &want
-	return req, true
+	if !plan.Tags.IsUnknown() && !plan.Tags.IsNull() && !plan.Tags.Equal(state.Tags) {
+		tags := []string{}
+		for _, e := range plan.Tags.Elements() {
+			if s, ok := e.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				tags = append(tags, s.ValueString())
+			}
+		}
+		req.Tags = &tags
+		changed = true
+	}
+	if !plan.DedicatedEgressIP.IsUnknown() && !plan.DedicatedEgressIP.IsNull() &&
+		!plan.DedicatedEgressIP.Equal(state.DedicatedEgressIP) {
+		want := plan.DedicatedEgressIP.ValueBool()
+		req.DedicatedEgressIP = &want
+		changed = true
+	}
+	return req, changed
 }
 
 // egressRefusalHint completes the API detail of a refused VPC write with what
