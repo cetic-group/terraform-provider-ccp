@@ -127,7 +127,7 @@ func TestNameAndTagsAreUpdatedInPlace(t *testing.T) {
 	}
 	state := vpcResourceModel{Name: types.StringValue("old"), Tags: tags("a"), DedicatedEgressIP: types.BoolValue(false)}
 	plan := vpcResourceModel{Name: types.StringValue("new"), Tags: tags("a", "b"), DedicatedEgressIP: types.BoolValue(false)}
-	req, changed := buildVPCUpdate(plan, state)
+	req, changed, _ := buildVPCUpdate(plan, state)
 	raw, _ := json.Marshal(req)
 	if !changed || string(raw) != `{"name":"new","tags":["a","b"]}` {
 		t.Fatalf("PATCH attendu {name, tags} seuls, reçu %s (changed=%v)", raw, changed)
@@ -169,11 +169,11 @@ func TestBuildVPCUpdateSendsOnlyTheChangedOption(t *testing.T) {
 	model := func(v bool) vpcResourceModel {
 		return vpcResourceModel{Name: types.StringValue("n"), DedicatedEgressIP: types.BoolValue(v)}
 	}
-	if _, changed := buildVPCUpdate(model(true), model(true)); changed {
+	if _, changed, _ := buildVPCUpdate(model(true), model(true)); changed {
 		t.Error("option inchangée : aucun PATCH attendu")
 	}
 	for _, want := range []bool{true, false} {
-		req, changed := buildVPCUpdate(model(want), model(!want))
+		req, changed, _ := buildVPCUpdate(model(want), model(!want))
 		if !changed || req.DedicatedEgressIP == nil || *req.DedicatedEgressIP != want {
 			t.Fatalf("option %t : PATCH attendu avec dedicated_egress_ip=%t, reçu %+v", want, want, req)
 		}
@@ -256,5 +256,57 @@ func TestVPCResponseDecodedFromCreateAndPatch(t *testing.T) {
 	calls := srv.Calls()
 	if len(calls) != 2 || calls[1].Method != http.MethodPatch || string(calls[1].Body) != `{"dedicated_egress_ip":false}` {
 		t.Errorf("PATCH : corps %q, attendu {\"dedicated_egress_ip\":false}", calls[1].Body)
+	}
+}
+
+// Revue de #121 : des tags illisibles sont une ERREUR, jamais une liste vide
+// (envoyée telle quelle, elle effaçait tous les tags du VPC).
+func TestBuildVPCUpdateTagsIllisibles(t *testing.T) {
+	mauvais, _ := types.ListValueFrom(context.Background(), types.Int64Type, []int64{1})
+	plan := vpcResourceModel{Name: types.StringValue("n"), Tags: mauvais, DedicatedEgressIP: types.BoolValue(false)}
+	state := vpcResourceModel{Name: types.StringValue("n"), Tags: types.ListNull(types.StringType),
+		DedicatedEgressIP: types.BoolValue(false)}
+	req, changed, diags := buildVPCUpdate(plan, state)
+	if !diags.HasError() || changed || req.Tags != nil {
+		t.Fatalf("erreur attendue sans PATCH, reçu changed=%v tags=%v diags=%v", changed, req.Tags, diags)
+	}
+}
+
+// Revue de #121 : la branche name/tags de Update écrit le PLAN dans l'état.
+// La réponse du PATCH porte un `status` qui a bougé depuis le dernier
+// refresh ; le reprendre rendrait l'état incohérent avec le plan.
+func TestUpdateNameTagsGardeLeStatusDuPlan(t *testing.T) {
+	ctx := context.Background()
+	s := vpcSchema(t)
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "PATCH", Path: "/v1/vpcs/vpc-1", Status: http.StatusOK, Body: map[string]any{
+			"id": "vpc-1", "name": "new", "region": "RNN", "cidr": "10.1.0.0/16", "status": "updating",
+			"tags": []string{"a"}, "created_at": "2026-11-03T10:00:00Z", "dedicated_egress_ip": false,
+		}},
+	})
+	defer srv.Close()
+	r := &vpcResource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	tags, _ := types.ListValueFrom(ctx, types.StringType, []string{"a"})
+	etat := vpcResourceModel{
+		ID: types.StringValue("vpc-1"), Name: types.StringValue("old"), Region: types.StringValue("RNN"),
+		Cidr: types.StringValue("10.1.0.0/16"), Tags: tags, Status: types.StringValue("active"),
+		CreatedAt: types.StringValue("2026-11-03T10:00:00Z"), DedicatedEgressIP: types.BoolValue(false),
+		EgressIP: types.StringNull(), EgressIPType: types.StringNull(), EgressIPStatus: types.StringNull(),
+	}
+	voulu := etat
+	voulu.Name = types.StringValue("new")
+	state := tfsdk.State{Schema: s}
+	state.Set(ctx, &etat)
+	plan := tfsdk.Plan{Schema: s}
+	plan.Set(ctx, &voulu)
+	resp := &resource.UpdateResponse{State: tfsdk.State{Schema: s, Raw: tftypes.NewValue(s.Type().TerraformType(ctx), nil)}}
+	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: state}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update : %v", resp.Diagnostics)
+	}
+	var final vpcResourceModel
+	resp.State.Get(ctx, &final)
+	if final.Status.ValueString() != "active" || final.Name.ValueString() != "new" {
+		t.Fatalf("état = plan attendu (status active, name new), reçu status=%v name=%v", final.Status, final.Name)
 	}
 }

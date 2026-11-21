@@ -29,7 +29,9 @@ func TestTagsDoiventEtreNormalises(t *testing.T) {
 	var resp resource.SchemaResponse
 	New().Schema(context.Background(), resource.SchemaRequest{}, &resp)
 	attr := resp.Schema.Attributes["tags"].(schema.ListAttribute)
-	cas := map[string]bool{"prod": true, "env:prod": true, "Prod": false, " prod": false}
+	cas := map[string]bool{"prod": true, "env:prod": true, "équipe": true, "Prod": false, " prod": false,
+		// Unicode : l'API normalise par `strip().lower()` sur tout l'Unicode.
+		"Équipe": false, "prod\u00a0": false, "": false}
 	for v, ok := range cas {
 		l, _ := types.ListValueFrom(context.Background(), types.StringType, []string{v})
 		r := &validator.ListResponse{}

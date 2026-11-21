@@ -23,10 +23,10 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
-	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"

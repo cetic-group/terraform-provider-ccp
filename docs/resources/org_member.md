@@ -9,7 +9,7 @@ description: |-
 
 Manages a member within a CETIC Cloud organization. Members are invited by email address and assigned a role that controls their permissions within the organization. If the invited email already has a CETIC Cloud account, the membership is linked automatically. Otherwise, the user must register with that email address to activate the membership.
 
-~> **Note:** The `role` argument is mutable — you can change a member's role without recreating the resource. The `email` argument is immutable; changing it forces a new invitation.
+~> **Note:** The `role` argument is mutable — you can change a member's role without recreating the resource. The `email` argument is immutable; changing it forces a new invitation. A difference of case only (the API stores e-mails in lowercase, for instance after `terraform import`) does not.
 
 ## Example Usage
 

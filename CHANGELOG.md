@@ -18,13 +18,15 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `feature_request`, `other`), and destroy closes the ticket.
 - `ccp_service_account`: `expires_at` is stable after apply (the API counts
   days) and changing it replaces the account.
-- `ccp_registry`: `name` and `image_tag` force replacement (the API cannot
-  change them).
+- `ccp_registry`: `name` forces replacement (the API cannot change it);
+  `image_tag` is applied at creation only.
 - `ccp_container_scale_set`: `name` forces replacement; `tags` are updated by
   `PUT /v1/tags` (the PATCH ignored both).
 - `ccp_vpc_peering`: `tags` are read-only (the API cannot tag a peering).
-- `ccp_vnet_firewall_rule`: `comment`, `position` and `enabled` force
-  replacement (the API has no PATCH for a rule; updates failed).
+- `ccp_vnet_firewall_rule`: `comment` and `enabled` force replacement (the
+  API has no PATCH for a rule; updates failed); `position` is applied at
+  creation only, and a replacement that would change the rule order is
+  announced by a plan warning.
 - `ccp_commit`: `two_years` and `three_years` accepted; `auto_renew` cannot be
   changed after creation (no API update).
 - `ccp_registry_user`: destroy deletes by UUID (the username got a 422).
@@ -42,9 +44,12 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Applied at creation only, a later difference is a plan warning (never a
   replacement): `ccp_registry.image_tag`, `ccp_vnet_firewall_rule.position`.
 - `ccp_container_scale_set.tags` must be normalized (lowercase, no
-  duplicates); `ccp_commit.auto_renew` changes are refused at plan time;
-  `ccp_support_ticket` warns when the support plan caps the priority;
-  `ccp_org_member` keeps the configured e-mail case.
+  surrounding spaces, Unicode included, no duplicates); `ccp_commit.auto_renew`
+  changes are refused at plan time, unless `commit_type` changes too (a new
+  commitment is created); `ccp_support_ticket` warns when the support plan
+  caps the priority; `ccp_org_member` keeps the configured e-mail case, and a
+  case-only difference (after `terraform import`) is an in-place update, not a
+  new invitation.
 
 ## v7.5.1 (2026-11-15)
 

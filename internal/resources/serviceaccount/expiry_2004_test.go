@@ -1,8 +1,13 @@
 package serviceaccount
 
 import (
+	"context"
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -26,5 +31,25 @@ func TestKeepConfiguredExpiry(t *testing.T) {
 	}
 	if got := keepConfiguredExpiry(types.StringNull(), types.StringValue("2027-01-16T09:31:07Z")); got.ValueString() != "2027-01-16T09:31:07Z" {
 		t.Errorf("sans valeur configurée, la valeur de l'API doit être reprise : %v", got)
+	}
+}
+
+// Revue de #121 : `TimeWithinTolerance` doit passer AVANT `RequiresReplace`
+// dans le schéma de `expires_at` — sinon le premier plan après la montée du
+// provider remplace le compte (état écrit avec l'heure exacte de l'API).
+func TestToleranceAvantRequiresReplace(t *testing.T) {
+	var resp resource.SchemaResponse
+	New().Schema(context.Background(), resource.SchemaRequest{}, &resp)
+	tolerance, remplacement := -1, -1
+	for i, m := range resp.Schema.Attributes["expires_at"].(schema.StringAttribute).PlanModifiers {
+		switch typ := fmt.Sprintf("%T", m); {
+		case typ == "planmodifier.timeWithinTolerance":
+			tolerance = i
+		case strings.Contains(strings.ToLower(typ), "requiresreplace"):
+			remplacement = i
+		}
+	}
+	if tolerance < 0 || remplacement < 0 || tolerance > remplacement {
+		t.Fatalf("ordre attendu : tolérance (%d) avant remplacement (%d)", tolerance, remplacement)
 	}
 }

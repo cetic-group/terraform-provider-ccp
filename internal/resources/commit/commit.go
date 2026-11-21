@@ -156,11 +156,24 @@ func (r *commitResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// Un changement de `commit_type` (RequiresReplace) crée un NOUVEL
+	// engagement, qui porte le nouvel `auto_renew` : ce n'est pas une mise à
+	// jour. Le framework (v1.13) passe `resp.RequiresReplace` vide à ce
+	// ModifyPlan : la comparaison est faite ici (revue de la PR #121).
+	if remplacementPrevu(plan, state) {
+		return
+	}
 	if !plan.AutoRenew.IsUnknown() && !plan.AutoRenew.Equal(state.AutoRenew) {
 		resp.Diagnostics.AddAttributeError(path.Root("auto_renew"), "auto_renew cannot be changed",
 			"The platform has no update for a commitment's auto_renew (and does not renew "+
 				"commitments automatically yet). Revert the value.")
 	}
+}
+
+// remplacementPrevu : vrai si un attribut `RequiresReplace` change (seul
+// `commit_type` l'est). Une valeur inconnue au plan compte comme un changement.
+func remplacementPrevu(plan, state commitModel) bool {
+	return plan.CommitType.IsUnknown() || !plan.CommitType.Equal(state.CommitType)
 }
 
 func (r *commitResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

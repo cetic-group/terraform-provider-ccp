@@ -9,12 +9,12 @@ package containerscaleset
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"regexp"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -198,9 +198,7 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"spaces, no duplicates (the API normalizes them). Updated in place.",
 				Validators: []validator.List{
 					listvalidator.UniqueValues(),
-					listvalidator.ValueStringsAre(stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[^A-Z\s](?:[^A-Z]*[^A-Z\s])?$`),
-						"must be lowercase, without surrounding spaces (the API normalizes tags)")),
+					listvalidator.ValueStringsAre(tagNormalise{}),
 				},
 				ElementType: types.StringType,
 				Optional:    true,
@@ -480,4 +478,29 @@ func (r *cssResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 
 func (r *cssResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// tagNormalise exige une valeur égale à sa forme normalisée par l'API
+// (`validate_tags` : `strip().lower()` en Python, sur TOUT l'Unicode). Une
+// expression `[^A-Z\s]` ne couvrait que l'ASCII : `Équipe`, ou un tag
+// terminé par une espace insécable, passait puis revenait normalisé de l'API
+// (« inconsistent result after apply », revue de terraform-provider-ccp#121).
+// Longueur et nombre de tags restent contrôlés par l'API (422 clair).
+type tagNormalise struct{}
+
+func (tagNormalise) Description(context.Context) string {
+	return "must be lowercase, without surrounding spaces (the API normalizes tags)"
+}
+
+func (v tagNormalise) MarkdownDescription(ctx context.Context) string { return v.Description(ctx) }
+
+func (v tagNormalise) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	brut := req.ConfigValue.ValueString()
+	if normal := strings.ToLower(strings.TrimSpace(brut)); normal != brut || normal == "" {
+		resp.Diagnostics.AddAttributeError(req.Path, "Tag not normalized",
+			fmt.Sprintf("%q %s; the API would store %q.", brut, v.Description(context.Background()), normal))
+	}
 }

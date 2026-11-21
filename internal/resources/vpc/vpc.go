@@ -436,7 +436,11 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	id := state.ID.ValueString()
-	patch, changed := buildVPCUpdate(plan, state)
+	patch, changed, diags := buildVPCUpdate(plan, state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return // jamais de PATCH avec des tags illisibles : il les effacerait tous
+	}
 
 	if !changed {
 		// Nothing for the API to change (e.g. `egress_ip_type` planned null by
@@ -450,44 +454,39 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	var final *client.VPC
 	if patch.DedicatedEgressIP == nil {
-		patched, err := r.client.UpdateVPC(ctx, id, patch)
-		if err != nil {
+		if _, err := r.client.UpdateVPC(ctx, id, patch); err != nil {
 			resp.Diagnostics.AddError("Failed to update the VPC",
 				fmt.Sprintf("CETIC Cloud rejected the update of VPC %s: %s", id, err.Error()))
 			return
 		}
-		// Seuls `name` et `tags` ont changé : on ne reporte qu'eux. `status`
-		// et `egress_ip_status` viennent de l'état dans le plan ; les reprendre
-		// de la réponse, s'ils ont bougé depuis le dernier refresh, rendrait
-		// l'état incohérent (revue de terraform-provider-ccp#121, même cas que
-		// la branche `!changed`).
-		// Le PATCH a enregistré exactement `name` et `tags` du plan (l'API ne
-		// normalise pas ces champs sur cette route) : le plan devient l'état.
-		_ = patched
+		// Seuls `name` et `tags` ont changé, et le PATCH les a enregistrés tels
+		// quels (l'API ne les normalise pas sur cette route) : le plan devient
+		// l'état. `status` et `egress_ip_status` viennent de l'état dans le
+		// plan ; les reprendre de la réponse, s'ils ont bougé depuis le dernier
+		// refresh, rendrait l'état incohérent (revue de
+		// terraform-provider-ccp#121, même cas que la branche `!changed`).
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
-	} else {
-		want := *patch.DedicatedEgressIP
-		patched, err := r.client.UpdateVPC(ctx, id, patch)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to change the dedicated egress IP of the VPC",
-				fmt.Sprintf("CETIC Cloud rejected `dedicated_egress_ip = %t` for VPC %s: %s.%s",
-					want, id, err.Error(), egressRefusalHint(err, want)),
-			)
-			return
-		}
-		if patched.DedicatedEgressIP != want {
-			resp.Diagnostics.AddError(
-				"Dedicated egress IP not supported by the platform",
-				fmt.Sprintf("The CETIC Cloud API did not record `dedicated_egress_ip = %t` for VPC %s. "+
-					"The platform API is probably older than this feature.", want, id),
-			)
-			return
-		}
-		final = patched
+	}
+
+	want := *patch.DedicatedEgressIP
+	final, err := r.client.UpdateVPC(ctx, id, patch)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to change the dedicated egress IP of the VPC",
+			fmt.Sprintf("CETIC Cloud rejected `dedicated_egress_ip = %t` for VPC %s: %s.%s",
+				want, id, err.Error(), egressRefusalHint(err, want)),
+		)
+		return
+	}
+	if final.DedicatedEgressIP != want {
+		resp.Diagnostics.AddError(
+			"Dedicated egress IP not supported by the platform",
+			fmt.Sprintf("The CETIC Cloud API did not record `dedicated_egress_ip = %t` for VPC %s. "+
+				"The platform API is probably older than this feature.", want, id),
+		)
+		return
 	}
 
 	resp.Diagnostics.Append(applyVPCToModel(ctx, final, &plan)...)
@@ -498,10 +497,13 @@ func (r *vpcResource) Update(ctx context.Context, req resource.UpdateRequest, re
 }
 
 // buildVPCUpdate returns the PATCH body for the attributes updated in place
-// (`name`, `tags`, `dedicated_egress_ip`), and whether anything changed. Each
-// field is sent only when the plan differs from the state.
-func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool) {
+// (`name`, `tags`, `dedicated_egress_ip`), whether anything changed, and the
+// diagnostics of reading the tags. Each field is sent only when the plan
+// differs from the state. Unreadable tags are an error, never an empty list:
+// sent as `[]`, they would erase every tag of the VPC (revue de #121).
+func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool, diag.Diagnostics) {
 	var req client.VPCUpdateRequest
+	var diags diag.Diagnostics
 	changed := false
 	if !plan.Name.IsUnknown() && !plan.Name.IsNull() && !plan.Name.Equal(state.Name) {
 		v := plan.Name.ValueString()
@@ -509,7 +511,11 @@ func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool
 		changed = true
 	}
 	if !plan.Tags.IsUnknown() && !plan.Tags.IsNull() && !plan.Tags.Equal(state.Tags) {
-		tags, _ := tagsFromList(context.Background(), plan.Tags)
+		tags, d := tagsFromList(context.Background(), plan.Tags)
+		diags.Append(d...)
+		if d.HasError() {
+			return client.VPCUpdateRequest{}, false, diags
+		}
 		if tags == nil {
 			tags = []string{}
 		}
@@ -522,7 +528,7 @@ func buildVPCUpdate(plan, state vpcResourceModel) (client.VPCUpdateRequest, bool
 		req.DedicatedEgressIP = &want
 		changed = true
 	}
-	return req, changed
+	return req, changed, diags
 }
 
 // egressRefusalHint completes the API detail of a refused VPC write with what

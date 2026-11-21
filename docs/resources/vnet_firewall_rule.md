@@ -9,7 +9,7 @@ description: |-
 
 Manages a firewall rule for a VNet. Rules are applied per-instance on all compute resources attached to the VNet when the VNet's isolation mode is enabled. Rules evaluate in ascending `position` order — the first matching rule wins.
 
-~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. The API has no update for a rule: changing `comment`, `enabled` or a match/action argument recreates the rule. Set `lifecycle { create_before_destroy = true }` to avoid a window without the rule. `position` is applied at creation only: reordering is done in the console (it renumbers every rule by steps of 10), and a different value is reported as a plan warning, never by a recreation.
+~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. The API has no update for a rule: changing `comment`, `enabled` or a match/action argument recreates the rule. Set `lifecycle { create_before_destroy = true }` to avoid a window without the rule. `position` is applied at creation only: reordering is done in the console (it renumbers every rule by steps of 10), and a different value is reported as a plan warning, never by a recreation. A replacement (for instance after changing `comment`) creates a new rule at the configured `position` (or the one assigned by the platform when omitted): the plan warns when that differs from the current position.
 
 ## Example Usage
 
