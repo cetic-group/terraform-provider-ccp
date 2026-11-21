@@ -85,9 +85,13 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Human-readable name (1-100 chars).",
-				Required:            true,
-				Validators:          []validator.String{stringvalidator.LengthBetween(1, 100)},
+				MarkdownDescription: "Human-readable name (1-100 chars). Forces replacement: the API " +
+					"cannot rename a registry (the hostname derives from it).",
+				Required:   true,
+				Validators: []validator.String{stringvalidator.LengthBetween(1, 100)},
+				// Le PATCH de l'API n'accepte pas `name` : sans RequiresReplace,
+				// le changement était annoncé puis ignoré (cetic-cloud-platform#2004).
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"slug": schema.StringAttribute{
 				MarkdownDescription: "URL-safe slug derived from `name`, used to build the hostname " +
@@ -124,10 +128,14 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"image_tag": schema.StringAttribute{
 				MarkdownDescription: "Tag of the upstream `registry` image to deploy. Defaults to the " +
-					"backoffice-managed default (currently `2.8`).",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					"backoffice-managed default (currently `2.8`). Forces replacement: the API " +
+					"cannot change it on an existing registry.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"gc_schedule_cron": schema.StringAttribute{
 				MarkdownDescription: "Cron expression (5 fields) for the weekly garbage-collection job " +

@@ -9,8 +9,9 @@ description: |-
 
 Manages a CETIC Container Registry (CCR) — a Distribution-based, OCI-compliant
 container/Helm/OCI artifact registry hosted in a dedicated per-tenant instance.
-Each registry exposes a hostname under `<slug>.cloud.cetic-group.com` (custom
-domains are backlogged) and is reachable via standard `docker login` /
+Each registry exposes a single hostname
+`<slug>-<id8>.registry-<region>.cloud.cetic-group.com` (custom domains are
+backlogged) and is reachable via standard `docker login` /
 `docker push` / `docker pull` workflows.
 
 ~> **Note:** Registry provisioning is asynchronous. The provider polls until
@@ -79,19 +80,23 @@ resource "ccp_registry" "public" {
 
 ### Required
 
-- `name` - (Required) Human-readable name (1-100 chars).
+- `name` - (Required, Forces new resource) Human-readable name (1-100 chars).
+  The API cannot rename a registry: changing it **replaces the registry and its
+  images**.
 - `region` - (Required, Forces new resource) Region code. One of: `RNN`, `PAR`, `ABJ`.
 
 ### Optional
 
 - `expose_public` - (Optional) When `true`, the registry is reachable from the
-  internet via the public gateway (Let's Encrypt cert via HTTP-01). Defaults to `false`.
+  internet via the public gateway (Let's Encrypt cert via HTTP-01). Defaults to
+  `false`. Mutable in place.
 - `expose_private` - (Optional) When `true`, the registry is reachable from peer
   VNets / VPN clients via the private gateway (cert via DNS-01). Defaults to
-  `false`. At least one of `expose_public` / `expose_private` should be `true`.
-- `image_tag` - (Optional, Computed) Tag of the upstream `registry` image to
-  deploy. Defaults to the platform-managed default (currently `2.8`). Pin to
-  opt out of platform-driven bumps.
+  `true`. Mutable in place. At least one of `expose_public` / `expose_private` should be `true`.
+- `image_tag` - (Optional, Computed, Forces new resource) Tag of the upstream
+  `registry` image to deploy. Defaults to the platform-managed default
+  (currently `2.8`). The API cannot change it on an existing registry:
+  changing it **replaces the registry and its images**.
 - `storage_gb` - (Optional, Computed) Provisioned storage quota in GB, distinct
   from `storage_used_gb` (actual blob usage). Defaults to the platform-managed
   default when omitted. **Mutable in place** — growing this value resizes the
@@ -104,12 +109,13 @@ In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the registry.
 - `slug` - URL-safe slug derived from `name`, used as the hostname prefix.
-- `url` - Fully qualified registry URL (e.g. `https://ccr-prod.cloud.cetic-group.com`).
+- `url` - Fully qualified registry URL (e.g.
+  `https://ccr-prod-1a2b3c4d.registry-rnn.cloud.cetic-group.com`), identical for
+  public and private exposure (split-horizon DNS).
 - `gc_schedule_cron` - 5-field cron expression of the weekly garbage-collection job (server-managed, read-only).
-- `public_ip` - Public IPv4 address currently routing traffic, if any.
-- `status` - Provisioning status: `provisioning`, `active`, `updating`, `error`, `deleting`.
-- `storage_used_mb` - Approximate storage used by registry blobs (megabytes), refreshed periodically.
-- `last_activity_at` - RFC 3339 timestamp of the last push/pull observed by the proxy.
+- `status` - Provisioning status: `creating`, `provisioning`, `active`, `error`, `deleting`.
+- `storage_used_gb` - Approximate storage used by registry blobs (GB), refreshed periodically.
+- `last_push_at` - RFC 3339 timestamp of the last push observed.
 - `admin_username` - Username of the auto-provisioned admin user (typically `admin`).
 - `admin_password` - (Sensitive) Password of the admin user, returned **only at creation**. Stored in the state.
 - `created_at` - RFC 3339 creation timestamp.
