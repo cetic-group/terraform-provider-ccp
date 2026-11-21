@@ -81,3 +81,25 @@ func TestGetQuotaRequestLitLaListe(t *testing.T) {
 		t.Fatalf("demande absente : erreur %v, attendu 404", err)
 	}
 }
+
+// La création de ticket répond `{ticket: …}` ; la clôture passe par /close.
+func TestSupportTicketCreateEtCloture(t *testing.T) {
+	c, calls := fakeAPI(t, map[string]any{
+		"POST /v1/support/tickets": map[string]any{
+			"ticket":               map[string]any{"id": "t1", "subject": "Aide", "status": "open", "created_at": "2026-11-21T10:00:00Z"},
+			"max_priority_allowed": "normal",
+		},
+		"POST /v1/support/tickets/t1/close": map[string]any{"id": "t1", "status": "closed"},
+	})
+	tk, err := c.CreateSupportTicket(context.Background(), SupportTicketCreateRequest{
+		Subject: "Aide", Body: "x", Category: "other", Priority: "normal"})
+	if err != nil || tk.ID != "t1" {
+		t.Fatalf("CreateSupportTicket = %+v, %v", tk, err)
+	}
+	if err := c.CloseSupportTicket(context.Background(), "t1"); err != nil {
+		t.Fatalf("CloseSupportTicket : %v", err)
+	}
+	if (*calls)[len(*calls)-1] != "POST /v1/support/tickets/t1/close" {
+		t.Fatalf("appels = %v", *calls)
+	}
+}

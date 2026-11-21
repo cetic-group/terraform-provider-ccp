@@ -1,8 +1,8 @@
 // Package supportticket implements the ccp_support_ticket Terraform resource.
 //
 // Use-case IaC limité — utile pour automatiser des tickets d'incident
-// (monitoring → ouverture auto). Update/Delete pas exposés en TF (on ne
-// supprime pas un ticket via TF, on le ferme via la console/API).
+// (monitoring → ouverture auto). Pas d'Update ; Delete clôture le ticket
+// (l'API ne supprime pas un ticket).
 package supportticket
 
 import (
@@ -49,7 +49,7 @@ func (r *ticketResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Open a CETIC Cloud support ticket. Useful for monitoring → auto " +
 			"ticket creation. The body is set at creation time only (replies via API/console). " +
-			"Destroying the resource does NOT close the ticket — close it manually.",
+			"Destroying the resource closes the ticket (it stays visible, closed, in the console).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -66,7 +66,10 @@ func (r *ticketResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"category": schema.StringAttribute{
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("bug", "feature", "billing", "network", "infra", "question"),
+					// Catégories de l'API (`SupportTicketCategory`) ; les
+					// anciennes valeurs étaient refusées en 422
+					// (cetic-cloud-platform#2004).
+					stringvalidator.OneOf("technical", "billing", "abuse", "feature_request", "other"),
 				},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -150,9 +153,18 @@ func (r *ticketResource) Update(_ context.Context, _ resource.UpdateRequest, res
 	resp.Diagnostics.AddError("Update not supported", "All ticket attributes force replacement.")
 }
 
-// Delete : NO-OP — un ticket reste tracé côté CL même après destroy. L'API
-// ne supporte pas la suppression de tickets ; on retire juste la resource du state.
-func (r *ticketResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+// Delete clôture le ticket : l'API ne supprime pas un ticket, mais
+// `POST …/close` existe (idempotent). Le destroy laissait le ticket ouvert
+// (cetic-cloud-platform#2004). Un ticket introuvable est déjà sorti.
+func (r *ticketResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state ticketResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.CloseSupportTicket(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+		resp.Diagnostics.AddError("Failed to close support ticket", err.Error())
+	}
 }
 
 func (r *ticketResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

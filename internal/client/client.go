@@ -1507,12 +1507,23 @@ func (c *Client) GetSupportTicket(ctx context.Context, id string) (*SupportTicke
 	return &out, nil
 }
 
+// CreateSupportTicket opens a ticket. The API answers `{ticket: {...},
+// max_priority_allowed, ...}` (TicketGatedResponse): decoding it as a bare
+// ticket left the id empty (cetic-cloud-platform#2004).
 func (c *Client) CreateSupportTicket(ctx context.Context, req SupportTicketCreateRequest) (*SupportTicket, error) {
-	var out SupportTicket
+	var out struct {
+		Ticket SupportTicket `json:"ticket"`
+	}
 	if err := c.do(ctx, http.MethodPost, "/v1/support/tickets", req, &out); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return &out.Ticket, nil
+}
+
+// CloseSupportTicket closes a ticket; idempotent on the API side (an already
+// closed ticket is returned as is).
+func (c *Client) CloseSupportTicket(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodPost, "/v1/support/tickets/"+id+"/close", nil, nil)
 }
 
 // ─── Object Storage Keys ──────────────────────────────────────────────────
