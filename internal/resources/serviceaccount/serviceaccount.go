@@ -11,7 +11,8 @@
 // It is captured into state at Create() and explicitly preserved during
 // Read() (same pattern as ccp_api_key.token / ccp_registry_user.password).
 //
-// `name`, `description` and `expires_at` are mutable in place via PATCH.
+// `name` and `description` are mutable in place via PATCH; changing
+// `expires_at` replaces the account (the API has no PATCH for it).
 // To rotate the token, taint the resource: the destroy + create cycle
 // issues a fresh token. (Native rotation is exposed by the API on
 // `POST /v1/service-accounts/{id}/rotate` but Terraform's declarative
@@ -71,7 +72,8 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"~> **`token` is returned only at creation** and never re-emitted by the API. It is written " +
 			"to the Terraform state and is `Sensitive`. To rotate it, `terraform taint` this resource: " +
 			"the destroy + create cycle issues a fresh token.\n\n" +
-			"`name`, `description` and `expires_at` are mutable in place — Terraform will issue a PATCH " +
+			"`name` and `description` are mutable in place; changing `expires_at` replaces the " +
+			"service account (new token). Terraform will issue a PATCH " +
 			"rather than a replace.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -91,10 +93,17 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"expires_at": schema.StringAttribute{
 				MarkdownDescription: "Optional RFC 3339 timestamp after which the service account token is " +
-					"rejected by the API.",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					"rejected by the API. The API counts whole days: the effective expiry may differ " +
+					"by up to a day; the configured value is kept in state. Changing it replaces " +
+					"the service account.",
+				Optional: true,
+				Computed: true,
+				// L'API n'a pas de PATCH pour l'expiration : sans RequiresReplace,
+				// un changement était annoncé puis ignoré (cetic-cloud-platform#2004).
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"token": schema.StringAttribute{
 				MarkdownDescription: "Full service account token (`ccp_sa_<43 chars>`). Returned **only at " +
@@ -149,6 +158,8 @@ func (r *serviceAccountResource) Configure(_ context.Context, req resource.Confi
 // state.Token. Callers must pose Token themselves (Create reveals it once;
 // Read preserves the state value).
 func applySAToModel(m *serviceAccountResourceModel, p *client.ServiceAccount) {
+	prior := m.ExpiresAt
+	defer func() { m.ExpiresAt = keepConfiguredExpiry(prior, m.ExpiresAt) }()
 	m.ID = types.StringValue(p.ID)
 	m.Name = types.StringValue(p.Name)
 	if p.Description != nil {
@@ -228,6 +239,26 @@ func (r *serviceAccountResource) Create(ctx context.Context, req resource.Create
 	plan.Token = types.StringValue(token)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// keepConfiguredExpiry garde la date configurée tant que celle de l'API
+// désigne le même instant à un jour près : l'API convertit en jours entiers
+// (`expires_in_days`), et relire sa valeur exacte provoquait « inconsistent
+// result after apply » puis un remplacement à chaque plan
+// (cetic-cloud-platform#2004).
+func keepConfiguredExpiry(configured, api types.String) types.String {
+	if configured.IsNull() || configured.IsUnknown() || api.IsNull() || api.IsUnknown() {
+		return api
+	}
+	c, err1 := time.Parse(time.RFC3339, configured.ValueString())
+	a, err2 := time.Parse(time.RFC3339, api.ValueString())
+	if err1 != nil || err2 != nil {
+		return api
+	}
+	if d := a.Sub(c); d < 48*time.Hour && d > -48*time.Hour {
+		return configured
+	}
+	return api
 }
 
 func (r *serviceAccountResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
