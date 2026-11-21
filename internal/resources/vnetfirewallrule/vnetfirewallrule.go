@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -90,18 +92,28 @@ func (r *fwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				MarkdownDescription: "Port de destination, ex : `80`, `443`, `8000-9000`.",
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			// L'API n'a pas de PATCH pour une règle (seuls création, suppression
+			// et réordonnancement existent) : tout changement recrée la règle.
+			// Avant, Update appelait un PATCH inexistant et échouait
+			// (cetic-cloud-platform#2004).
 			"comment": schema.StringAttribute{
-				Optional: true,
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"position": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Priorité de la règle (ordre d'évaluation croissant).",
+				MarkdownDescription: "Priorité de la règle (ordre d'évaluation croissant). Forces replacement.",
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+					int64planmodifier.RequiresReplace(),
+				},
 			},
 			"enabled": schema.BoolAttribute{
-				Optional: true,
-				Computed: true,
-				Default:  booldefault.StaticBool(true),
+				Optional:      true,
+				Computed:      true,
+				Default:       booldefault.StaticBool(true),
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
@@ -228,20 +240,10 @@ func (r *fwResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// Only enabled, position, and comment are mutable.
-	patch := map[string]any{
-		"enabled":  plan.Enabled.ValueBool(),
-		"position": int(plan.Position.ValueInt64()),
-	}
-	if !plan.Comment.IsNull() && !plan.Comment.IsUnknown() {
-		patch["comment"] = plan.Comment.ValueString()
-	}
-	rule, err := r.client.UpdateVnetFirewallRule(ctx, state.VnetID.ValueString(), state.ID.ValueString(), patch)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update VNet firewall rule", err.Error())
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, stateFrom(rule))...)
+	// Every user-settable attribute forces replacement: the API has no PATCH
+	// for a rule. Update is only reached for computed-only changes; keep the
+	// plan.
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *fwResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

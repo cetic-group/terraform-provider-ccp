@@ -9,7 +9,7 @@ description: |-
 
 Manages a firewall rule for a VNet. Rules are applied per-instance on all compute resources attached to the VNet when the VNet's isolation mode is enabled. Rules evaluate in ascending `position` order — the first matching rule wins.
 
-~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. Rules are immutable except for `enabled`, `position`, and `comment`. Changing any immutable field (`vnet_id`, `direction`, `action`, `proto`, `source_cidr`, `dest_cidr`, `dport`) forces a new resource.
+~> **Note:** Firewall rules are only enforced when the parent VNet has isolation enabled. The API has no update for a rule: changing any argument recreates the rule.
 
 ## Example Usage
 
@@ -58,18 +58,18 @@ resource "ccp_vnet_firewall_rule" "allow_ssh_ops" {
 ### Required
 
 - `vnet_id` - (Required, Forces new resource) UUID of the VNet this rule belongs to.
-- `direction` - (Required, Forces new resource) Traffic direction. One of: `IN` (inbound), `OUT` (outbound).
-- `action` - (Required, Forces new resource) Rule action. One of: `ACCEPT`, `DROP`.
-- `proto` - (Required, Forces new resource) Protocol to match. One of: `tcp`, `udp`, `icmp`, `any`.
+- `direction` - (Required, Forces new resource) Traffic direction. One of: `in` (inbound), `out` (outbound), `forward`.
+- `action` - (Required, Forces new resource) Rule action. One of: `ACCEPT`, `DROP`, `REJECT`.
+- `proto` - (Optional, Forces new resource) Protocol to match. One of: `tcp`, `udp`, `icmp`, `icmpv6`, `esp`, `ah`, `gre`. Omit to match every protocol (`any` is refused by the API).
 
 ### Optional
 
 - `source_cidr` - (Optional, Forces new resource) Source CIDR to match (e.g. `10.0.0.0/8`). Defaults to `0.0.0.0/0` (all sources).
 - `dest_cidr` - (Optional, Forces new resource) Destination CIDR to match. Defaults to `0.0.0.0/0` (all destinations).
 - `dport` - (Optional, Forces new resource) Destination port or port range (e.g. `80`, `8000:9000`). Only applicable to `tcp` and `udp` protocols.
-- `enabled` - (Optional) Whether the rule is currently active. Defaults to `true`. Mutable without forcing a new resource.
-- `position` - (Optional) Evaluation order — lower values are evaluated first. Defaults to `100`. Mutable without forcing a new resource.
-- `comment` - (Optional) Human-readable description of the rule's purpose. Mutable without forcing a new resource.
+- `enabled` - (Optional, Forces new resource) Whether the rule is currently active. Defaults to `true`.
+- `position` - (Optional, Computed, Forces new resource) Evaluation order — lower values are evaluated first (0 to 10000). Defaults to `0`.
+- `comment` - (Optional, Forces new resource) Human-readable description of the rule's purpose (max 200 chars).
 
 ## Attributes Reference
 

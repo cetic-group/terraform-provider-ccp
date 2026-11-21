@@ -1720,12 +1720,6 @@ func (c *Client) GetVnetFirewallRule(ctx context.Context, vnetID, ruleID string)
 	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: "/v1/vnets/" + vnetID + "/firewall/rules/" + ruleID, Detail: "vnet firewall rule not found"}
 }
 
-func (c *Client) UpdateVnetFirewallRule(ctx context.Context, vnetID, ruleID string, patch map[string]any) (*VnetFirewallRule, error) {
-	var out VnetFirewallRule
-	err := c.do(ctx, http.MethodPatch, "/v1/vnets/"+vnetID+"/firewall/rules/"+ruleID, patch, &out)
-	return &out, err
-}
-
 func (c *Client) DeleteVnetFirewallRule(ctx context.Context, vnetID, ruleID string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/vnets/"+vnetID+"/firewall/rules/"+ruleID, nil, nil)
 }
