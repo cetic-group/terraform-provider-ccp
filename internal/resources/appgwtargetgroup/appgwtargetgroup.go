@@ -41,6 +41,7 @@ type tgResourceModel struct {
 	AppGWID              types.String `tfsdk:"appgw_id"`
 	Name                 types.String `tfsdk:"name"`
 	Algorithm            types.String `tfsdk:"algorithm"`
+	HCEnabled            types.Bool   `tfsdk:"hc_enabled"`
 	HCProtocol           types.String `tfsdk:"hc_protocol"`
 	HCMethod             types.String `tfsdk:"hc_method"`
 	HCPath               types.String `tfsdk:"hc_path"`
@@ -85,6 +86,13 @@ func (r *tgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				Computed:   true,
 				Default:    stringdefault.StaticString("roundrobin"),
 				Validators: []validator.String{stringvalidator.OneOf(appgwvalidators.Algorithms...)},
+			},
+			"hc_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable the Health check (default `true`). Set `false` to leave members unmonitored. " +
+					"Requires an API version that returns `hc_enabled` before disabling it.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
 			},
 			"hc_protocol": schema.StringAttribute{
 				MarkdownDescription: "Health-check protocol: `http` (default), `https` or `tcp`.",
@@ -175,6 +183,13 @@ func applyToModel(tg *client.AppGWTargetGroup, m *tgResourceModel) {
 	m.AppGWID = types.StringValue(tg.AppGWID)
 	m.Name = types.StringValue(tg.Name)
 	m.Algorithm = types.StringValue(tg.Algorithm)
+	// Older APIs omit hc_enabled and always run the Health check. Preserve
+	// their behavior on import/refresh; an explicit false must be confirmed.
+	if tg.HCEnabled == nil {
+		m.HCEnabled = types.BoolValue(true)
+	} else {
+		m.HCEnabled = types.BoolValue(*tg.HCEnabled)
+	}
 	m.HCProtocol = types.StringValue(tg.HCProtocol)
 	m.HCMethod = types.StringValue(tg.HCMethod)
 	m.HCPath = types.StringValue(tg.HCPath)
@@ -191,6 +206,15 @@ func applyToModel(tg *client.AppGWTargetGroup, m *tgResourceModel) {
 	}
 }
 
+// A missing field is acceptable only for the historical enabled default.
+// An explicit change must always be echoed by the API, including false.
+func healthCheckConfirmed(actual *bool, expected bool, allowLegacyDefault bool) bool {
+	if actual == nil {
+		return allowLegacyDefault && expected
+	}
+	return *actual == expected
+}
+
 func (r *tgResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan tgResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -203,6 +227,11 @@ func (r *tgResource) Create(ctx context.Context, req resource.CreateRequest, res
 	if !plan.Algorithm.IsNull() && !plan.Algorithm.IsUnknown() {
 		v := plan.Algorithm.ValueString()
 		createReq.Algorithm = &v
+	}
+	// Omit the historical default to keep existing request bodies compatible.
+	if !plan.HCEnabled.IsNull() && !plan.HCEnabled.IsUnknown() && !plan.HCEnabled.ValueBool() {
+		v := false
+		createReq.HCEnabled = &v
 	}
 	if !plan.HCProtocol.IsNull() && !plan.HCProtocol.IsUnknown() {
 		v := plan.HCProtocol.ValueString()
@@ -250,6 +279,12 @@ func (r *tgResource) Create(ctx context.Context, req resource.CreateRequest, res
 		resp.Diagnostics.AddError("Failed to create AppGW target group", err.Error())
 		return
 	}
+	if !healthCheckConfirmed(created.HCEnabled, plan.HCEnabled.ValueBool(), true) {
+		resp.Diagnostics.AddError("Health check state not confirmed",
+			fmt.Sprintf("The API created target group %s but did not confirm hc_enabled=%t. Verify the group before retrying or import it using %s/%s.",
+				created.ID, plan.HCEnabled.ValueBool(), plan.AppGWID.ValueString(), created.ID))
+		return
+	}
 	applyToModel(created, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -267,6 +302,11 @@ func (r *tgResource) Read(ctx context.Context, req resource.ReadRequest, resp *r
 			return
 		}
 		resp.Diagnostics.AddError("Failed to read AppGW target group", err.Error())
+		return
+	}
+	if got.HCEnabled == nil && state.HCEnabled.Equal(types.BoolValue(false)) {
+		resp.Diagnostics.AddError("Health check state unavailable",
+			"The API omitted hc_enabled for a target group previously recorded as unmonitored. Upgrade the API before refreshing this resource.")
 		return
 	}
 	applyToModel(got, &state)
@@ -288,6 +328,10 @@ func (r *tgResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	if !plan.Algorithm.Equal(state.Algorithm) {
 		v := plan.Algorithm.ValueString()
 		upd.Algorithm = &v
+	}
+	if !plan.HCEnabled.Equal(state.HCEnabled) {
+		v := plan.HCEnabled.ValueBool()
+		upd.HCEnabled = &v
 	}
 	if !plan.HCProtocol.Equal(state.HCProtocol) {
 		v := plan.HCProtocol.ValueString()
@@ -335,6 +379,12 @@ func (r *tgResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	got, err := r.client.UpdateAppGWTargetGroup(ctx, state.AppGWID.ValueString(), state.ID.ValueString(), upd)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update AppGW target group", err.Error())
+		return
+	}
+	if upd.HCEnabled != nil && !healthCheckConfirmed(got.HCEnabled, *upd.HCEnabled, false) {
+		resp.Diagnostics.AddError("Health check state not confirmed",
+			fmt.Sprintf("The API did not confirm hc_enabled=%t for target group %s. Verify the group before retrying.",
+				*upd.HCEnabled, state.ID.ValueString()))
 		return
 	}
 	applyToModel(got, &plan)
