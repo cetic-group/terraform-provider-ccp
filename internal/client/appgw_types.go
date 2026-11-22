@@ -121,6 +121,7 @@ type AppGWListener struct {
 	AcmeStatus        string  `json:"acme_status"`
 	AcmeChallenge     *string `json:"acme_challenge,omitempty"`
 	AcmeDNSProvider   *string `json:"acme_dns_provider,omitempty"`
+	CacheEnabled      *bool   `json:"cache_enabled"`
 	AcmeLastRenewalAt *string `json:"acme_last_renewal_at,omitempty"`
 	AcmeIssuedAt      *string `json:"acme_issued_at,omitempty"`
 	AcmeRenewAfter    *string `json:"acme_renew_after,omitempty"`

@@ -45,6 +45,7 @@ type listenerResourceModel struct {
 	AcmeChallenge      types.String `tfsdk:"acme_challenge"`
 	AcmeDNSProvider    types.String `tfsdk:"acme_dns_provider"`
 	AcmeDNSCredentials types.Map    `tfsdk:"acme_dns_credentials"`
+	CacheEnabled       types.Bool   `tfsdk:"cache_enabled"`
 	AcmeStatus         types.String `tfsdk:"acme_status"`
 	AcmeLastRenewalAt  types.String `tfsdk:"acme_last_renewal_at"`
 	AcmeIssuedAt       types.String `tfsdk:"acme_issued_at"`
@@ -126,6 +127,12 @@ func (r *listenerResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"acme_status": schema.StringAttribute{
 				MarkdownDescription: "ACME issuance state: `pending` | `issued` | `failed`.",
 				Computed:            true,
+			},
+			"cache_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Observed domain Cache HTTP state: `true` (enabled), `false` (disabled), " +
+					"or `null` (historical domain with no explicit choice). Read-only until the API supports " +
+					"a complete create/reset lifecycle; manage this setting in the console for now.",
+				Computed: true,
 			},
 			"acme_last_renewal_at": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 timestamp of the last successful certificate renewal.",

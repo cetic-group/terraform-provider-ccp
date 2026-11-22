@@ -68,6 +68,7 @@ resource "ccp_appgw_listener" "shop" {
 
 - `id` - UUID of the listener.
 - `acme_status` - ACME issuance state: `pending`, `issued`, `failed`.
+- `cache_enabled` - Observed domain Cache HTTP state (read-only): `true` when enabled, `false` when disabled, or `null` for a historical domain with no explicit cache choice. A disabled gateway cache takes precedence. Terraform cannot yet write this field because listener creation and resetting to `null` are not supported by the API; configure it in the console.
 - `acme_last_renewal_at` - RFC 3339 timestamp of the last successful renewal.
 - `acme_issued_at` - RFC 3339 timestamp at which the current certificate was issued.
 - `acme_renew_after` - RFC 3339 timestamp after which the certificate is eligible for renewal.

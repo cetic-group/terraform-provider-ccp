@@ -44,6 +44,11 @@ func applyToModel(l *client.AppGWListener, m *listenerResourceModel) {
 	m.AcmeStatus = types.StringValue(l.AcmeStatus)
 	m.AcmeChallenge = optStr(l.AcmeChallenge)
 	m.AcmeDNSProvider = optStr(l.AcmeDNSProvider)
+	if l.CacheEnabled == nil {
+		m.CacheEnabled = types.BoolNull()
+	} else {
+		m.CacheEnabled = types.BoolValue(*l.CacheEnabled)
+	}
 	m.AcmeLastRenewalAt = optStr(l.AcmeLastRenewalAt)
 	m.AcmeIssuedAt = optStr(l.AcmeIssuedAt)
 	m.AcmeRenewAfter = optStr(l.AcmeRenewAfter)
