@@ -9,7 +9,16 @@ description: |-
 
 Manages a listener (a hostname served by a [`ccp_application_gateway`](application_gateway.md), with an optional automatically-issued TLS certificate via Let's Encrypt/ACME). When `acme_challenge` is set, the certificate is requested automatically and served over SNI when a client connects with this hostname.
 
-~> **All attributes are immutable.** Any change forces a destroy + create.
+~> **ACME validation settings are currently immutable in Terraform.** Changing
+`acme_challenge`, `acme_dns_provider`, or `acme_dns_credentials` still plans a
+destroy + create of the listener, which can interrupt traffic for its hostname.
+The CCP API has a staged validation-change endpoint under
+[AppGW #2054](https://github.com/cetic-group/cetic-cloud-platform/issues/2054),
+but that endpoint is disabled by default and this provider does not use it.
+Do not apply such a replacement to an in-service listener unless the impact is
+acceptable. A future provider change must test the enabled API, pending state,
+failed issuance, import, and rollback before these plan modifiers can be removed.
+Client-provided certificate PEMs remain rotatable in place as described below.
 
 -> **Without `acme_challenge`, no TLS certificate is ever issued for the listener.**
 
@@ -85,3 +94,10 @@ terraform import ccp_appgw_listener.api <appgw_id>/<listener_id>
 ```
 
 ~> **Note:** `acme_dns_credentials` is write-only and is not recoverable on import. If the imported listener uses a DNS-01 certificate, declaring `acme_dns_credentials` in your configuration after import will propose a replacement of the listener.
+
+For an imported listener, inspect `terraform plan` before applying any
+`acme_dns_credentials` or validation-method change. The API never returns the
+existing secret, so the provider cannot infer whether supplied credentials
+match the current ones. Staged rotation performed outside Terraform will also
+leave the Terraform configuration to reconcile; Terraform still plans a
+replacement if its configured ACME fields differ from the refreshed listener.
