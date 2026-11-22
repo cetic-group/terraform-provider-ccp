@@ -41,6 +41,7 @@ resource "ccp_appgw_target_group" "api_pool" {
 ### Optional
 
 - `algorithm` - (Optional, default `roundrobin`) Load-balancing algorithm. One of: `roundrobin`, `leastconn`, `source` (client IP hash), `random`.
+- `hc_enabled` - (Optional, default `true`) Enable the Health check. Set `false` to leave members unmonitored. Requires the CCP API from [#2055](https://github.com/cetic-group/cetic-cloud-platform/pull/2055) before disabling; the provider verifies the API response. Existing configurations keep the historical enabled default.
 - `hc_protocol` - (Optional, default `http`) Health-check protocol. One of: `http`, `https`, `tcp`.
 - `hc_method` - (Optional, default `GET`) HTTP method used for health checks. Ignored when `hc_protocol = tcp`.
 - `hc_path` - (Optional, default `/`) Health-check URL path. Ignored when `hc_protocol = tcp`.

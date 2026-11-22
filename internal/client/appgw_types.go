@@ -150,6 +150,7 @@ type AppGWTargetGroup struct {
 	AppGWID              string  `json:"appgw_id"`
 	Name                 string  `json:"name"`
 	Algorithm            string  `json:"algorithm"`
+	HCEnabled            *bool   `json:"hc_enabled"`
 	HCProtocol           string  `json:"hc_protocol"`
 	HCMethod             string  `json:"hc_method"`
 	HCPath               string  `json:"hc_path"`
@@ -169,6 +170,7 @@ type AppGWTargetGroup struct {
 type AppGWTargetGroupCreateRequest struct {
 	Name                 string  `json:"name"`
 	Algorithm            *string `json:"algorithm,omitempty"`
+	HCEnabled            *bool   `json:"hc_enabled,omitempty"`
 	HCProtocol           *string `json:"hc_protocol,omitempty"`
 	HCMethod             *string `json:"hc_method,omitempty"`
 	HCPath               *string `json:"hc_path,omitempty"`
@@ -184,6 +186,7 @@ type AppGWTargetGroupCreateRequest struct {
 type AppGWTargetGroupUpdateRequest struct {
 	Name                 *string `json:"name,omitempty"`
 	Algorithm            *string `json:"algorithm,omitempty"`
+	HCEnabled            *bool   `json:"hc_enabled,omitempty"`
 	HCProtocol           *string `json:"hc_protocol,omitempty"`
 	HCMethod             *string `json:"hc_method,omitempty"`
 	HCPath               *string `json:"hc_path,omitempty"`
