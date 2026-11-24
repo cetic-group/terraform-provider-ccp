@@ -152,3 +152,18 @@ func TestCreateRequest_PlanAndTier(t *testing.T) {
 }
 
 func contains(s, sub string) bool { return strings.Contains(s, sub) }
+
+// Follow-up 6: before `active` the cluster's versions are provisional (the
+// target is written at the start of an upgrade, kept after a failure): a
+// known prior value is kept.
+func TestDesiredVersion(t *testing.T) {
+	if got := desiredVersion(types.StringValue("v1.34.8"), "error", "1.34.2"); got.ValueString() != "v1.34.8" {
+		t.Errorf("error: %s", got)
+	}
+	if got := desiredVersion(types.StringValue("v1.34.8"), "active", "1.34.2"); got.ValueString() != "1.34.2" {
+		t.Errorf("active below: %s", got)
+	}
+	if got := desiredVersion(types.StringNull(), "creating", "1.34.8"); got.ValueString() != "1.34.8" {
+		t.Errorf("no prior: %s", got)
+	}
+}

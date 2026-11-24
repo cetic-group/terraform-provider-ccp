@@ -85,6 +85,12 @@ func WaitClusterSettled(ctx context.Context, c *client.Client, id string, timeou
 		if op == nil && (cl.Status == client.K8sClusterStatusActive || cl.Status == client.K8sClusterStatusError) {
 			return cl, nil
 		}
+		if op != nil && cl.Status == client.K8sClusterStatusError {
+			// An operation still "running" on a cluster in error will not end
+			// by itself: fail now rather than wait for the timeout.
+			return cl, fmt.Errorf("the cluster is in error state with an upgrade (%s to %s) still running: %s",
+				op.Type, op.VersionCible, errMsg(cl.ErrorMessage))
+		}
 		if time.Now().After(deadline) {
 			return cl, fmt.Errorf("timeout waiting for the running upgrade of the cluster to end (status %s)", cl.Status)
 		}
@@ -131,7 +137,9 @@ func WaitUpgradeDone(ctx context.Context, c *client.Client, id, opID string, tim
 			return nil, err
 		}
 		running := cl.UpgradeEnCours != nil && (opID == "" || cl.UpgradeEnCours.ID == opID)
-		if !running && cl.Status == client.K8sClusterStatusError {
+		if cl.Status == client.K8sClusterStatusError {
+			// With the operation still listed as running or not: an error
+			// state does not resolve itself, fail now.
 			return cl, fmt.Errorf("the upgrade failed, the cluster is in error state: %s. "+
 				"Apply again to relaunch it", errMsg(cl.ErrorMessage))
 		}
@@ -228,7 +236,9 @@ func EnsureControlPlane(ctx context.Context, c *client.Client, id, target string
 		failed = true
 	case requested && cl.K8sVersionEffective != nil && IsAbove(target, running):
 		failed = true // requested, not reached, nothing running: it stopped
-	case requested:
+	case requested && cl.K8sVersionEffective == nil:
+		// Only without k8s_version_effective: with it, the effective version
+		// already tells whether the requested target was reached.
 		if op := lastControlPlaneFailure(ctx, c, id, target); op != nil {
 			failed, failMsg = true, errMsg(op.ErrorMessage)
 		}
@@ -342,6 +352,17 @@ func EnsurePool(ctx context.Context, c *client.Client, clusterID, poolID, target
 		failed = requested && (p.Status == "error" ||
 			(p.K8sVersionEffective != nil && IsAbove(target, running)))
 		failMsg = errMsg(p.ErrorMessage)
+		if !failed && p.Status == "error" {
+			return p, res, fmt.Errorf("node pool is in error state: %s", failMsg)
+		}
+		// A cluster in error only accepts the relaunch of THIS pool's failed
+		// upgrade (the failure of a pool step puts the cluster in error too);
+		// anything else would be answered 409 again and again.
+		if cl.Status == client.K8sClusterStatusError && !(failed && p.Status == "error") {
+			return p, res, fmt.Errorf("the cluster is in error state (%s): the pool cannot be upgraded "+
+				"before the cluster is repaired (a failed control-plane upgrade is relaunched by applying "+
+				"its k8s_version again)", errMsg(cl.ErrorMessage))
+		}
 		if !failed && !IsAbove(target, running) {
 			if cmp, ok := Compare(target, running); ok && cmp < 0 {
 				res.Warning = fmt.Sprintf("The pool runs Kubernetes %s, above the configured k8s_version %s. "+
@@ -397,25 +418,35 @@ func EnsurePool(ctx context.Context, c *client.Client, clusterID, poolID, target
 // WatchPlanChange watches a plan change applied by PATCH: the platform
 // applies it asynchronously and may CANCEL it (node IP block that can no
 // longer be extended) — the plan then reverts with the reason in
-// `error_message`. Watches PlanSettlePolls reads.
-func WatchPlanChange(ctx context.Context, c *client.Client, id, target string) (*client.K8sCluster, error) {
-	var cl *client.K8sCluster
-	for i := 0; i < PlanSettlePolls; i++ {
+// `error_message`. The change is watched at least PlanSettlePolls reads;
+// while the plan read back differs from the requested one WITHOUT a reason
+// (not applied yet), the watch goes on, up to timeout.
+func WatchPlanChange(ctx context.Context, c *client.Client, id, target string, timeout time.Duration) (*client.K8sCluster, error) {
+	deadline := time.Now().Add(timeout)
+	for i := 1; ; i++ {
 		if err := sleep(ctx); err != nil {
 			return nil, err
 		}
-		got, err := c.GetK8sCluster(ctx, id)
+		cl, err := c.GetK8sCluster(ctx, id)
 		if err != nil {
 			return nil, err
-		}
-		cl = got
-		if cl.Plan != "" && cl.Plan != target {
-			return cl, fmt.Errorf("the platform cancelled the change to plan %q (the cluster is %q): %s",
-				target, cl.Plan, errMsg(cl.ErrorMessage))
 		}
 		if cl.Status == client.K8sClusterStatusError {
 			return cl, fmt.Errorf("cluster entered error state during the plan change: %s", errMsg(cl.ErrorMessage))
 		}
+		pending := cl.Plan != "" && cl.Plan != target
+		if pending && cl.ErrorMessage != nil && *cl.ErrorMessage != "" {
+			return cl, fmt.Errorf("the platform cancelled the change to plan %q (the cluster is %q): %s",
+				target, cl.Plan, *cl.ErrorMessage)
+		}
+		if !pending && i >= PlanSettlePolls {
+			return cl, nil
+		}
+		if time.Now().After(deadline) {
+			if pending {
+				return cl, fmt.Errorf("timeout: the cluster still reports plan %q instead of %q", cl.Plan, target)
+			}
+			return cl, nil
+		}
 	}
-	return cl, nil
 }

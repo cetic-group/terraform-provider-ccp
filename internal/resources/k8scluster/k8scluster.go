@@ -198,10 +198,12 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{stateUnlessVersionChanges{}},
 			},
 			"os_template_key": schema.StringAttribute{
-				MarkdownDescription: "VM template key for worker nodes (ex: `clks-capi-debian-13`). Forces replacement. " +
+				MarkdownDescription: "VM template key for worker nodes (ex: `kube-v1-34-8`). Forces replacement. " +
 					"The platform rewrites it on a version upgrade (`kube-vX-Y-Z`); the provider keeps the " +
 					"configured value, and moving between two keys of that platform form (a state written " +
-					"by an earlier provider after an upgrade) is an in-place no-op, not a replacement.",
+					"by an earlier provider after an upgrade) is an in-place no-op, not a replacement. A " +
+					"configured key outside that form facing a rewritten one in such a state still plans a " +
+					"replacement: it cannot be told apart from a real change of template.",
 				Required:      true,
 				PlanModifiers: []planmodifier.String{templateKeyRequiresReplace()},
 			},
@@ -510,7 +512,7 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, prior *k8sResourceM
 		ID:            types.StringValue(c.ID),
 		Name:          types.StringValue(c.Name),
 		Region:        types.StringValue(c.Region),
-		K8sVersion:    ccks.Floor(prior.K8sVersion, &running),
+		K8sVersion:    desiredVersion(prior.K8sVersion, c.Status, running),
 		OsTemplateKey: types.StringValue(c.OsTemplateKey),
 		OsImage:       types.StringValue(c.OsImage),
 		VpcID:         types.StringValue(c.VpcID),
@@ -591,6 +593,17 @@ const (
 // `update` applies to every wait of an update.
 func (m *k8sResourceModel) timeout(name string, def time.Duration) time.Duration {
 	return ccks.Timeout(m.Timeouts, name, def)
+}
+
+// desiredVersion applies ccks.Floor only once the cluster is `active`: before
+// (creating, updating, error) the reported versions are provisional (the
+// target is written at the start of an upgrade, kept after a failure) and a
+// known prior value is kept as is.
+func desiredVersion(prior types.String, status, running string) types.String {
+	if status != client.K8sClusterStatusActive && set(prior) {
+		return prior
+	}
+	return ccks.Floor(prior, &running)
 }
 
 func stringOrNull(p *string) types.String {
@@ -1015,9 +1028,10 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	// The import marker only matters until the first apply.
 	resp.Diagnostics.Append(resp.Private.SetKey(ctx, privateImportedPool, nil)...)
 
-	// A Starter ↔ paid plan change is a replacement. Planned as such when the
-	// plan is known; when it was not known at plan time, refuse here rather
-	// than let the platform answer 409 halfway through the apply.
+	// A Starter ↔ paid plan change is a replacement, planned as such when the
+	// plan is known. When it was not known at plan time, Terraform's final
+	// re-plan already refuses the apply (inconsistent final plan); this guard
+	// is only a safety net, so the platform never answers 409 halfway.
 	priorPlan := planOrTier(state.Plan.ValueString(), state.Tier.ValueString())
 	if set(plan.Plan) && (priorPlan == planStarter) != (plan.Plan.ValueString() == planStarter) {
 		resp.Diagnostics.AddError("Plan change requires a new cluster",
@@ -1173,7 +1187,7 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		// Applied asynchronously, and possibly CANCELLED by the platform
 		// (node IP block no longer extendable): watched, an error then —
 		// otherwise every next plan would silently propose it again.
-		watched, err := ccks.WatchPlanChange(ctx, r.client, id, *upd.Plan)
+		watched, err := ccks.WatchPlanChange(ctx, r.client, id, *upd.Plan, settle)
 		if err != nil {
 			resp.Diagnostics.AddError("K8s cluster plan change failed", err.Error())
 			return

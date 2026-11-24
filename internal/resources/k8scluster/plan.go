@@ -159,12 +159,15 @@ func (planAttrModifier) PlanModifyString(ctx context.Context, req planmodifier.S
 		resp.PlanValue = types.StringUnknown()
 		if in.priorPlan() != "" {
 			// Cannot tell now whether it crosses Starter ↔ paid: never plan a
-			// destruction on a guess; the apply refuses a crossing instead.
+			// destruction on a guess. If it does, Terraform itself stops the
+			// apply ("inconsistent final plan": the re-plan with the known
+			// value asks for a replacement) before any call; the guard of
+			// Update is only a safety net.
 			resp.Diagnostics.AddAttributeWarning(req.Path, "Plan not known yet",
-				"`plan` (or `tier`) depends on a value known only after apply: a change between "+
-					"`starter` and a paid plan cannot be planned as a replacement. If it turns out to be one, "+
-					"the apply stops with an error before changing anything; recreate the cluster with "+
-					"`terraform apply -replace`.")
+				"`plan` (or `tier`) depends on a value known only after apply. If it turns out to move "+
+					"the cluster between `starter` and a paid plan, the apply WILL FAIL (Terraform reports an "+
+					"inconsistent final plan: such a change needs a new cluster) before anything is changed. "+
+					"Set `plan` to a known value, or recreate the cluster with `terraform apply -replace`.")
 		}
 		return
 	}

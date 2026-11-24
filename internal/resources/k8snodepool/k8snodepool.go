@@ -114,7 +114,8 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "Kubernetes version the pool's nodes actually run: `k8s_version_effective` of " +
 					"the platform, updated at the end of an upgrade; on a platform that does not report it yet, the " +
 					"version last requested (the target during or after a failed upgrade, `status = \"error\"`). " +
-					"`null` when the pool inherits the control-plane version.",
+					"`null` only on a platform that does not report `k8s_version_effective`, for a pool created " +
+					"without `k8s_version` and never pinned since (it runs the control-plane version).",
 				Computed: true,
 			},
 			"timeouts": ccks.TimeoutsAttribute(map[string]string{
@@ -281,7 +282,13 @@ func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) 
 	if p.K8sVersionEffective != nil && *p.K8sVersionEffective != "" {
 		running = p.K8sVersionEffective
 	}
-	m.K8sVersion = ccks.Floor(m.K8sVersion, running)
+	// While the pool is not `active` (creating, updating), the versions it
+	// reports are provisional — the platform guarantees
+	// k8s_version_effective == k8s_version only once it is active (#2146): a
+	// known prior value is kept as is.
+	if p.Status == "active" || m.K8sVersion.IsNull() || m.K8sVersion.IsUnknown() {
+		m.K8sVersion = ccks.Floor(m.K8sVersion, running)
+	}
 	if running != nil {
 		m.CurrentK8sVersion = types.StringValue(*running)
 	} else {

@@ -88,7 +88,7 @@ resource "ccp_k8s_node_pool" "data_workers" {
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the node pool.
-- `current_k8s_version` - Kubernetes version the pool's nodes actually run: the platform's `k8s_version_effective`, updated at the end of an upgrade; on a platform that does not report it yet, the version last requested (the target during or after a failed upgrade — check `status`). `null` when the pool inherits the control-plane version.
+- `current_k8s_version` - Kubernetes version the pool's nodes actually run: the platform's `k8s_version_effective`, updated at the end of an upgrade; on a platform that does not report it yet, the version last requested (the target during or after a failed upgrade — check `status`). `null` only on a platform that does not report `k8s_version_effective`, for a pool created without `k8s_version` and never pinned since (it then runs the control-plane version). While the pool is not `active` (being created or upgraded), the reported versions are provisional: `k8s_version` keeps its known value until the pool is `active`.
 - `status` - Current status. Possible values: `provisioning`, `active`, `updating`, `error`, `deleting`.
 
 ## Import

@@ -62,8 +62,9 @@ earlier versions plan no change (checked against a state written by v7.5.1).
   409 that lasts without another upgrade fails after 3 tries.
 - SSO and plan changes wait for an active cluster (an automatic maintenance
   may be running) instead of failing with 409.
-- A plan change (`standard` ↔ `pro`) is watched for 2 minutes after the
-  PATCH: when the platform cancels it (node IP block that can no longer be
+- A plan change (`standard` ↔ `pro`) is watched after the PATCH (at least 2
+  minutes, longer while the new plan is not reported yet, up to
+  `timeouts.update`): when the platform cancels it (node IP block that can no longer be
   extended), the apply fails with its reason instead of proposing the change
   again at every plan.
 - At creation, an SSO or maintenance configuration refused by the platform
@@ -72,8 +73,9 @@ earlier versions plan no change (checked against a state written by v7.5.1).
 - `k8s_version` (cluster, initial pool, node pool) is validated: `X.Y.Z`
   with an optional `v`; `v1.35` was a silent perpetual diff.
 - A `plan` known only after apply plans no replacement (never a destruction
-  on a guess) and warns; if it crosses `starter` ↔ paid the apply stops
-  before changing anything, asking for `terraform apply -replace`.
+  on a guess) and warns that the apply will fail if it crosses `starter` ↔
+  paid (Terraform then reports an inconsistent final plan, before any
+  change); the provider refuses such a change at apply as a safety net.
 - `k8s_version` (cluster, initial pool, node pool) is the desired version and
   is never downgraded: while the platform runs it or a higher version
   (automatic patch, console upgrade, pool pinned after a control-plane
@@ -110,6 +112,12 @@ earlier versions plan no change (checked against a state written by v7.5.1).
   no longer fail the apply (« inconsistent result »); the next refresh reads
   them.
 - `ccp_k8s_node_pool`: waiting for a pool being deleted fails at once.
+- A cluster in `error` with an upgrade still listed as running fails at once
+  instead of waiting for the timeout; a pool upgrade on a cluster in `error`
+  (other than the relaunch of that pool's own failure) or on a pool in
+  `error` fails with a clear message instead of three 409.
+- While a cluster or a pool is not `active`, the versions it reports are
+  provisional: the known `k8s_version` is kept until it is.
 
 ## v7.5.1 (2026-11-15)
 

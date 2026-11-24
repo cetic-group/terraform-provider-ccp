@@ -632,7 +632,7 @@ func TestCCKSUnknownPlan(t *testing.T) {
 	cfg := h.config(map[string]tftypes.Value{"tier": tftypes.NewValue(tftypes.String, nil),
 		"plan": tftypes.NewValue(tftypes.String, tftypes.UnknownValue)})
 	_, r := h.plan(state, cfg)
-	if len(r.RequiresReplace) != 0 || !hasWarning(r.Diagnostics, "not known") {
+	if len(r.RequiresReplace) != 0 || !hasWarning(r.Diagnostics, "not known") || !hasWarning(r.Diagnostics, "WILL FAIL") {
 		t.Fatalf("replace %v, diags %v", r.RequiresReplace, r.Diagnostics)
 	}
 	// At apply the plan is known: starter from standard is refused.

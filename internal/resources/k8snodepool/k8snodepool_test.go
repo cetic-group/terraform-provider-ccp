@@ -108,3 +108,26 @@ func TestSchema_DiskGBStateBeforeReplace(t *testing.T) {
 		t.Fatal("k8s_version must be Optional+Computed")
 	}
 }
+
+// Follow-up 6: while the pool is not `active` (end of Create, upgrade
+// running) its versions are provisional: a known planned value is kept.
+func TestSetState_ProvisionalVersionNotActive(t *testing.T) {
+	m := &poolResourceModel{K8sVersion: types.StringValue("v1.34.8")}
+	setState(context.Background(), m, &client.K8sNodePool{ID: "id", ClusterID: "cid", Name: "n", Plan: "small",
+		Replicas: 1, K8sVersion: strp("1.34.2"), Status: "creating"})
+	if !m.K8sVersion.Equal(types.StringValue("v1.34.8")) {
+		t.Fatalf("not active: k8s_version = %s, want the planned value", m.K8sVersion)
+	}
+	m = &poolResourceModel{K8sVersion: types.StringUnknown()}
+	setState(context.Background(), m, &client.K8sNodePool{ID: "id", ClusterID: "cid", Name: "n", Plan: "small",
+		Replicas: 1, K8sVersion: strp("1.34.8"), Status: "creating"})
+	if !m.K8sVersion.Equal(types.StringValue("1.34.8")) {
+		t.Fatalf("unknown planned value: must be known, got %s", m.K8sVersion)
+	}
+	m = &poolResourceModel{K8sVersion: types.StringValue("v1.34.8")}
+	setState(context.Background(), m, &client.K8sNodePool{ID: "id", ClusterID: "cid", Name: "n", Plan: "small",
+		Replicas: 1, K8sVersion: strp("1.34.2"), Status: "active"})
+	if !m.K8sVersion.Equal(types.StringValue("1.34.2")) {
+		t.Fatalf("active below: the actual version wins, got %s", m.K8sVersion)
+	}
+}

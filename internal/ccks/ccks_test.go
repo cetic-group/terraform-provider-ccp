@@ -405,29 +405,113 @@ func TestWaitPoolActive_DeletingIsAnError(t *testing.T) {
 	}
 }
 
-// Point 8: a plan change cancelled by the platform (plan reverted, reason in
-// error_message) is an error, not a silent loop of diffs.
+// Point 8 (+ follow-up 4): a plan change cancelled by the platform (plan
+// reverted, reason in error_message) is an error; a plan not applied yet
+// without a reason is watched longer; one that never comes times out.
 func TestWatchPlanChange(t *testing.T) {
 	fast(t)
 	old := PlanSettlePolls
 	PlanSettlePolls = 2
 	t.Cleanup(func() { PlanSettlePolls = old })
-	pro, std := cluster("active", nil), cluster("active", nil)
-	pro["plan"], std["plan"] = "pro", "standard"
-	std["error_message"] = "Passage au plan Pro annulé : bloc non extensible"
+	mk := func(plan string, msg any) map[string]any {
+		b := cluster("active", nil)
+		b["plan"], b["error_message"] = plan, msg
+		return b
+	}
 	srv := testutil.NewTestServer(t, testutil.Routes{
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: pro},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: std},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: pro},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: pro},
+		// 1. cancelled
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: mk("pro", nil)},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: mk("standard", "Passage au plan Pro annulé : bloc non extensible")},
+		// 2. not applied yet (no reason) for 3 reads, then applied
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: mk("standard", nil)},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: mk("standard", nil)},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: mk("standard", nil)},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: mk("pro", nil)},
 	})
 	defer srv.Close()
 	c := client.New(srv.URL, "k", "test")
-	if _, err := WatchPlanChange(context.Background(), c, "cl-1", "pro"); err == nil || !strings.Contains(err.Error(), "annulé") {
+	if _, err := WatchPlanChange(context.Background(), c, "cl-1", "pro", time.Minute); err == nil || !strings.Contains(err.Error(), "annulé") {
 		t.Fatalf("want the cancellation, got %v", err)
 	}
-	if _, err := WatchPlanChange(context.Background(), c, "cl-1", "pro"); err != nil {
-		t.Fatalf("kept plan: %v", err)
+	if _, err := WatchPlanChange(context.Background(), c, "cl-1", "pro", time.Minute); err != nil {
+		t.Fatalf("pending without a reason must be watched longer: %v", err)
+	}
+	if srv.PendingRoutes() != 0 {
+		t.Fatalf("%d reads not done", srv.PendingRoutes())
+	}
+	// 3. never applied: timeout error.
+	never := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(mk("standard", nil))
+	}))
+	defer never.Close()
+	if _, err := WatchPlanChange(context.Background(), client.New(never.URL, "k", "test"), "cl-1", "pro",
+		20*time.Millisecond); err == nil || !strings.Contains(err.Error(), "still reports") {
+		t.Fatalf("want a timeout, got %v", err)
+	}
+}
+
+// Follow-up 2: an error state with an operation still listed as running
+// fails at once (no wait until the timeout).
+func TestErrorWithRunningOperationFailsAtOnce(t *testing.T) {
+	f := newFake()
+	f.cl["status"], f.cl["error_message"] = "error", "etcd injoignable"
+	f.cl["upgrade_en_cours"] = map[string]any{"id": "op-x", "type": "patch", "origine": "automatique",
+		"statut": "en_cours", "version_cible": "1.34.9"}
+	c := serve(t, f)
+	start := time.Now()
+	if _, err := WaitClusterSettled(context.Background(), c, "cl-1", time.Hour); err == nil || !strings.Contains(err.Error(), "etcd injoignable") {
+		t.Fatalf("settled: %v", err)
+	}
+	if _, err := WaitUpgradeDone(context.Background(), c, "cl-1", "op-x", time.Hour); err == nil || !strings.Contains(err.Error(), "etcd injoignable") {
+		t.Fatalf("upgrade done: %v", err)
+	}
+	if time.Since(start) > 5*time.Second {
+		t.Fatal("must not wait")
+	}
+}
+
+// Follow-up 2: EnsurePool refuses a cluster in error (other than the
+// failure of this pool) with a clear message and without posting; a pool in
+// error that is not a failed upgrade towards the target is reported as such.
+func TestEnsurePool_ClusterOrPoolInError(t *testing.T) {
+	f := newFake()
+	f.cl["status"], f.cl["error_message"] = "error", "plan de contrôle cassé"
+	c := serve(t, f)
+	if _, _, err := EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.9", poolT); err == nil ||
+		!strings.Contains(err.Error(), "plan de contrôle cassé") || len(f.posts) != 0 {
+		t.Fatalf("cluster in error: err=%v posts=%v", err, f.posts)
+	}
+	f2 := newFake()
+	f2.pool["status"], f2.pool["error_message"] = "error", "disque plein"
+	c2 := serve(t, f2)
+	if _, _, err := EnsurePool(context.Background(), c2, "cl-1", "np-1", "v1.34.9", poolT); err == nil ||
+		!strings.Contains(err.Error(), "disque plein") || len(f2.posts) != 0 {
+		t.Fatalf("pool in error: err=%v posts=%v", err, f2.posts)
+	}
+}
+
+// Follow-up 5: with k8s_version_effective the history is not read.
+func TestEnsureControlPlane_NoHistoryWithEffective(t *testing.T) {
+	f := newFake()
+	f.effective = true
+	f.cl["k8s_version"] = "1.34.8"
+	reads := 0
+	c := serve(t, f)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/upgrades") {
+			reads++
+		}
+		f.ServeHTTP(w, r)
+	}))
+	defer ts.Close()
+	c = client.New(ts.URL, "k", "test")
+	if _, _, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.34.8", cpT); err != nil || reads != 0 {
+		t.Fatalf("err=%v history reads=%d", err, reads)
+	}
+	f.effective = false
+	delete(f.cl, "k8s_version_effective")
+	if _, _, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.34.8", cpT); err != nil || reads != 1 {
+		t.Fatalf("without effective the history is read: err=%v reads=%d", err, reads)
 	}
 }
 

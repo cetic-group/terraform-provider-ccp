@@ -30,6 +30,12 @@ var platformTemplateKey = regexp.MustCompile(`^kube-v\d+-\d+-\d+$`)
 // `kube-v1-34-8`) — replacing the cluster for it would destroy it. Such a
 // change is planned in place and applied without any call (the configured
 // value is recorded); the Kubernetes version is driven by `k8s_version`.
+//
+// A configured key OUTSIDE that form (`clks-capi-debian-13`) facing a
+// rewritten state key still replaces: a v7.5.1 state keeps no trace of the
+// previously configured key, so "unchanged configuration" cannot be told
+// apart from a real change of template — replacing stays the safe reading
+// of an explicit template change, and the case is documented.
 func templateKeyRequiresReplace() planmodifier.String {
 	return stringplanmodifier.RequiresReplaceIf(
 		func(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
