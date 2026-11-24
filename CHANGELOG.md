@@ -6,6 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## v7.6.0 (2026-11-24)
+
 A minor version for the CCKS plans and upgrades of cetic-cloud-platform#2143.
 The new attributes need the platform API of #2143; configurations written for
 earlier versions plan no change (checked against a state written by v7.5.1).
