@@ -176,10 +176,11 @@ resource "ccp_k8s_cluster" "prod" {
 
 ## Kubernetes versions and upgrades
 
-- `k8s_version` is the **desired** version of the control plane. Raising it calls the platform's control-plane upgrade (one minor at a time) and waits for its end; if an upgrade is already running, the provider waits for it first. An automatic upgrade paused until the next maintenance window is reported as an error instead of being waited for.
+- `k8s_version` is the **desired** version of the control plane, written `X.Y.Z` with an optional `v` (anything else is refused at validation). Raising it calls the platform's control-plane upgrade (one minor at a time) and waits for its end; if an upgrade is already running (an automatic patch for instance), the provider waits for it **first** and compares afterwards — nothing is sent when the target is already reached. An automatic upgrade paused until the next maintenance window is reported as an error instead of being waited for.
+- **A failed upgrade** is an error of the apply, with the platform's message (the cluster goes `status = "error"`). The platform keeps the requested version, so the next plan still proposes it, and **the next apply relaunches it** (same target) and waits again; the relaunch is reported as a warning. A platform that does not relaunch yet (before cetic-cloud-platform#2146) answers with an error saying so: relaunch it from the console, then apply. The provider never records a failed target as reached. The same applies to the node pools.
 - The platform also moves versions **up** on its own: automatic patches inside the maintenance window (`maintenance.auto_patch`, on by default, and a patch forced 30 days after its release), upgrades from the console. The provider never **downgrades**: while the cluster runs the configured version or a higher one, `k8s_version` stays as written and no diff is shown. The version actually running is `current_k8s_version`. A configured value below it is recorded with a warning and nothing is called.
 - Node pools are upgraded separately: `initial_pool.k8s_version` here, `k8s_version` on [`ccp_k8s_node_pool`](k8s_node_pool.md). The platform's pool upgrade replaces the nodes one at a time (drains respect the PodDisruptionBudgets); the target must be `<=` the control plane and of the same minor. A pool without a configured version keeps the version it runs.
-- The platform rewrites `os_template_key` on a version upgrade (`kube-vX-Y-Z`); the provider keeps the configured value, so an upgrade never plans a replacement.
+- The platform rewrites `os_template_key` on a version upgrade (`kube-vX-Y-Z`); the provider keeps the configured value, so an upgrade never plans a replacement. A state refreshed by an earlier provider holds the rewritten key: moving between two keys of that `kube-vX-Y-Z` form is planned **in place** and applied without any call (no replacement); any other change of `os_template_key` still forces a replacement. Such a state also holds the requested version without `v` (`1.34.9`): the first apply records the configured `k8s_version` (a warning when it is below the running version), without calling the platform.
 
 ## Argument Reference
 
@@ -201,7 +202,7 @@ resource "ccp_k8s_cluster" "prod" {
     * `standard` — redundant apiserver frontend (primary + secondary) with automatic failover on a floating address, 2 control-plane replicas, up to 50 nodes, etcd volume 5 GiB.
     * `pro` — like `standard` with 3 control-plane replicas, up to 150 nodes, etcd volume 10 GiB.
 
-    `standard` ↔ `pro` is changed **in place**. `starter` ↔ a paid plan **forces destroy + recreate** (the apiserver frontend changes topology; the platform refuses it in place). The node limit is the sum, per pool, of `max(replicas, max_size)`. Plans and prices: `GET /v1/k8s/clusters/plans`.
+    `standard` ↔ `pro` is changed **in place**; the provider waits for the cluster to be `active` first, then watches the change for 2 minutes: the platform applies it asynchronously and may cancel it (node IP block that can no longer be extended) — the apply then fails with the platform's reason instead of proposing the change again at every plan. `starter` ↔ a paid plan **forces destroy + recreate** (the apiserver frontend changes topology; the platform refuses it in place). When `plan` depends on a value known only after apply, no replacement can be planned: the plan shows a warning and, if the value turns out to cross `starter` ↔ paid, the apply stops before changing anything — recreate with `terraform apply -replace`. The node limit is the sum, per pool, of `max(replicas, max_size)`. Plans and prices: `GET /v1/k8s/clusters/plans`.
 - `tier` - **Deprecated**, use `plan`. `dev` is `plan = "starter"`, `prod` is a paid plan (`standard`, or `pro` when the cluster already is). Optional and computed: it always reads back as the tier of `plan`. A configuration that sets only `tier` keeps working without a diff (`tier = "prod"` on an existing cluster plans no change, even if the cluster was moved to `pro`). Setting both `plan` and `tier` with different topologies is an error.
 - `pod_cidr` - (Forces new resource) Pod IP range. Default `"10.244.0.0/16"`.
 - `service_cidr` - (Forces new resource) Service IP range. Default `"10.96.0.0/12"`.
@@ -265,7 +266,7 @@ Optional and computed: without it, the platform settings are read back and left 
 
 ### Optional — SSO (`oidc`)
 
-Users sign in to the cluster with the organisation's identity provider (`kubeconfig` in `mode=sso`, through kubelogin). Authoritative: set, it is the configuration of the cluster; **removed, the SSO is removed**. **A change restarts the apiserver** (a short API cut on the `starter` plan): the provider only sends it when it actually changes once normalised like the platform does (surrounding spaces, duplicate scopes, PEM layout). The certificate kubeconfig remains the cluster-admin access. Requires an active cluster.
+Users sign in to the cluster with the organisation's identity provider (`kubeconfig` in `mode=sso`, through kubelogin). Authoritative: set, it is the configuration of the cluster; **removed, the SSO is removed**. **A change restarts the apiserver** (a short API cut on the `starter` plan): the provider only sends it when it actually changes once normalised like the platform does (surrounding spaces, duplicate scopes, PEM layout). The certificate kubeconfig remains the cluster-admin access. Requires an active cluster: the provider waits for it (an automatic maintenance may be running). At creation, a configuration the platform refuses (unreachable issuer, invalid CA…) is a **warning**, not an error — the cluster is kept, not tainted — and the next apply retries the SSO in place; the same holds for `maintenance`.
 
 - `issuer_url` - (Required) Exact `iss` of the tokens: `https://`, port 443, public host, no query nor fragment.
 - `client_id` - (Required) **Public** client of the identity provider (PKCE / device flow, no secret) — the expected audience.
@@ -294,8 +295,8 @@ In addition to all arguments above, the following attributes are exported.
 ### Cluster
 
 - `id` - UUID of the cluster.
-- `status` - Current status. Possible values: `creating`, `provisioning`, `active`, `updating` (upgrade or plan change running), `error`, `deleting`.
-- `current_k8s_version` - Kubernetes version the control plane actually runs (may be above `k8s_version` after an automatic patch).
+- `status` - Current status. Possible values: `creating`, `provisioning`, `active`, `updating` (version upgrade running), `error` (e.g. after a failed upgrade — the next apply relaunches it), `deleting`.
+- `current_k8s_version` - Kubernetes version the control plane actually runs: the platform's `k8s_version_effective`, updated at the end of an upgrade (may be above `k8s_version` after an automatic patch). On a platform that does not report it yet, the version last requested — the target during an upgrade, and also after a failed one (check `status`).
 - `etcd_volume_gb` - Effective etcd volume (GiB): the plan's at creation, raised when the plan goes up, never reduced.
 - `node_ip_block_size` - Size of the node IP block allocated in the VNet (`null` until allocated).
 - `kubeconfig` - (Sensitive) Kubeconfig file content (YAML) for accessing the cluster with `kubectl`. Store securely.
@@ -315,6 +316,14 @@ This attribute is populated on a paid plan and is `null` on `starter`.
 
 - `proxy_vip_vnet` - Floating address on the VNet shared between the two apiserver frontends — this is the IP the kubeconfig points at when HA is active.
 
+### Optional — waiting times (`timeouts`)
+
+- `create` - Provisioning until `active`. Default `15m`.
+- `update` - Each wait of an update. Defaults: `30m` for a running upgrade to end (or for an active cluster before an SSO or plan change), `45m` for the control-plane upgrade, `90m` for the upgrade of the initial pool. Set, the value applies to each of them.
+- `delete` - Teardown until the cluster is gone. Default `20m`.
+
+Go durations (`30m`, `1h30m`). Never sent to the platform: adding or changing them plans an update without any call.
+
 ## Import
 
 Kubernetes clusters can be imported using their UUID:
@@ -322,6 +331,8 @@ Kubernetes clusters can be imported using their UUID:
 ```
 terraform import ccp_k8s_cluster.prod <cluster_id>
 ```
+
+`initial_pool` is never read back from the platform; at import it is rebuilt once from the oldest pool of the cluster (the one created with it): `name`, `plan`, `replicas`, `min_size`/`max_size`, `labels`, `taints` and `disk_gb`. Write the block with the same values. `k8s_version` is left unset (the pool keeps its version) and leaving `disk_gb` unset right after the import does not force a replacement. Set `os_template_key` and `k8s_version` as the platform reports them, or as written before — two keys of the `kube-vX-Y-Z` form never replace the cluster.
 
 ## See also
 

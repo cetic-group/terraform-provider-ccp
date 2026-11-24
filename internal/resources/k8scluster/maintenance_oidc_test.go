@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
@@ -178,32 +179,35 @@ func TestApplyOIDC_SendsOnlyOnChange(t *testing.T) {
 	// No route at all: any call fails the test (testutil reports it).
 	srv := testutil.NewTestServer(t, nil)
 	r := &k8sResource{client: client.New(srv.URL, "k", "test")}
-	if got, d := r.applyOIDC(ctx, "cl-1", spelled, same); got != nil || d.HasError() {
+	if got, d := r.applyOIDC(ctx, "cl-1", spelled, same, time.Minute); got != nil || d.HasError() {
 		t.Fatalf("same configuration must send nothing (%v, %v)", got, d)
 	}
-	if got, d := r.applyOIDC(ctx, "cl-1", types.ObjectNull(oidcAttrTypes), types.ObjectNull(oidcAttrTypes)); got != nil || d.HasError() {
+	if got, d := r.applyOIDC(ctx, "cl-1", types.ObjectNull(oidcAttrTypes), types.ObjectNull(oidcAttrTypes), time.Minute); got != nil || d.HasError() {
 		t.Fatal("no SSO before nor after: nothing sent")
 	}
 	srv.Close()
 
 	srv = testutil.NewTestServer(t, testutil.Routes{
+		// The cluster is checked active before each call (409 otherwise).
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Status: http.StatusOK, Body: activeV2143("standard")},
 		{Method: "PUT", Path: "/v1/k8s/clusters/cl-1/oidc", Status: http.StatusOK, Body: activeV2143("standard")},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Status: http.StatusOK, Body: activeV2143("standard")},
 		{Method: "DELETE", Path: "/v1/k8s/clusters/cl-1/oidc", Status: http.StatusOK, Body: activeV2143("standard")},
 	})
 	defer srv.Close()
 	r = &k8sResource{client: client.New(srv.URL, "k", "test")}
 	changed := oidcObj("https://sso.example.com", "", nil, types.StringNull())
-	if _, d := r.applyOIDC(ctx, "cl-1", changed, same); d.HasError() {
+	if _, d := r.applyOIDC(ctx, "cl-1", changed, same, time.Minute); d.HasError() {
 		t.Fatal(d)
 	}
-	if _, d := r.applyOIDC(ctx, "cl-1", types.ObjectNull(oidcAttrTypes), same); d.HasError() {
+	if _, d := r.applyOIDC(ctx, "cl-1", types.ObjectNull(oidcAttrTypes), same, time.Minute); d.HasError() {
 		t.Fatal(d)
 	}
 	calls := srv.Calls()
-	if len(calls) != 2 || calls[0].Method != "PUT" || calls[1].Method != "DELETE" {
+	if len(calls) != 4 || calls[1].Method != "PUT" || calls[3].Method != "DELETE" {
 		t.Fatalf("calls = %+v", calls)
 	}
-	body := string(calls[0].Body)
+	body := string(calls[1].Body)
 	for _, want := range []string{`"groups_claim":null`, `"ca_pem":null`, `"extra_scopes":[]`, `"username_claim":"email"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("PUT body %s lacks %s", body, want)

@@ -2,7 +2,9 @@ package ccks
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
@@ -11,6 +13,10 @@ import (
 // PollInterval is the delay between two reads while waiting. A variable so
 // the tests can shorten it.
 var PollInterval = 15 * time.Second
+
+// PlanSettlePolls is the number of reads after a plan change during which a
+// cancellation by the platform is watched for (2 minutes at 15 s).
+var PlanSettlePolls = 8
 
 func sleep(ctx context.Context) error {
 	select {
@@ -28,19 +34,47 @@ func errMsg(p *string) string {
 	return *p
 }
 
-// WaitClusterIdle waits until the cluster is `active` with no upgrade
-// running, so a new upgrade is accepted (the platform runs one at a time and
-// answers 409 otherwise). An upgrade PAUSED until the next maintenance window
+// ClusterRunning is the version the control plane actually runs:
+// `k8s_version_effective` (cetic-cloud-platform#2146) when the API reports it,
+// otherwise `k8s_version` — which is the TARGET from the start of an upgrade,
+// also when it failed.
+func ClusterRunning(cl *client.K8sCluster) string {
+	if cl.K8sVersionEffective != nil && *cl.K8sVersionEffective != "" {
+		return *cl.K8sVersionEffective
+	}
+	return cl.K8sVersion
+}
+
+// PoolRunning is the version a pool's nodes actually run (effective, else
+// the pool's version, else the control plane's when it inherits).
+func PoolRunning(p *client.K8sNodePool, clusterRunning string) string {
+	if p.K8sVersionEffective != nil && *p.K8sVersionEffective != "" {
+		return *p.K8sVersionEffective
+	}
+	if p.K8sVersion != nil && *p.K8sVersion != "" {
+		return *p.K8sVersion
+	}
+	return clusterRunning
+}
+
+func statusCode(err error) int {
+	var apiErr *client.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.StatusCode
+	}
+	return 0
+}
+
+// WaitClusterSettled waits until no upgrade runs on the cluster and it is
+// `active`, or `error` (returned without error: the caller decides — a failed
+// upgrade is relaunched). An upgrade PAUSED until the next maintenance window
 // is not waited for (it may last days): it is an error naming it.
-func WaitClusterIdle(ctx context.Context, c *client.Client, id string, timeout time.Duration) (*client.K8sCluster, error) {
+func WaitClusterSettled(ctx context.Context, c *client.Client, id string, timeout time.Duration) (*client.K8sCluster, error) {
 	deadline := time.Now().Add(timeout)
 	for {
 		cl, err := c.GetK8sCluster(ctx, id)
 		if err != nil {
 			return nil, err
-		}
-		if cl.Status == client.K8sClusterStatusError {
-			return cl, fmt.Errorf("cluster is in error state: %s", errMsg(cl.ErrorMessage))
 		}
 		op := cl.UpgradeEnCours
 		if op != nil && op.Statut == client.K8sUpgradeStatutEnPause {
@@ -48,11 +82,36 @@ func WaitClusterIdle(ctx context.Context, c *client.Client, id string, timeout t
 				"maintenance window: let it finish or change the maintenance window, then apply again",
 				op.Type, op.VersionCible, op.Origine)
 		}
-		if cl.Status == client.K8sClusterStatusActive && op == nil {
+		if op == nil && (cl.Status == client.K8sClusterStatusActive || cl.Status == client.K8sClusterStatusError) {
 			return cl, nil
 		}
 		if time.Now().After(deadline) {
-			return cl, fmt.Errorf("timeout waiting for the cluster to be idle (status %s)", cl.Status)
+			return cl, fmt.Errorf("timeout waiting for the running upgrade of the cluster to end (status %s)", cl.Status)
+		}
+		if err := sleep(ctx); err != nil {
+			return nil, err
+		}
+	}
+}
+
+// WaitClusterActive waits until the cluster is `active` (PUT /oidc and a
+// plan change need it; an upgrade paused for its window does not prevent
+// them). `error` is an error.
+func WaitClusterActive(ctx context.Context, c *client.Client, id string, timeout time.Duration) (*client.K8sCluster, error) {
+	deadline := time.Now().Add(timeout)
+	for {
+		cl, err := c.GetK8sCluster(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		switch cl.Status {
+		case client.K8sClusterStatusActive:
+			return cl, nil
+		case client.K8sClusterStatusError:
+			return cl, fmt.Errorf("cluster is in error state: %s", errMsg(cl.ErrorMessage))
+		}
+		if time.Now().After(deadline) {
+			return cl, fmt.Errorf("timeout waiting for the cluster to be active (status %s)", cl.Status)
 		}
 		if err := sleep(ctx); err != nil {
 			return nil, err
@@ -71,10 +130,11 @@ func WaitUpgradeDone(ctx context.Context, c *client.Client, id, opID string, tim
 		if err != nil {
 			return nil, err
 		}
-		if cl.Status == client.K8sClusterStatusError {
-			return cl, fmt.Errorf("cluster entered error state: %s", errMsg(cl.ErrorMessage))
-		}
 		running := cl.UpgradeEnCours != nil && (opID == "" || cl.UpgradeEnCours.ID == opID)
+		if !running && cl.Status == client.K8sClusterStatusError {
+			return cl, fmt.Errorf("the upgrade failed, the cluster is in error state: %s. "+
+				"Apply again to relaunch it", errMsg(cl.ErrorMessage))
+		}
 		if !running && cl.Status == client.K8sClusterStatusActive {
 			return cl, operationOutcome(ctx, c, id, opID)
 		}
@@ -100,15 +160,124 @@ func operationOutcome(ctx context.Context, c *client.Client, id, opID string) er
 	}
 	for _, op := range hist {
 		if op.ID == opID && op.Statut == client.K8sUpgradeStatutEchec {
-			return fmt.Errorf("upgrade to %s failed: %s", op.VersionCible, errMsg(op.ErrorMessage))
+			return fmt.Errorf("upgrade to %s failed: %s. Apply again to relaunch it",
+				op.VersionCible, errMsg(op.ErrorMessage))
 		}
 	}
 	return nil
 }
 
+// lastControlPlaneFailure is the newest control-plane operation of the
+// history (type other than `pool`) when it FAILED towards target.
+func lastControlPlaneFailure(ctx context.Context, c *client.Client, id, target string) *client.K8sUpgradeOperation {
+	hist, err := c.ListK8sClusterUpgrades(ctx, id, 20)
+	if err != nil {
+		return nil
+	}
+	for i := range hist { // newest first
+		op := hist[i]
+		if op.Type == "pool" {
+			continue
+		}
+		if op.Statut == client.K8sUpgradeStatutEchec && Normalize(op.VersionCible) == Normalize(target) {
+			return &op
+		}
+		return nil
+	}
+	return nil
+}
+
+// Result of an Ensure* call.
+type Result struct {
+	// Warning, when not empty: the configured version is below the running
+	// one (never downgraded).
+	Warning string
+	// Relaunched: a failed upgrade towards the same target was relaunched.
+	Relaunched bool
+}
+
+// ControlPlaneTimeouts bounds the waits of EnsureControlPlane.
+type ControlPlaneTimeouts struct {
+	Settle  time.Duration // a running upgrade, before starting
+	Upgrade time.Duration // the upgrade itself
+}
+
+// EnsureControlPlane brings the control plane to target:
+//
+//   - waits for a running upgrade to end FIRST, then compares (an automatic
+//     patch may have reached or passed the target meanwhile);
+//   - a previous upgrade towards target that failed (cluster `error`, or the
+//     newest operation `echec`, or the effective version still below a
+//     requested target) is RELAUNCHED by sending the same target again
+//     (cetic-cloud-platform#2146); an older API that refuses it gives a clear
+//     error instead of recording the target as done;
+//   - otherwise upgrades when target is above the running version, and
+//     never downgrades (Warning).
+func EnsureControlPlane(ctx context.Context, c *client.Client, id, target string, t ControlPlaneTimeouts) (*client.K8sCluster, Result, error) {
+	var res Result
+	cl, err := WaitClusterSettled(ctx, c, id, t.Settle)
+	if err != nil {
+		return nil, res, err
+	}
+	running := ClusterRunning(cl)
+	requested := Normalize(cl.K8sVersion) == Normalize(target)
+	failed := false
+	failMsg := errMsg(cl.ErrorMessage)
+	switch {
+	case requested && cl.Status == client.K8sClusterStatusError:
+		failed = true
+	case requested && cl.K8sVersionEffective != nil && IsAbove(target, running):
+		failed = true // requested, not reached, nothing running: it stopped
+	case requested:
+		if op := lastControlPlaneFailure(ctx, c, id, target); op != nil {
+			failed, failMsg = true, errMsg(op.ErrorMessage)
+		}
+	}
+	if !failed {
+		if cl.Status == client.K8sClusterStatusError {
+			return cl, res, fmt.Errorf("cluster is in error state: %s", errMsg(cl.ErrorMessage))
+		}
+		if !IsAbove(target, running) {
+			if cmp, ok := Compare(target, running); ok && cmp < 0 {
+				res.Warning = fmt.Sprintf("The control plane runs Kubernetes %s, above the configured "+
+					"k8s_version %s. The provider never downgrades: the configured value is recorded, "+
+					"the cluster is left as is.", running, target)
+			}
+			return cl, res, nil
+		}
+	}
+	upgraded, err := c.UpgradeK8sClusterVersion(ctx, id, client.K8sUpgradeVersionRequest{K8sVersion: Normalize(target)})
+	if err != nil {
+		if failed && (statusCode(err) == http.StatusBadRequest || statusCode(err) == http.StatusUnprocessableEntity) {
+			return nil, res, fmt.Errorf("the previous upgrade of the control plane to %s failed (%s) and the "+
+				"platform refused to relaunch it (%v). Relaunch it from the console, then apply again",
+				target, failMsg, err)
+		}
+		return nil, res, err
+	}
+	res.Relaunched = failed
+	opID := ""
+	if upgraded.UpgradeEnCours != nil {
+		opID = upgraded.UpgradeEnCours.ID
+	}
+	final, err := WaitUpgradeDone(ctx, c, id, opID, t.Upgrade)
+	if err != nil {
+		return final, res, err
+	}
+	if final.K8sVersionEffective != nil && IsAbove(target, *final.K8sVersionEffective) {
+		return final, res, fmt.Errorf("the upgrade ended but the control plane runs %s, below %s",
+			*final.K8sVersionEffective, target)
+	}
+	return final, res, nil
+}
+
 // WaitPoolActive waits until the node pool is `active` again (after a scale,
-// a labels change or an upgrade).
+// a labels change or an upgrade). `error` and `deleting` are errors.
 func WaitPoolActive(ctx context.Context, c *client.Client, clusterID, poolID string, timeout time.Duration) (*client.K8sNodePool, error) {
+	return waitPool(ctx, c, clusterID, poolID, timeout, false)
+}
+
+func waitPool(ctx context.Context, c *client.Client, clusterID, poolID string, timeout time.Duration, acceptError bool) (*client.K8sNodePool, error) {
 	deadline := time.Now().Add(timeout)
 	for {
 		p, err := c.GetK8sNodePool(ctx, clusterID, poolID)
@@ -119,7 +288,12 @@ func WaitPoolActive(ctx context.Context, c *client.Client, clusterID, poolID str
 		case "active":
 			return p, nil
 		case "error":
+			if acceptError {
+				return p, nil
+			}
 			return p, fmt.Errorf("node pool entered error state: %s", errMsg(p.ErrorMessage))
+		case "deleting":
+			return p, fmt.Errorf("node pool is being deleted")
 		}
 		if time.Now().After(deadline) {
 			return p, fmt.Errorf("timeout waiting for the node pool to be active (status %s)", p.Status)
@@ -130,47 +304,118 @@ func WaitPoolActive(ctx context.Context, c *client.Client, clusterID, poolID str
 	}
 }
 
-// upgradeConflictRetries bounds the retries of an upgrade answered 409: a
-// concurrent upgrade clears up after a wait, a refusal that lasts (images
-// guard, pool switched off by the scheduler) must surface.
+// upgradeConflictRetries bounds the retries of a pool upgrade answered 409
+// while NO other upgrade runs (a refusal that lasts — images guard, pool
+// switched off by the scheduler — must surface). A 409 caused by another
+// upgrade running (another pool of the same apply, an automatic patch) is
+// not counted: it is waited for, within the Settle timeout.
 const upgradeConflictRetries = 3
 
-// UpgradePool runs the upgrade of one pool to target and waits for its end:
-// waits for the cluster to be idle and the pool active (one upgrade at a time
-// per cluster — several pools of one configuration are upgraded one after the
-// other; a call answered 409 because another upgrade started meanwhile is
-// retried after the next wait), calls the upgrade route, then waits for the
-// operation and the pool.
-func UpgradePool(ctx context.Context, c *client.Client, clusterID, poolID, target string, timeout time.Duration) (*client.K8sNodePool, error) {
-	deadline := time.Now().Add(timeout)
-	for attempt := 0; ; attempt++ {
-		if _, err := WaitClusterIdle(ctx, c, clusterID, time.Until(deadline)); err != nil {
-			return nil, err
+// PoolTimeouts bounds the waits of EnsurePool.
+type PoolTimeouts struct {
+	Settle  time.Duration // the other upgrades of the cluster, before starting (whole budget)
+	Upgrade time.Duration // the upgrade of this pool itself
+}
+
+// EnsurePool brings a pool to target through the pool upgrade route (never
+// the PATCH), like EnsureControlPlane: waits first, then compares; a failed
+// upgrade of the pool towards target (pool `error` on that version, or its
+// effective version still below) is relaunched with the same version;
+// never downgrades.
+func EnsurePool(ctx context.Context, c *client.Client, clusterID, poolID, target string, t PoolTimeouts) (*client.K8sNodePool, Result, error) {
+	var res Result
+	settleDeadline := time.Now().Add(t.Settle)
+	conflicts := 0
+	failed := false
+	failMsg := ""
+	for {
+		cl, err := WaitClusterSettled(ctx, c, clusterID, time.Until(settleDeadline))
+		if err != nil {
+			return nil, res, err
 		}
-		if _, err := WaitPoolActive(ctx, c, clusterID, poolID, time.Until(deadline)); err != nil {
-			return nil, err
+		p, err := waitPool(ctx, c, clusterID, poolID, time.Until(settleDeadline), true)
+		if err != nil {
+			return nil, res, err
 		}
-		_, err := c.UpgradeK8sNodePool(ctx, clusterID, poolID, client.K8sNodePoolUpgradeRequest{K8sVersion: target})
+		running := PoolRunning(p, ClusterRunning(cl))
+		requested := p.K8sVersion != nil && Normalize(*p.K8sVersion) == Normalize(target)
+		failed = requested && (p.Status == "error" ||
+			(p.K8sVersionEffective != nil && IsAbove(target, running)))
+		failMsg = errMsg(p.ErrorMessage)
+		if !failed && !IsAbove(target, running) {
+			if cmp, ok := Compare(target, running); ok && cmp < 0 {
+				res.Warning = fmt.Sprintf("The pool runs Kubernetes %s, above the configured k8s_version %s. "+
+					"The provider never downgrades a pool: the configured value is recorded, the pool is left as is.",
+					running, target)
+			}
+			return p, res, nil
+		}
+		_, err = c.UpgradeK8sNodePool(ctx, clusterID, poolID, client.K8sNodePoolUpgradeRequest{K8sVersion: Normalize(target)})
 		if err == nil {
 			break
 		}
-		if !client.IsConflict(err) || attempt >= upgradeConflictRetries || time.Now().After(deadline) {
-			return nil, err
+		if failed && (statusCode(err) == http.StatusBadRequest || statusCode(err) == http.StatusUnprocessableEntity) {
+			return nil, res, fmt.Errorf("the previous upgrade of the pool to %s failed (%s) and the platform "+
+				"refused to relaunch it (%v). Relaunch it from the console, then apply again", target, failMsg, err)
+		}
+		if !client.IsConflict(err) || time.Now().After(settleDeadline) {
+			return nil, res, err
+		}
+		if now, gerr := c.GetK8sCluster(ctx, clusterID); gerr != nil || now.UpgradeEnCours == nil {
+			conflicts++ // not explained by a running upgrade
+			if conflicts > upgradeConflictRetries {
+				return nil, res, err
+			}
 		}
 		if err := sleep(ctx); err != nil {
-			return nil, err
+			return nil, res, err
 		}
 	}
+	res.Relaunched = failed
 	cl, err := c.GetK8sCluster(ctx, clusterID)
 	if err != nil {
-		return nil, err
+		return nil, res, err
 	}
 	opID := ""
 	if cl.UpgradeEnCours != nil {
 		opID = cl.UpgradeEnCours.ID
 	}
-	if _, err := WaitUpgradeDone(ctx, c, clusterID, opID, time.Until(deadline)); err != nil {
-		return nil, err
+	upgradeDeadline := time.Now().Add(t.Upgrade)
+	if _, err := WaitUpgradeDone(ctx, c, clusterID, opID, time.Until(upgradeDeadline)); err != nil {
+		return nil, res, err
 	}
-	return WaitPoolActive(ctx, c, clusterID, poolID, time.Until(deadline))
+	p, err := WaitPoolActive(ctx, c, clusterID, poolID, time.Until(upgradeDeadline))
+	if err != nil {
+		return nil, res, err
+	}
+	if p.K8sVersionEffective != nil && IsAbove(target, *p.K8sVersionEffective) {
+		return p, res, fmt.Errorf("the upgrade ended but the pool runs %s, below %s", *p.K8sVersionEffective, target)
+	}
+	return p, res, nil
+}
+
+// WatchPlanChange watches a plan change applied by PATCH: the platform
+// applies it asynchronously and may CANCEL it (node IP block that can no
+// longer be extended) — the plan then reverts with the reason in
+// `error_message`. Watches PlanSettlePolls reads.
+func WatchPlanChange(ctx context.Context, c *client.Client, id, target string) (*client.K8sCluster, error) {
+	var cl *client.K8sCluster
+	for i := 0; i < PlanSettlePolls; i++ {
+		if err := sleep(ctx); err != nil {
+			return nil, err
+		}
+		got, err := c.GetK8sCluster(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		cl = got
+		if cl.Plan != "" && cl.Plan != target {
+			return cl, fmt.Errorf("the platform cancelled the change to plan %q (the cluster is %q): %s",
+				target, cl.Plan, errMsg(cl.ErrorMessage))
+		}
+		if cl.Status == client.K8sClusterStatusError {
+			return cl, fmt.Errorf("cluster entered error state during the plan change: %s", errMsg(cl.ErrorMessage))
+		}
+	}
+	return cl, nil
 }

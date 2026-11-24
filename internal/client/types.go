@@ -805,12 +805,16 @@ type K8sCluster struct {
 	PatchDisponible *K8sPatchDisponible `json:"patch_disponible,omitempty"`
 	// UpgradeEnCours is the upgrade running or waiting (nil = none).
 	UpgradeEnCours *K8sUpgradeOperation `json:"upgrade_en_cours,omitempty"`
-	ProxyVipVnet   *string              `json:"proxy_vip_vnet,omitempty"`
-	Status         string               `json:"status"`
-	ErrorMessage   *string              `json:"error_message,omitempty"`
-	Tags           []string             `json:"tags"`
-	CreatedAt      time.Time            `json:"created_at"`
-	UpdatedAt      time.Time            `json:"updated_at"`
+	// K8sVersionEffective is the version the control plane actually runs,
+	// updated at the end of an upgrade step (cetic-cloud-platform#2146).
+	// K8sVersion is the requested (target) version. Nil on an older API.
+	K8sVersionEffective *string   `json:"k8s_version_effective,omitempty"`
+	ProxyVipVnet        *string   `json:"proxy_vip_vnet,omitempty"`
+	Status              string    `json:"status"`
+	ErrorMessage        *string   `json:"error_message,omitempty"`
+	Tags                []string  `json:"tags"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 type K8sInitialPool struct {
@@ -1009,7 +1013,10 @@ type K8sNodePool struct {
 	MaxSize   *int              `json:"max_size,omitempty"`
 	// K8sVersion is the Kubernetes version of the worker nodes in this pool.
 	// NULL means the pool inherits the cluster control-plane version.
-	K8sVersion            *string `json:"k8s_version,omitempty"`
+	K8sVersion *string `json:"k8s_version,omitempty"`
+	// K8sVersionEffective is the version the pool's nodes actually run
+	// (cetic-cloud-platform#2146); nil on an older API.
+	K8sVersionEffective   *string `json:"k8s_version_effective,omitempty"`
 	MachineDeploymentName *string `json:"machine_deployment_name,omitempty"`
 	// DiskGB is the root disk size (GB) of every node in the pool. Nil when
 	// the API does not echo it back — the provider then preserves the

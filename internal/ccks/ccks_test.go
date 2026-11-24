@@ -3,13 +3,17 @@ package ccks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -122,7 +126,7 @@ func TestWaitUpgradeDone_Failure(t *testing.T) {
 
 // A paused automatic upgrade (waiting for its window, maybe days) is not
 // waited for.
-func TestWaitClusterIdle_PausedIsAnError(t *testing.T) {
+func TestWaitClusterSettled_PausedIsAnError(t *testing.T) {
 	fast(t)
 	op := map[string]any{"id": "op-2", "type": "patch", "origine": "automatique",
 		"statut": "en_pause", "version_cible": "1.34.9"}
@@ -130,67 +134,247 @@ func TestWaitClusterIdle_PausedIsAnError(t *testing.T) {
 		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("active", op)},
 	})
 	defer srv.Close()
-	_, err := WaitClusterIdle(context.Background(), client.New(srv.URL, "k", "test"), "cl-1", time.Minute)
+	_, err := WaitClusterSettled(context.Background(), client.New(srv.URL, "k", "test"), "cl-1", time.Minute)
 	if err == nil || !strings.Contains(err.Error(), "paused") {
 		t.Fatalf("want a paused-upgrade error, got %v", err)
 	}
 }
 
-// UpgradePool: waits for an idle cluster, calls the pool upgrade route
-// (never the PATCH), retries a 409 raised by a concurrent upgrade, then waits
-// for the operation and the pool.
-func TestUpgradePool_RetriesConflictThenWaits(t *testing.T) {
-	fast(t)
-	op := map[string]any{"id": "op-3", "type": "pool", "origine": "manuelle",
-		"statut": "en_cours", "version_cible": "1.34.9"}
-	srv := testutil.NewTestServer(t, testutil.Routes{
-		// attempt 1: idle, pool active, 409 (another pool started meanwhile)
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("active", nil)},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1", Body: pool("active")},
-		{Method: "POST", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1/upgrade", Status: http.StatusConflict,
-			Body: map[string]any{"detail": "Une mise à niveau est déjà en cours"}},
-		// attempt 2
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("active", nil)},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1", Body: pool("active")},
-		{Method: "POST", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1/upgrade", Body: pool("updating")},
-		// operation id, then its end
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("updating", op)},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("updating", op)},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("active", nil)},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1/upgrades", Body: []map[string]any{
-			{"id": "op-3", "type": "pool", "origine": "manuelle", "statut": "terminee", "version_cible": "1.34.9"},
-		}},
-		{Method: "GET", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1", Body: pool("active")},
-	})
-	defer srv.Close()
-	got, err := UpgradePool(context.Background(), client.New(srv.URL, "k", "test"), "cl-1", "np-1", "1.34.9", time.Minute)
-	if err != nil {
-		t.Fatalf("UpgradePool: %v", err)
-	}
-	if got.Status != "active" {
-		t.Fatalf("pool status %s", got.Status)
-	}
-	var posts int
-	for _, call := range srv.Calls() {
-		if call.Method == "PATCH" {
-			t.Fatalf("the pool version must not go through PATCH any more: %s", call.Path)
-		}
-		if call.Method == "POST" {
-			posts++
-			var body map[string]any
-			_ = json.Unmarshal(call.Body, &body)
-			if body["k8s_version"] != "1.34.9" {
-				t.Fatalf("upgrade body = %s", call.Body)
+// fakeCCKS is a stateful API: one cluster, one pool, upgrade operations that
+// end after `polls` reads with success or failure. relaunch: the #2146
+// behaviour (same target after a failure relaunches); otherwise the API
+// answers 400/422 like before #2146.
+type fakeCCKS struct {
+	mu        sync.Mutex
+	cl, pool  map[string]any
+	ops       []map[string]any
+	polls     int
+	fail      bool // the next operation fails
+	relaunch  bool
+	effective bool // report k8s_version_effective (#2146)
+	running   string
+	poolRun   string
+	posts     []string
+	conflicts int // answer 409 to the next pool upgrades (another upgrade running)
+}
+
+func newFake() *fakeCCKS {
+	f := &fakeCCKS{running: "1.34.8", poolRun: "1.34.8"}
+	f.cl = cluster("active", nil)
+	f.cl["k8s_version"] = "1.34.8"
+	f.pool = pool("active")
+	return f
+}
+
+func (f *fakeCCKS) view() map[string]any {
+	if f.polls > 0 {
+		f.polls--
+		if f.polls == 0 {
+			op := f.ops[len(f.ops)-1]
+			f.cl["upgrade_en_cours"] = nil
+			if f.fail {
+				op["statut"], op["error_message"] = "echec", "rollout bloqué"
+				f.cl["status"], f.cl["error_message"] = "error", "rollout bloqué"
+				if op["type"] == "pool" {
+					f.pool["status"], f.pool["error_message"] = "error", "rollout bloqué"
+				}
+				f.fail = false
+			} else {
+				op["statut"] = "terminee"
+				f.cl["status"], f.cl["error_message"] = "active", nil
+				if op["type"] == "pool" {
+					f.pool["status"] = "active"
+					f.poolRun = op["version_cible"].(string)
+				} else {
+					f.running = op["version_cible"].(string)
+				}
 			}
 		}
 	}
-	if posts != 2 || srv.PendingRoutes() != 0 {
-		t.Fatalf("posts=%d pending=%d", posts, srv.PendingRoutes())
+	if f.effective {
+		f.cl["k8s_version_effective"] = f.running
+		f.pool["k8s_version_effective"] = f.poolRun
+	}
+	return f.cl
+}
+
+func (f *fakeCCKS) start(typ, target string) map[string]any {
+	op := map[string]any{"id": fmt.Sprintf("op-%d", len(f.ops)+1), "type": typ, "origine": "manuelle",
+		"statut": "en_cours", "version_cible": target}
+	f.ops = append(f.ops, op)
+	f.cl["upgrade_en_cours"] = op
+	f.cl["status"] = "updating"
+	f.polls = 2
+	return op
+}
+
+func (f *fakeCCKS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var body map[string]any
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	w.Header().Set("Content-Type", "application/json")
+	reply := func(code int, v any) { w.WriteHeader(code); _ = json.NewEncoder(w).Encode(v) }
+	switch {
+	case r.Method == "GET" && r.URL.Path == "/v1/k8s/clusters/cl-1":
+		reply(200, f.view())
+	case r.Method == "GET" && r.URL.Path == "/v1/k8s/clusters/cl-1/upgrades":
+		hist := []map[string]any{}
+		for i := len(f.ops) - 1; i >= 0; i-- {
+			hist = append(hist, f.ops[i])
+		}
+		reply(200, hist)
+	case r.Method == "GET" && r.URL.Path == "/v1/k8s/clusters/cl-1/node-pools/np-1":
+		f.view()
+		reply(200, f.pool)
+	case r.Method == "POST" && r.URL.Path == "/v1/k8s/clusters/cl-1/upgrade-version":
+		tgt := body["k8s_version"].(string)
+		f.posts = append(f.posts, "cp "+tgt)
+		cur := f.cl["k8s_version"].(string)
+		if c, _ := Compare(tgt, cur); c <= 0 && !(f.relaunch && c == 0 && f.cl["status"] == "error") {
+			reply(400, map[string]any{"detail": "La version cible doit être supérieure"})
+			return
+		}
+		f.cl["k8s_version"] = tgt // target written at launch, like the API
+		f.start("plan_de_controle", tgt)
+		reply(200, f.cl)
+	case r.Method == "POST" && r.URL.Path == "/v1/k8s/clusters/cl-1/node-pools/np-1/upgrade":
+		tgt := body["k8s_version"].(string)
+		f.posts = append(f.posts, "pool "+tgt)
+		if f.conflicts > 0 {
+			f.conflicts--
+			f.start("patch", "1.34.9") // another upgrade starts meanwhile
+			reply(409, map[string]any{"detail": "Une mise à niveau est déjà en cours"})
+			return
+		}
+		cur := f.pool["k8s_version"].(string)
+		if c, _ := Compare(tgt, cur); c <= 0 && !(f.relaunch && c == 0 && f.pool["status"] == "error") {
+			reply(422, map[string]any{"detail": "La version cible du pool doit être supérieure"})
+			return
+		}
+		f.pool["k8s_version"], f.pool["status"] = tgt, "updating"
+		f.start("pool", tgt)
+		reply(200, f.pool)
+	default:
+		reply(404, map[string]any{"detail": "nf"})
 	}
 }
 
-// A 409 that lasts (images guard) surfaces after a bounded number of tries.
-func TestUpgradePool_PersistentConflictSurfaces(t *testing.T) {
+func serve(t *testing.T, f *fakeCCKS) *client.Client {
+	fast(t)
+	ts := httptest.NewServer(f)
+	t.Cleanup(ts.Close)
+	return client.New(ts.URL, "k", "test")
+}
+
+var cpT = ControlPlaneTimeouts{Settle: time.Minute, Upgrade: time.Minute}
+var poolT = PoolTimeouts{Settle: time.Minute, Upgrade: time.Minute}
+
+// Blocking point 2: the API writes the target at launch and keeps it after
+// a failure. The failed apply reports it; the 2nd apply must not record the
+// target as reached: it relaunches (#2146) and waits for the end.
+func TestEnsureControlPlane_FailureThenSecondApplyRelaunches(t *testing.T) {
+	for _, effective := range []bool{false, true} {
+		t.Run(fmt.Sprintf("effective=%v", effective), func(t *testing.T) {
+			f := newFake()
+			f.fail, f.relaunch, f.effective = true, true, effective
+			c := serve(t, f)
+			_, _, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT)
+			if err == nil || !strings.Contains(err.Error(), "rollout bloqué") || !strings.Contains(err.Error(), "Apply again") {
+				t.Fatalf("1st apply: want the failure and the hint, got %v", err)
+			}
+			// 2nd apply: k8s_version reads 1.35.0 (target) — must not be taken as done.
+			final, res, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT)
+			if err != nil {
+				t.Fatalf("2nd apply: %v", err)
+			}
+			if !res.Relaunched || len(f.posts) != 2 || final.Status != "active" {
+				t.Fatalf("2nd apply must relaunch: res=%+v posts=%v status=%s", res, f.posts, final.Status)
+			}
+			if effective && ClusterRunning(final) != "1.35.0" {
+				t.Fatalf("running = %s", ClusterRunning(final))
+			}
+		})
+	}
+}
+
+// Before #2146 the API refuses to relaunch: a clear error, never a success
+// that records the failed target.
+func TestEnsureControlPlane_OldAPIRefusesRelaunch(t *testing.T) {
+	f := newFake()
+	f.fail = true
+	c := serve(t, f)
+	_, _, _ = EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT)
+	_, _, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT)
+	if err == nil || !strings.Contains(err.Error(), "failed (rollout bloqué)") || !strings.Contains(err.Error(), "refused to relaunch") {
+		t.Fatalf("want a clear refusal, got %v", err)
+	}
+}
+
+// Point 5: a running automatic patch is waited for BEFORE comparing; when it
+// reaches the target nothing is sent (no 400).
+func TestEnsureControlPlane_WaitsThenCompares(t *testing.T) {
+	f := newFake()
+	f.effective = true
+	f.cl["k8s_version"] = "1.34.9"
+	f.start("patch", "1.34.9")
+	c := serve(t, f)
+	_, res, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.34.9", cpT)
+	if err != nil || len(f.posts) != 0 || res.Relaunched {
+		t.Fatalf("err=%v posts=%v", err, f.posts)
+	}
+	// Below the running version: a warning, nothing sent.
+	_, res, err = EnsureControlPlane(context.Background(), c, "cl-1", "v1.34.8", cpT)
+	if err != nil || res.Warning == "" || len(f.posts) != 0 {
+		t.Fatalf("downgrade: err=%v warning=%q posts=%v", err, res.Warning, f.posts)
+	}
+}
+
+// Pools: same failure / relaunch rule.
+func TestEnsurePool_FailureThenRelaunch(t *testing.T) {
+	f := newFake()
+	f.fail, f.relaunch = true, true
+	c := serve(t, f)
+	if _, _, err := EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.9", poolT); err == nil {
+		t.Fatal("1st apply must fail")
+	}
+	p, res, err := EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.9", poolT)
+	if err != nil || !res.Relaunched || p.Status != "active" {
+		t.Fatalf("2nd apply: err=%v res=%+v", err, res)
+	}
+	f2 := newFake()
+	f2.fail = true
+	c2 := serve(t, f2)
+	_, _, _ = EnsurePool(context.Background(), c2, "cl-1", "np-1", "v1.34.9", poolT)
+	if _, _, err := EnsurePool(context.Background(), c2, "cl-1", "np-1", "v1.34.9", poolT); err == nil ||
+		!strings.Contains(err.Error(), "refused to relaunch") {
+		t.Fatalf("old API: want a clear refusal, got %v", err)
+	}
+}
+
+// Point 4: a 409 caused by ANOTHER upgrade running is waited for and not
+// counted against the retry budget (several pools of one apply).
+func TestEnsurePool_ConcurrentConflictsNotCounted(t *testing.T) {
+	f := newFake()
+	f.conflicts = upgradeConflictRetries + 2
+	c := serve(t, f)
+	p, _, err := EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.9", poolT)
+	if err != nil || p.Status != "active" {
+		t.Fatalf("err=%v", err)
+	}
+	if len(f.posts) != upgradeConflictRetries+3 {
+		t.Fatalf("posts = %v", f.posts)
+	}
+	for _, call := range f.posts {
+		if !strings.HasPrefix(call, "pool ") {
+			t.Fatalf("pool version must go through the upgrade route only: %v", f.posts)
+		}
+	}
+}
+
+// A 409 that lasts with NO other upgrade running (images guard) surfaces
+// after a bounded number of tries.
+func TestEnsurePool_PersistentConflictSurfaces(t *testing.T) {
 	fast(t)
 	var routes testutil.Routes
 	for i := 0; i <= upgradeConflictRetries; i++ {
@@ -198,12 +382,61 @@ func TestUpgradePool_PersistentConflictSurfaces(t *testing.T) {
 			testutil.Route{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("active", nil)},
 			testutil.Route{Method: "GET", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1", Body: pool("active")},
 			testutil.Route{Method: "POST", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1/upgrade",
-				Status: http.StatusConflict, Body: map[string]any{"detail": "images non préchargées"}})
+				Status: http.StatusConflict, Body: map[string]any{"detail": "images non préchargées"}},
+			testutil.Route{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: cluster("active", nil)})
 	}
 	srv := testutil.NewTestServer(t, routes)
 	defer srv.Close()
-	_, err := UpgradePool(context.Background(), client.New(srv.URL, "k", "test"), "cl-1", "np-1", "1.34.9", time.Minute)
+	_, _, err := EnsurePool(context.Background(), client.New(srv.URL, "k", "test"), "cl-1", "np-1", "1.34.9", poolT)
 	if err == nil || !strings.Contains(err.Error(), "images non préchargées") {
 		t.Fatalf("want the 409 detail, got %v", err)
+	}
+}
+
+func TestWaitPoolActive_DeletingIsAnError(t *testing.T) {
+	fast(t)
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1/node-pools/np-1", Body: pool("deleting")},
+	})
+	defer srv.Close()
+	_, err := WaitPoolActive(context.Background(), client.New(srv.URL, "k", "test"), "cl-1", "np-1", time.Minute)
+	if err == nil || !strings.Contains(err.Error(), "deleted") {
+		t.Fatalf("want an error at once, got %v", err)
+	}
+}
+
+// Point 8: a plan change cancelled by the platform (plan reverted, reason in
+// error_message) is an error, not a silent loop of diffs.
+func TestWatchPlanChange(t *testing.T) {
+	fast(t)
+	old := PlanSettlePolls
+	PlanSettlePolls = 2
+	t.Cleanup(func() { PlanSettlePolls = old })
+	pro, std := cluster("active", nil), cluster("active", nil)
+	pro["plan"], std["plan"] = "pro", "standard"
+	std["error_message"] = "Passage au plan Pro annulé : bloc non extensible"
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: pro},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: std},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: pro},
+		{Method: "GET", Path: "/v1/k8s/clusters/cl-1", Body: pro},
+	})
+	defer srv.Close()
+	c := client.New(srv.URL, "k", "test")
+	if _, err := WatchPlanChange(context.Background(), c, "cl-1", "pro"); err == nil || !strings.Contains(err.Error(), "annulé") {
+		t.Fatalf("want the cancellation, got %v", err)
+	}
+	if _, err := WatchPlanChange(context.Background(), c, "cl-1", "pro"); err != nil {
+		t.Fatalf("kept plan: %v", err)
+	}
+}
+
+func TestTimeout(t *testing.T) {
+	o := types.ObjectValueMust(TimeoutsAttrTypes("update"), map[string]attr.Value{"update": types.StringValue("2h")})
+	if Timeout(o, "update", time.Minute) != 2*time.Hour {
+		t.Fatal("configured value")
+	}
+	if Timeout(types.ObjectNull(TimeoutsAttrTypes("update")), "update", time.Minute) != time.Minute {
+		t.Fatal("default")
 	}
 }

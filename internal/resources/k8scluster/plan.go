@@ -157,6 +157,15 @@ func (planAttrModifier) PlanModifyString(ctx context.Context, req planmodifier.S
 	eff, known := in.effective()
 	if !known {
 		resp.PlanValue = types.StringUnknown()
+		if in.priorPlan() != "" {
+			// Cannot tell now whether it crosses Starter ↔ paid: never plan a
+			// destruction on a guess; the apply refuses a crossing instead.
+			resp.Diagnostics.AddAttributeWarning(req.Path, "Plan not known yet",
+				"`plan` (or `tier`) depends on a value known only after apply: a change between "+
+					"`starter` and a paid plan cannot be planned as a replacement. If it turns out to be one, "+
+					"the apply stops with an error before changing anything; recreate the cluster with "+
+					"`terraform apply -replace`.")
+		}
 		return
 	}
 	resp.PlanValue = types.StringValue(eff)
