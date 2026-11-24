@@ -1,7 +1,7 @@
-// Tests for ccp_k8s_cluster — focuses on the v0.21 CCKS HA contract :
-// `tier` is Optional+Computed+Default("dev")+OneOf("dev","prod") with
-// RequiresReplace (immutable on the backend). The sibling HA field
-// `proxy_vip_vnet` is Computed-only and only populated for tier=prod.
+// Tests for ccp_k8s_cluster — the CCKS HA contract: `plan` (#2143) and its
+// deprecated alias `tier` (see plan_test.go for the planning rules). The
+// sibling HA field `proxy_vip_vnet` is Computed-only and only populated for a
+// paid plan.
 //
 // These are unit tests against the typed client and the resource Schema()
 // builder. Full acceptance tests (TF_ACC=1) require a live CCP API and are
@@ -180,47 +180,63 @@ func TestRead_LegacyClusterMissingTier(t *testing.T) {
 	if state.Tier.ValueString() != "dev" {
 		t.Errorf("stateFromAPI should collapse missing tier to default \"dev\", got %q", state.Tier.ValueString())
 	}
+	if state.Plan.ValueString() != "starter" {
+		t.Errorf("a legacy row without plan nor tier is a starter cluster, got %q", state.Plan.ValueString())
+	}
 	if !state.ProxyVipVnet.IsNull() {
 		t.Errorf("legacy/dev tier should leave proxy_* state attrs null")
 	}
 }
 
-// TestSchema_TierForceNew asserts the `tier` attribute is Optional+Computed
-// with a Default and carries a RequiresReplace plan modifier — backend
-// cannot mutate the tier of an existing cluster (frontend topology is
-// baked at provision time).
-func TestSchema_TierForceNew(t *testing.T) {
+// TestSchema_PlanAndTier asserts the #2143 contract: `plan` and `tier` are
+// Optional+Computed, without a static Default (the value depends on the prior
+// state, see plan.go) nor an unconditional RequiresReplace (Standard ↔ Pro is
+// in place); `tier` is deprecated.
+func TestSchema_PlanAndTier(t *testing.T) {
 	r := New().(*k8sResource)
 	resp := &resource.SchemaResponse{}
 	r.Schema(context.Background(), resource.SchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("schema build errors: %v", resp.Diagnostics.Errors())
 	}
-	attr, ok := resp.Schema.Attributes["tier"].(schema.StringAttribute)
-	if !ok {
-		t.Fatalf("tier attribute missing or wrong type: %T", resp.Schema.Attributes["tier"])
+	if d := resp.Schema.ValidateImplementation(context.Background()); d.HasError() {
+		t.Fatalf("schema implementation errors: %v", d.Errors())
 	}
-	if !attr.Optional || !attr.Computed {
-		t.Errorf("tier should be Optional+Computed, got optional=%v computed=%v", attr.Optional, attr.Computed)
-	}
-	if attr.Default == nil {
-		t.Errorf("tier should have a Default (\"dev\")")
-	}
-	if len(attr.Validators) == 0 {
-		t.Errorf("tier should carry an OneOf(\"dev\",\"prod\") validator")
-	}
-	// Match on "destroy and recreate" rather than "replace" — same convention
-	// as the sshkey scope test (the canonical framework phrasing).
-	foundRequiresReplace := false
-	for _, pm := range attr.PlanModifiers {
-		desc := strings.ToLower(pm.Description(context.Background()))
-		if strings.Contains(desc, "destroy and recreate") || strings.Contains(desc, "replace") {
-			foundRequiresReplace = true
-			break
+	for _, name := range []string{"plan", "tier"} {
+		attr, ok := resp.Schema.Attributes[name].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("%s attribute missing or wrong type: %T", name, resp.Schema.Attributes[name])
+		}
+		if !attr.Optional || !attr.Computed {
+			t.Errorf("%s should be Optional+Computed", name)
+		}
+		if attr.Default != nil {
+			t.Errorf("%s must not carry a static Default (an old `tier = \"prod\"` cluster may be pro)", name)
+		}
+		for _, pm := range attr.PlanModifiers {
+			desc := strings.ToLower(pm.Description(context.Background()))
+			if strings.Contains(desc, "destroy and recreate") {
+				t.Errorf("%s must not force replacement unconditionally (standard ↔ pro is in place)", name)
+			}
 		}
 	}
-	if !foundRequiresReplace {
-		t.Errorf("tier should carry RequiresReplace() — backend cannot mutate tier on an existing cluster")
+	tier := resp.Schema.Attributes["tier"].(schema.StringAttribute)
+	if tier.DeprecationMessage == "" {
+		t.Errorf("tier should be deprecated")
+	}
+	for _, name := range []string{"etcd_volume_gb", "node_ip_block_size", "current_k8s_version"} {
+		a := resp.Schema.Attributes[name]
+		if a == nil || !a.IsComputed() || a.IsOptional() || a.IsRequired() {
+			t.Errorf("%s must be Computed-only", name)
+		}
+	}
+	m := resp.Schema.Attributes["maintenance"]
+	if m == nil || !m.IsOptional() || !m.IsComputed() {
+		t.Errorf("maintenance must be Optional+Computed (platform defaults read back)")
+	}
+	o := resp.Schema.Attributes["oidc"]
+	if o == nil || !o.IsOptional() || o.IsComputed() {
+		t.Errorf("oidc must be Optional (authoritative: removing it removes the SSO)")
 	}
 }
 

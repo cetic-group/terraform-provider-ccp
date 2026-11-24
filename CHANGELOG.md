@@ -6,6 +6,69 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+A minor version for the CCKS plans and upgrades of cetic-cloud-platform#2143.
+The new attributes need the platform API of #2143; configurations written for
+earlier versions plan no change (checked against a state written by v7.5.1).
+
+### Added
+
+- `ccp_k8s_cluster`: `plan` — `starter`, `standard` or `pro` — the plan of
+  the control plane. `standard` ↔ `pro` is changed in place, `starter` ↔ a
+  paid plan forces a replacement (the platform refuses it in place). Without
+  `plan`, it follows `tier` (`dev` → `starter`, `prod` → `standard`, or the
+  current `pro`) or keeps the current plan.
+- `ccp_k8s_cluster`: computed `etcd_volume_gb`, `node_ip_block_size` and
+  `current_k8s_version` (the version the control plane actually runs).
+- `ccp_k8s_cluster`: `maintenance` — automatic updates (`auto_patch`,
+  `auto_mineure`, `auto_majeure`), maintenance window (`fenetre`) and freeze
+  periods (`dates_gel`). Optional and computed: without it the platform
+  settings are read back and left alone; with it only the written fields are
+  managed, and sent only when they change.
+- `ccp_k8s_cluster`: `oidc` — SSO OIDC of the apiserver (`issuer_url`,
+  `client_id`, claims, prefixes, `extra_scopes`, `ca_pem`). Removing it
+  removes the SSO. A change restarts the apiserver, so it is only sent when
+  the configuration actually changes once normalised like the platform does.
+- `ccp_k8s_node_pool`: computed `current_k8s_version`.
+- `ccp_k8s_cluster` data source: `plan`, `etcd_volume_gb`,
+  `node_ip_block_size`, `os_image`, `patch_disponible`, `upgrade_en_cours`,
+  `oidc_issuer_url`.
+
+### Changed
+
+- `ccp_k8s_cluster`: raising `k8s_version` upgrades the **control plane
+  only** (platform change of #2143) and the provider now waits for the end of
+  the upgrade operation (a failed one is an error). Node pools no longer
+  follow: they are upgraded through `initial_pool.k8s_version` and
+  `ccp_k8s_node_pool.k8s_version`, which now call the platform's pool upgrade
+  (one node at a time) instead of the PATCH, and wait for its end. An upgrade
+  already running is waited for; one paused until the next maintenance
+  window is reported.
+- `k8s_version` (cluster, initial pool, node pool) is the desired version and
+  is never downgraded: while the platform runs it or a higher version
+  (automatic patch, console upgrade, pool pinned after a control-plane
+  upgrade) the configured value stays and no diff is shown. A lower
+  configured value is recorded with a warning.
+- `ccp_k8s_node_pool.disk_gb` and `initial_pool.disk_gb`: the platform
+  default is now 20 GB (or the plan's minimum disk), read back without a diff.
+
+### Deprecated
+
+- `ccp_k8s_cluster.tier` (resource and data source): use `plan`. It stays
+  accepted, always consistent with `plan`; setting both with different
+  topologies is an error.
+
+### Fixed
+
+- `ccp_k8s_cluster`: an in-place update no longer plans a replacement of a
+  cluster whose `os_image` is not set (the computed value was unknown and
+  forced the replacement).
+- `ccp_k8s_cluster`: an in-place update no longer renames the cluster to an
+  empty `display_name` when `display_name` is not set.
+- `ccp_k8s_cluster`: a version upgrade no longer plans a replacement: the
+  platform rewrites `os_template_key`, the provider keeps the configured one.
+- `ccp_k8s_node_pool`: changing `replicas` (or any other attribute) no longer
+  replaces a pool created without `disk_gb`.
+
 ## v7.5.1 (2026-11-15)
 
 A patch version, with no change needed on the platform side. It fixes

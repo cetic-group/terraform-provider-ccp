@@ -7,7 +7,9 @@ package k8snodepool
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/ccks"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -39,13 +41,16 @@ type poolResourceModel struct {
 	Plan       types.String `tfsdk:"plan"`
 	Replicas   types.Int64  `tfsdk:"replicas"`
 	K8sVersion types.String `tfsdk:"k8s_version"`
-	DiskGB     types.Int64  `tfsdk:"disk_gb"`
-	MinSize    types.Int64  `tfsdk:"min_size"`
-	MaxSize    types.Int64  `tfsdk:"max_size"`
-	Labels     types.Map    `tfsdk:"labels"`
-	Taints     types.Set    `tfsdk:"taints"`
-	Status     types.String `tfsdk:"status"`
-	CreatedAt  types.String `tfsdk:"created_at"`
+	// CurrentK8sVersion is the version the pool's nodes actually run (null:
+	// the pool inherits the control-plane version).
+	CurrentK8sVersion types.String `tfsdk:"current_k8s_version"`
+	DiskGB            types.Int64  `tfsdk:"disk_gb"`
+	MinSize           types.Int64  `tfsdk:"min_size"`
+	MaxSize           types.Int64  `tfsdk:"max_size"`
+	Labels            types.Map    `tfsdk:"labels"`
+	Taints            types.Set    `tfsdk:"taints"`
+	Status            types.String `tfsdk:"status"`
+	CreatedAt         types.String `tfsdk:"created_at"`
 }
 
 // taintAttrTypes defines the attr.Type map for a single taint object within the Set.
@@ -83,17 +88,28 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			},
 			"replicas": schema.Int64Attribute{Required: true},
 			"k8s_version": schema.StringAttribute{
-				// Kubernetes version of the worker nodes in this pool. Optional —
-				// omit to inherit the cluster control-plane version. Computed so an
-				// unset value reads back the effective version the API returns (or
-				// stays null when the API reports "inherits"). Mutable: changing it
-				// triggers a rolling upgrade (NOT ForceNew). Must be <= the cluster
-				// control-plane version (server rejects otherwise).
+				// Desired Kubernetes version of the worker nodes (#2143).
+				// Optional+Computed: since #2143 the platform pins a pool that
+				// inherited the control-plane version on an explicit version when
+				// the control plane is upgraded, and patches pools automatically
+				// in the maintenance window. Read-back follows ccks.Floor: the
+				// configured value stays in the state while the pool runs it or a
+				// higher version, so neither of those shows a diff.
 				Optional: true,
 				Computed: true,
-				MarkdownDescription: "Kubernetes version of the worker nodes in this pool " +
-					"(`vX.Y.Z`). Must be `<=` the cluster control-plane version; omit to inherit it. " +
-					"Mutable — changing it triggers a rolling upgrade.",
+				MarkdownDescription: "Desired Kubernetes version of the worker nodes in this pool " +
+					"(`vX.Y.Z`). Omit to keep the version the platform gives the pool (the control-plane " +
+					"version at creation). Raising it upgrades the pool in place through the platform's " +
+					"pool upgrade (one node at a time, PodDisruptionBudgets respected) and waits for the " +
+					"end: the target must be `<=` the control-plane version and of the same minor. " +
+					"A value below the version the pool runs (automatic patch, console upgrade) is " +
+					"kept as is: the provider never downgrades a pool. The actual version is " +
+					"`current_k8s_version`.",
+			},
+			"current_k8s_version": schema.StringAttribute{
+				MarkdownDescription: "Kubernetes version the pool's nodes actually run, as reported by the " +
+					"platform (`null` when the pool inherits the control-plane version).",
+				Computed: true,
 			},
 			"disk_gb": schema.Int64Attribute{
 				// Root disk size (GB) of every node in the pool. No resize
@@ -104,12 +120,16 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
+				// UseStateForUnknown FIRST: an unset disk_gb is unknown in the
+				// plan of any other change (Computed), and RequiresReplace
+				// would then replace the pool for a replicas change.
 				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.RequiresReplace(),
 					int64planmodifier.UseStateForUnknown(),
+					int64planmodifier.RequiresReplace(),
 				},
 				MarkdownDescription: "Root disk size (GB) of every node in this pool. " +
-					"Optional — defaults to the selected plan's disk size when omitted. " +
+					"Optional — when omitted the platform picks 20 GB (raised to the plan's minimum " +
+					"disk if higher) and the value is read back without a diff. " +
 					"Forces replacement of the pool on change (no resize endpoint).",
 			},
 			"min_size": schema.Int64Attribute{Optional: true},
@@ -243,10 +263,13 @@ func setState(ctx context.Context, m *poolResourceModel, p *client.K8sNodePool) 
 	// k8s_version is Optional+Computed: the API returns the worker version, or
 	// null when the pool inherits the control-plane version. Mirror that (null =
 	// inherits). Matches the existing nullable-string pattern in the client.
+	// k8s_version is the DESIRED version (ccks.Floor): the prior value stays
+	// while the pool runs it or higher; current_k8s_version is the actual one.
+	m.K8sVersion = ccks.Floor(m.K8sVersion, p.K8sVersion)
 	if p.K8sVersion != nil {
-		m.K8sVersion = types.StringValue(*p.K8sVersion)
+		m.CurrentK8sVersion = types.StringValue(*p.K8sVersion)
 	} else {
-		m.K8sVersion = types.StringNull()
+		m.CurrentK8sVersion = types.StringNull()
 	}
 	// disk_gb : contrairement à k8s_version, on ne sait pas si l'API l'échote
 	// toujours dans sa réponse → on préfère la valeur reçue, sinon on
@@ -355,6 +378,10 @@ func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// poolUpgradeTimeout bounds the wait of one pool upgrade (rolling, one node
+// at a time, drains respecting the PodDisruptionBudgets).
+const poolUpgradeTimeout = 90 * time.Minute
+
 func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state poolResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -362,16 +389,16 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	clusterID, poolID := state.ClusterID.ValueString(), state.ID.ValueString()
 	var upd client.K8sNodePoolUpdateRequest
+	patch := false
 	if !plan.Replicas.Equal(state.Replicas) {
 		v := int(plan.Replicas.ValueInt64())
 		upd.Replicas = &v
-	}
-	if !plan.K8sVersion.Equal(state.K8sVersion) && !plan.K8sVersion.IsNull() && !plan.K8sVersion.IsUnknown() {
-		v := plan.K8sVersion.ValueString()
-		upd.K8sVersion = &v
+		patch = true
 	}
 	if !plan.MinSize.Equal(state.MinSize) {
+		patch = true
 		if plan.MinSize.IsNull() {
 			z := 0
 			upd.MinSize = &z
@@ -381,6 +408,7 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		}
 	}
 	if !plan.MaxSize.Equal(state.MaxSize) {
+		patch = true
 		if plan.MaxSize.IsNull() {
 			z := 0
 			upd.MaxSize = &z
@@ -389,28 +417,97 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 			upd.MaxSize = &v
 		}
 	}
-	if !plan.Labels.Equal(state.Labels) {
+	if !plan.Labels.Equal(state.Labels) && !plan.Labels.IsUnknown() {
+		patch = true
 		labels := map[string]string{}
-		if !plan.Labels.IsNull() && !plan.Labels.IsUnknown() {
+		if !plan.Labels.IsNull() {
 			plan.Labels.ElementsAs(ctx, &labels, false)
 		}
 		upd.Labels = labels
 	}
-	if !plan.Taints.Equal(state.Taints) {
+	if !plan.Taints.Equal(state.Taints) && !plan.Taints.IsUnknown() {
+		patch = true
 		taints, err := setToTaints(ctx, plan.Taints)
 		if err != nil {
 			resp.Diagnostics.AddError("Failed to encode taints", err.Error())
 			return
 		}
+		if taints == nil {
+			taints = []client.NodePoolTaint{}
+		}
 		upd.Taints = taints
 	}
-	updated, err := r.client.UpdateK8sNodePool(ctx, state.ClusterID.ValueString(), state.ID.ValueString(), upd)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update node pool", err.Error())
-		return
+
+	var final *client.K8sNodePool
+	if patch {
+		// k8s_version is never sent by PATCH any more: a version change goes
+		// through the pool upgrade route below (#2143).
+		updated, err := r.client.UpdateK8sNodePool(ctx, clusterID, poolID, upd)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update node pool", err.Error())
+			return
+		}
+		final = updated
 	}
-	setState(ctx, &plan, updated)
+
+	// ── Kubernetes version of the pool (#2143) ────────────────────────────
+	if !plan.K8sVersion.IsNull() && !plan.K8sVersion.IsUnknown() && !plan.K8sVersion.Equal(state.K8sVersion) {
+		target := plan.K8sVersion.ValueString()
+		actual, err := r.actualVersion(ctx, clusterID, poolID)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read the node pool version", err.Error())
+			return
+		}
+		if ccks.IsAbove(target, actual) {
+			// Persist what the PATCH did before the long wait: an upgrade that
+			// fails or times out leaves a state matching the platform.
+			if final != nil {
+				partial := plan
+				partial.K8sVersion = state.K8sVersion
+				setState(ctx, &partial, final)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &partial)...)
+			}
+			upgraded, err := ccks.UpgradePool(ctx, r.client, clusterID, poolID, ccks.Normalize(target), poolUpgradeTimeout)
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to upgrade node pool", err.Error())
+				return
+			}
+			final = upgraded
+		} else if c, ok := ccks.Compare(target, actual); ok && c < 0 {
+			resp.Diagnostics.AddWarning("Node pool not downgraded",
+				fmt.Sprintf("The pool runs Kubernetes %s, above the configured k8s_version %s. "+
+					"The provider never downgrades a pool: the configured value is recorded, the pool is left as is.",
+					actual, target))
+		}
+	}
+
+	if final == nil {
+		got, err := r.client.GetK8sNodePool(ctx, clusterID, poolID)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read node pool", err.Error())
+			return
+		}
+		final = got
+	}
+	setState(ctx, &plan, final)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// actualVersion is the version the pool's nodes run: the pool's own, or the
+// control-plane version when it inherits.
+func (r *poolResource) actualVersion(ctx context.Context, clusterID, poolID string) (string, error) {
+	p, err := r.client.GetK8sNodePool(ctx, clusterID, poolID)
+	if err != nil {
+		return "", err
+	}
+	if p.K8sVersion != nil && *p.K8sVersion != "" {
+		return *p.K8sVersion, nil
+	}
+	cl, err := r.client.GetK8sCluster(ctx, clusterID)
+	if err != nil {
+		return "", err
+	}
+	return cl.K8sVersion, nil
 }
 
 func (r *poolResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

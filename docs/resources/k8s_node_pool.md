@@ -28,14 +28,15 @@ resource "ccp_k8s_node_pool" "workers" {
   }
 }
 
-# Worker pool pinned to an older Kubernetes version than the control plane
-# (e.g. staged upgrade). Omit `k8s_version` to inherit the control-plane version.
-resource "ccp_k8s_node_pool" "legacy_workers" {
+# Worker pool with an explicit Kubernetes version. Upgrading the control plane
+# (`ccp_k8s_cluster.k8s_version`) no longer moves the pools: raise this value
+# after it — in the same apply is fine — to upgrade the pool, one node at a time.
+resource "ccp_k8s_node_pool" "staged_workers" {
   cluster_id  = ccp_k8s_cluster.prod.id
-  name        = "legacy-workers"
+  name        = "staged-workers"
   plan        = "medium"
   replicas    = 2
-  k8s_version = "v1.33.4" # must be <= the cluster control-plane version
+  k8s_version = "v1.34.8" # <= the control plane, same minor to upgrade
 }
 
 # Memory-optimised pool for data workloads — dedicated with taint
@@ -68,8 +69,8 @@ resource "ccp_k8s_node_pool" "data_workers" {
 
 ### Optional
 
-- `k8s_version` - (Optional) Kubernetes version of the worker nodes in this pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Must be less than or equal to the cluster control-plane version (`ccp_k8s_cluster.k8s_version`); omit to inherit it. This attribute is mutable — changing it triggers a rolling upgrade of the pool's nodes.
-- `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB of every node in the pool. Defaults to the selected plan's disk size when omitted. No resize endpoint exists for node pools, so changing this value forces replacement of the pool.
+- `k8s_version` - (Optional, Computed) Desired Kubernetes version of the worker nodes in this pool, in `vX.Y.Z` format (e.g. `v1.34.8`). Omit to keep the version the platform gives the pool (the control-plane version at creation; since cetic-cloud-platform#2143 the platform pins a pool on its version when the control plane is upgraded — read back without a diff). Raising it upgrades the pool **in place** through the platform's pool upgrade: the nodes are replaced one at a time (drains respect the PodDisruptionBudgets) and the provider waits for the end. The target must be `<=` the control-plane version and of the same minor; if another upgrade of the cluster is running, the provider waits for it first. The platform may move the pool **up** on its own (automatic patch, console): while the pool runs the configured version or a higher one, the value stays as written and no diff is shown. A configured value below the running version is recorded with a warning; the provider never downgrades a pool.
+- `disk_gb` - (Optional, Computed, Forces new resource) Root disk size in GB of every node in the pool. When omitted the platform picks 20 GB (or the plan's minimum disk if higher) and the value is read back without a diff — changing another attribute (e.g. `replicas`) never replaces the pool. No resize endpoint exists for node pools, so changing this value forces replacement of the pool.
 - `min_size` - (Optional) Minimum number of nodes when autoscaling is enabled. Must be greater than or equal to 1.
 - `max_size` - (Optional) Maximum number of nodes when autoscaling is enabled. Must be greater than or equal to `replicas`.
 - `labels` - (Optional) Map of Kubernetes node labels to apply to all nodes in this pool (e.g. `{ "workload-type" = "gpu" }`). Labels in the `kubernetes.io/*` namespace are propagated via the MachineDeployment metadata.
@@ -83,7 +84,8 @@ resource "ccp_k8s_node_pool" "data_workers" {
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the node pool.
-- `status` - Current status. Possible values: `provisioning`, `active`, `scaling`, `error`.
+- `current_k8s_version` - Kubernetes version the pool's nodes actually run (`null` when the pool inherits the control-plane version).
+- `status` - Current status. Possible values: `provisioning`, `active`, `updating`, `error`, `deleting`.
 
 ## Import
 

@@ -3,7 +3,9 @@
 // unique `(name, region)` pair.
 //
 // All Computed fields of the resource counterpart are exposed, including
-// the `tier` HA topology selector and the read-only `proxy_vip_vnet` field.
+// the control-plane `plan` (and its deprecated alias `tier`), the read-only
+// `proxy_vip_vnet` field, and the upgrade status of #2143
+// (`patch_disponible`, `upgrade_en_cours`).
 package k8scluster
 
 import (
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -50,9 +53,17 @@ type k8sClusterDSModel struct {
 	IngressPublicIPID        types.String `tfsdk:"ingress_public_ip_id"`
 	IngressPublicIPAddress   types.String `tfsdk:"ingress_public_ip_address"`
 	IngressInternalIP        types.String `tfsdk:"ingress_internal_ip"`
-	// Tier (HA topology)
-	Tier         types.String `tfsdk:"tier"`
-	ProxyVipVnet types.String `tfsdk:"proxy_vip_vnet"`
+	// Plan of the control plane (#2143) and its deprecated alias tier
+	Plan            types.String `tfsdk:"plan"`
+	Tier            types.String `tfsdk:"tier"`
+	EtcdVolumeGB    types.Int64  `tfsdk:"etcd_volume_gb"`
+	NodeIPBlockSize types.Int64  `tfsdk:"node_ip_block_size"`
+	ProxyVipVnet    types.String `tfsdk:"proxy_vip_vnet"`
+	OsImage         types.String `tfsdk:"os_image"`
+	// Upgrades (#2143)
+	PatchDisponible types.Object `tfsdk:"patch_disponible"`
+	UpgradeEnCours  types.Object `tfsdk:"upgrade_en_cours"`
+	OIDCIssuerURL   types.String `tfsdk:"oidc_issuer_url"`
 	// Lifecycle
 	Status       types.String `tfsdk:"status"`
 	ErrorMessage types.String `tfsdk:"error_message"`
@@ -103,13 +114,64 @@ func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 			"ingress_public_ip_id":                  schema.StringAttribute{Computed: true},
 			"ingress_public_ip_address":             schema.StringAttribute{Computed: true},
 			"ingress_internal_ip":                   schema.StringAttribute{Computed: true},
+			"plan": schema.StringAttribute{
+				MarkdownDescription: "Plan of the control plane: `starter`, `standard` or `pro`.",
+				Computed:            true,
+			},
 			"tier": schema.StringAttribute{
-				MarkdownDescription: "Topology of the apiserver frontend. `dev` = single frontend, " +
-					"`prod` = two frontends with a floating address (HA).",
-				Computed: true,
+				MarkdownDescription: "**Deprecated** — use `plan`. `dev` for the `starter` plan, `prod` for a paid plan.",
+				DeprecationMessage:  "Use `plan` instead.",
+				Computed:            true,
+			},
+			"etcd_volume_gb": schema.Int64Attribute{
+				MarkdownDescription: "Effective etcd volume (GiB).",
+				Computed:            true,
+			},
+			"node_ip_block_size": schema.Int64Attribute{
+				MarkdownDescription: "Size of the node IP block allocated in the VNet (`null` until allocated).",
+				Computed:            true,
+			},
+			"os_image": schema.StringAttribute{
+				MarkdownDescription: "Node operating-system family (`flatcar`, `ubuntu`, `rocky9`).",
+				Computed:            true,
 			},
 			"proxy_vip_vnet": schema.StringAttribute{
-				MarkdownDescription: "Floating private address shared by the two apiserver frontends (tier `prod` only) — the address the kubeconfig points at in HA mode.",
+				MarkdownDescription: "Floating private address shared by the two apiserver frontends (paid plans only) — the address the kubeconfig points at in HA mode.",
+				Computed:            true,
+			},
+			"patch_disponible": schema.SingleNestedAttribute{
+				MarkdownDescription: "Newest Kubernetes patch of the same minor available for the cluster, `null` when none.",
+				Computed:            true,
+				Attributes: map[string]schema.Attribute{
+					"version": schema.StringAttribute{Computed: true, MarkdownDescription: "Patch version."},
+					"os":      schema.StringAttribute{Computed: true, MarkdownDescription: "Node OS of the templates."},
+					"templates_ok": schema.BoolAttribute{Computed: true,
+						MarkdownDescription: "A template exists in that version for the OS of every pool concerned (otherwise the one-click update is refused)."},
+					"plan_de_controle": schema.BoolAttribute{Computed: true,
+						MarkdownDescription: "The control plane is concerned (otherwise only pools)."},
+					"pools": schema.ListAttribute{Computed: true, ElementType: types.StringType,
+						MarkdownDescription: "Pools concerned, updated one after the other."},
+					"duree_estimee_minutes": schema.Int64Attribute{Computed: true,
+						MarkdownDescription: "Estimated duration in minutes."},
+				},
+			},
+			"upgrade_en_cours": schema.SingleNestedAttribute{
+				MarkdownDescription: "Upgrade running or waiting for its window, `null` when none.",
+				Computed:            true,
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{Computed: true},
+					"type": schema.StringAttribute{Computed: true,
+						MarkdownDescription: "`plan_de_controle`, `pool`, `patch` or `mineure`."},
+					"origine": schema.StringAttribute{Computed: true,
+						MarkdownDescription: "`manuelle` or `automatique`."},
+					"statut": schema.StringAttribute{Computed: true,
+						MarkdownDescription: "`en_cours` or `en_pause` (automatic upgrade waiting for the next window)."},
+					"version_depart": schema.StringAttribute{Computed: true},
+					"version_cible":  schema.StringAttribute{Computed: true},
+				},
+			},
+			"oidc_issuer_url": schema.StringAttribute{
+				MarkdownDescription: "Issuer of the SSO OIDC configured on the apiserver, `null` without SSO.",
 				Computed:            true,
 			},
 			"status":        schema.StringAttribute{Computed: true},
@@ -195,9 +257,17 @@ func (d *k8sClusterDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 	}
 
-	// Tier defaults to "dev" for legacy rows predating the HA backend migration.
-	tier := found.Tier
-	if tier == "" {
+	// Plan, derived from tier on an API older than #2143; the tier is always
+	// the plan's (legacy rows without either are starter/dev).
+	plan := found.Plan
+	if plan == "" {
+		plan = "starter"
+		if found.Tier == "prod" {
+			plan = "standard"
+		}
+	}
+	tier := "prod"
+	if plan == "starter" {
 		tier = "dev"
 	}
 
@@ -216,7 +286,14 @@ func (d *k8sClusterDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		IngressControllerEnabled:         types.BoolValue(found.IngressControllerEnabled),
 		IngressControllerScope:           types.StringValue(found.IngressControllerScope),
 		IngressControllerClass:           types.StringValue(found.IngressControllerClass),
+		Plan:                             types.StringValue(plan),
 		Tier:                             types.StringValue(tier),
+		OsImage:                          types.StringValue(found.OsImage),
+		EtcdVolumeGB:                     int64OrNull(found.EtcdVolumeGB),
+		NodeIPBlockSize:                  int64OrNull(found.NodeIPBlockSize),
+		PatchDisponible:                  patchValue(found.PatchDisponible),
+		UpgradeEnCours:                   upgradeValue(found.UpgradeEnCours),
+		OIDCIssuerURL:                    types.StringNull(),
 		Status:                           types.StringValue(found.Status),
 		CreatedAt:                        types.StringValue(found.CreatedAt.Format(time.RFC3339)),
 		UpdatedAt:                        types.StringValue(found.UpdatedAt.Format(time.RFC3339)),
@@ -268,8 +345,74 @@ func (d *k8sClusterDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		state.ErrorMessage = types.StringNull()
 	}
 
+	if found.OIDC != nil {
+		state.OIDCIssuerURL = types.StringValue(found.OIDC.IssuerURL)
+	}
+
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func int64OrNull(p *int) types.Int64 {
+	if p == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(int64(*p))
+}
+
+var (
+	patchAttrTypes = map[string]attr.Type{
+		"version":               types.StringType,
+		"os":                    types.StringType,
+		"templates_ok":          types.BoolType,
+		"plan_de_controle":      types.BoolType,
+		"pools":                 types.ListType{ElemType: types.StringType},
+		"duree_estimee_minutes": types.Int64Type,
+	}
+	upgradeAttrTypes = map[string]attr.Type{
+		"id":             types.StringType,
+		"type":           types.StringType,
+		"origine":        types.StringType,
+		"statut":         types.StringType,
+		"version_depart": types.StringType,
+		"version_cible":  types.StringType,
+	}
+)
+
+func patchValue(p *client.K8sPatchDisponible) types.Object {
+	if p == nil {
+		return types.ObjectNull(patchAttrTypes)
+	}
+	pools := make([]attr.Value, 0, len(p.Pools))
+	for _, n := range p.Pools {
+		pools = append(pools, types.StringValue(n))
+	}
+	return types.ObjectValueMust(patchAttrTypes, map[string]attr.Value{
+		"version":               types.StringValue(p.Version),
+		"os":                    types.StringValue(p.Os),
+		"templates_ok":          types.BoolValue(p.TemplatesOK),
+		"plan_de_controle":      types.BoolValue(p.PlanDeControle),
+		"pools":                 types.ListValueMust(types.StringType, pools),
+		"duree_estimee_minutes": types.Int64Value(int64(p.DureeEstimeeMinutes)),
+	})
+}
+
+func upgradeValue(u *client.K8sUpgradeOperation) types.Object {
+	if u == nil {
+		return types.ObjectNull(upgradeAttrTypes)
+	}
+	depart := types.StringNull()
+	if u.VersionDepart != nil {
+		depart = types.StringValue(*u.VersionDepart)
+	}
+	return types.ObjectValueMust(upgradeAttrTypes, map[string]attr.Value{
+		"id":             types.StringValue(u.ID),
+		"type":           types.StringValue(u.Type),
+		"origine":        types.StringValue(u.Origine),
+		"statut":         types.StringValue(u.Statut),
+		"version_depart": depart,
+		"version_cible":  types.StringValue(u.VersionCible),
+	})
 }
