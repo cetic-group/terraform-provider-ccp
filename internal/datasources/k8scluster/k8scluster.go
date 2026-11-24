@@ -132,7 +132,7 @@ func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed:            true,
 			},
 			"os_image": schema.StringAttribute{
-				MarkdownDescription: "Node operating-system family (`flatcar`, `ubuntu`, `rocky9`).",
+				MarkdownDescription: "Node operating-system family (`flatcar`, `ubuntu`, `rocky10`, `rocky9`).",
 				Computed:            true,
 			},
 			"proxy_vip_vnet": schema.StringAttribute{

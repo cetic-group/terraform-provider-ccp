@@ -6,6 +6,13 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- `ccp_k8s_cluster`: `os_image = "rocky10"` (Rocky Linux 10,
+  cetic-cloud-platform#2145). `rocky9` stays accepted for existing clusters;
+  the platform no longer builds Rocky Linux 9 templates. Needs the platform
+  API of #2145.
+
 ## v7.6.0 (2026-11-24)
 
 A minor version for the CCKS plans and upgrades of cetic-cloud-platform#2143.
