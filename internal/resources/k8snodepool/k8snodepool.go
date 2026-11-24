@@ -113,7 +113,8 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			"current_k8s_version": schema.StringAttribute{
 				MarkdownDescription: "Kubernetes version the pool's nodes actually run: `k8s_version_effective` of " +
 					"the platform, updated at the end of an upgrade; on a platform that does not report it yet, the " +
-					"version last requested (the target during or after a failed upgrade, `status = \"error\"`). " +
+					"version last requested (the target during or after a failed upgrade; a failed upgrade leaves the " +
+					"pool `active` with `error_message`, effective version below the requested one). " +
 					"`null` only on a platform that does not report `k8s_version_effective`, for a pool created " +
 					"without `k8s_version` and never pinned since (it runs the control-plane version).",
 				Computed: true,

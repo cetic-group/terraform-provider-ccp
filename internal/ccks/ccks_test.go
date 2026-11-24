@@ -145,17 +145,20 @@ func TestWaitClusterSettled_PausedIsAnError(t *testing.T) {
 // behaviour (same target after a failure relaunches); otherwise the API
 // answers 400/422 like before #2146.
 type fakeCCKS struct {
-	mu        sync.Mutex
-	cl, pool  map[string]any
-	ops       []map[string]any
-	polls     int
-	fail      bool // the next operation fails
-	relaunch  bool
-	effective bool // report k8s_version_effective (#2146)
-	running   string
-	poolRun   string
-	posts     []string
-	conflicts int // answer 409 to the next pool upgrades (another upgrade running)
+	mu       sync.Mutex
+	cl, pool map[string]any
+	ops      []map[string]any
+	polls    int
+	fail     bool // the next operation fails
+	// finalContract: #2146 final — a failed upgrade leaves the cluster and the
+	// pool `active` with error_message, effective unchanged (below k8s_version).
+	finalContract bool
+	relaunch      bool
+	effective     bool // report k8s_version_effective (#2146)
+	running       string
+	poolRun       string
+	posts         []string
+	conflicts     int // answer 409 to the next pool upgrades (another upgrade running)
 }
 
 func newFake() *fakeCCKS {
@@ -174,9 +177,13 @@ func (f *fakeCCKS) view() map[string]any {
 			f.cl["upgrade_en_cours"] = nil
 			if f.fail {
 				op["statut"], op["error_message"] = "echec", "rollout bloqué"
-				f.cl["status"], f.cl["error_message"] = "error", "rollout bloqué"
+				errStatus := "error"
+				if f.finalContract {
+					errStatus = "active"
+				}
+				f.cl["status"], f.cl["error_message"] = errStatus, "rollout bloqué"
 				if op["type"] == "pool" {
-					f.pool["status"], f.pool["error_message"] = "error", "rollout bloqué"
+					f.pool["status"], f.pool["error_message"] = errStatus, "rollout bloqué"
 				}
 				f.fail = false
 			} else {
@@ -231,7 +238,8 @@ func (f *fakeCCKS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tgt := body["k8s_version"].(string)
 		f.posts = append(f.posts, "cp "+tgt)
 		cur := f.cl["k8s_version"].(string)
-		if c, _ := Compare(tgt, cur); c <= 0 && !(f.relaunch && c == 0 && f.cl["status"] == "error") {
+		stuck := f.finalContract && IsAbove(tgt, f.running) // requested, effective still below
+		if c, _ := Compare(tgt, cur); c <= 0 && !(f.relaunch && c == 0 && (f.cl["status"] == "error" || stuck)) {
 			reply(400, map[string]any{"detail": "La version cible doit être supérieure"})
 			return
 		}
@@ -248,7 +256,8 @@ func (f *fakeCCKS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cur := f.pool["k8s_version"].(string)
-		if c, _ := Compare(tgt, cur); c <= 0 && !(f.relaunch && c == 0 && f.pool["status"] == "error") {
+		stuck := f.finalContract && IsAbove(tgt, f.poolRun)
+		if c, _ := Compare(tgt, cur); c <= 0 && !(f.relaunch && c == 0 && (f.pool["status"] == "error" || stuck)) {
 			reply(422, map[string]any{"detail": "La version cible du pool doit être supérieure"})
 			return
 		}
@@ -522,5 +531,71 @@ func TestTimeout(t *testing.T) {
 	}
 	if Timeout(types.ObjectNull(TimeoutsAttrTypes("update")), "update", time.Minute) != time.Minute {
 		t.Fatal("default")
+	}
+}
+
+// #2146 final contract: a failed upgrade leaves the cluster `active` with
+// error_message, no operation running, k8s_version = target and
+// k8s_version_effective still the old version. The 1st apply fails, the 2nd
+// detects it (effective < requested) and relaunches the same target.
+func TestFinalContract_ActiveWithEffectiveBelowRelaunches(t *testing.T) {
+	f := newFake()
+	f.fail, f.relaunch, f.effective, f.finalContract = true, true, true, true
+	c := serve(t, f)
+	if _, _, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT); err == nil ||
+		!strings.Contains(err.Error(), "rollout bloqué") {
+		t.Fatalf("1st apply: want the failure, got %v", err)
+	}
+	// Exactly the response of the contract after the failure.
+	cl := f.view()
+	if cl["status"] != "active" || cl["upgrade_en_cours"] != nil || cl["k8s_version"] != "1.35.0" ||
+		cl["k8s_version_effective"] != "1.34.8" || cl["error_message"] != "rollout bloqué" {
+		t.Fatalf("fake does not match the contract: %v", cl)
+	}
+	final, res, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT)
+	if err != nil || !res.Relaunched || ClusterRunning(final) != "1.35.0" {
+		t.Fatalf("2nd apply: err=%v res=%+v running=%s posts=%v", err, res, ClusterRunning(final), f.posts)
+	}
+	if f.posts[1] != "cp 1.35.0" {
+		t.Fatalf("relaunch must send the same target: %v", f.posts)
+	}
+}
+
+func TestFinalContract_PoolActiveWithEffectiveBelowRelaunches(t *testing.T) {
+	f := newFake()
+	f.fail, f.relaunch, f.effective, f.finalContract = true, true, true, true
+	c := serve(t, f)
+	if _, _, err := EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.9", poolT); err == nil {
+		t.Fatal("1st apply must fail")
+	}
+	if f.pool["status"] != "active" || f.pool["k8s_version_effective"] != "1.34.8" {
+		t.Fatalf("fake does not match the contract: %v", f.pool)
+	}
+	p, res, err := EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.9", poolT)
+	if err != nil || !res.Relaunched || p.Status != "active" || len(f.posts) != 2 {
+		t.Fatalf("2nd apply: err=%v res=%+v posts=%v", err, res, f.posts)
+	}
+}
+
+// An `active` cluster carrying an UNRELATED error_message (a cancelled plan
+// change) with effective == requested is not a failed upgrade: nothing sent.
+func TestFinalContract_UnrelatedErrorMessageIsNotAFailure(t *testing.T) {
+	f := newFake()
+	f.effective, f.relaunch, f.finalContract = true, true, true
+	f.cl["error_message"] = "Passage au plan Pro annulé : le bloc d'adresses ne peut plus s'étendre"
+	c := serve(t, f)
+	_, res, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.34.8", cpT)
+	if err != nil || res.Relaunched || len(f.posts) != 0 {
+		t.Fatalf("err=%v res=%+v posts=%v", err, res, f.posts)
+	}
+	// Same for a pool at its requested version.
+	f.pool["error_message"] = "message sans rapport"
+	_, res, err = EnsurePool(context.Background(), c, "cl-1", "np-1", "v1.34.8", poolT)
+	if err != nil || res.Relaunched || len(f.posts) != 0 {
+		t.Fatalf("pool: err=%v res=%+v posts=%v", err, res, f.posts)
+	}
+	// And a real upgrade from there goes ahead normally.
+	if _, res, err := EnsureControlPlane(context.Background(), c, "cl-1", "v1.35.0", cpT); err != nil || res.Relaunched {
+		t.Fatalf("upgrade: err=%v res=%+v", err, res)
 	}
 }

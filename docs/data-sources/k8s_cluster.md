@@ -54,7 +54,7 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `name` — DNS-safe slug of the cluster.
 - `display_name` — Human-readable name (nullable).
 - `region` — Region code (`RNN`, `PAR`, `ABJ`, …).
-- `k8s_version` — Kubernetes version requested for the control plane (e.g. `1.34.8`): the target from the start of an upgrade, also when it failed (`status = "error"`).
+- `k8s_version` — Kubernetes version requested for the control plane (e.g. `1.34.8`): the target from the start of an upgrade, also when it failed (the cluster then stays `active` with `error_message`; `error` on a platform older than cetic-cloud-platform#2146).
 - `os_image` — Node operating-system family (`flatcar`, `ubuntu`, `rocky9`).
 - `os_template_key` — VM template key used to provision worker nodes.
 - `vpc_id` — UUID of the VPC the cluster lives in.

@@ -55,7 +55,12 @@ earlier versions plan no change (checked against a state written by v7.5.1).
 - A failed upgrade (control plane or pool) is an error of the apply with the
   platform's message, and is never recorded as done: the platform keeps the
   target, the next plan still proposes it and the next apply relaunches it
-  with the same version (cetic-cloud-platform#2146), reported as a warning. A
+  with the same version (cetic-cloud-platform#2146), reported as a warning.
+  With #2146 a failed upgrade is not rolled back: the cluster or pool stays
+  `active` with `error_message` and `k8s_version_effective` below
+  `k8s_version`; the provider takes "effective below requested, no upgrade
+  running" as the failure (an unrelated `error_message` is not one). The
+  `error` status of older platforms is handled the same way. A
   platform that does not relaunch yet answers with an error saying so.
 - Several pools upgraded in one apply wait for each other: a 409 caused by
   another upgrade running is waited for (within `timeouts.update`), only a

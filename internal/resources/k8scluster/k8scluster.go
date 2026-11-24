@@ -193,7 +193,8 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				MarkdownDescription: "Kubernetes version the control plane actually runs: `k8s_version_effective` " +
 					"of the platform, updated at the end of an upgrade (may be above `k8s_version` after an " +
 					"automatic patch). On a platform that does not report it yet, the version last requested: " +
-					"during an upgrade, or after a failed one (`status = \"error\"`), the target.",
+					"during an upgrade, or after a failed one, the target. After a failed upgrade the cluster stays " +
+					"`active` with `error_message` and this stays below `k8s_version` until the next apply relaunches it.",
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stateUnlessVersionChanges{}},
 			},
