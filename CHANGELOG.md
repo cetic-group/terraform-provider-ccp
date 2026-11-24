@@ -6,6 +6,124 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+A minor version for the CCKS plans and upgrades of cetic-cloud-platform#2143.
+The new attributes need the platform API of #2143; configurations written for
+earlier versions plan no change (checked against a state written by v7.5.1).
+
+### Added
+
+- `ccp_k8s_cluster`: `plan` — `starter`, `standard` or `pro` — the plan of
+  the control plane. `standard` ↔ `pro` is changed in place, `starter` ↔ a
+  paid plan forces a replacement (the platform refuses it in place). Without
+  `plan`, it follows `tier` (`dev` → `starter`, `prod` → `standard`, or the
+  current `pro`) or keeps the current plan.
+- `ccp_k8s_cluster`: computed `etcd_volume_gb`, `node_ip_block_size` and
+  `current_k8s_version` (the version the control plane actually runs).
+- `ccp_k8s_cluster`: `maintenance` — automatic updates (`auto_patch`,
+  `auto_mineure`, `auto_majeure`), maintenance window (`fenetre`) and freeze
+  periods (`dates_gel`). Optional and computed: without it the platform
+  settings are read back and left alone; with it only the written fields are
+  managed, and sent only when they change.
+- `ccp_k8s_cluster`: `oidc` — SSO OIDC of the apiserver (`issuer_url`,
+  `client_id`, claims, prefixes, `extra_scopes`, `ca_pem`). Removing it
+  removes the SSO. A change restarts the apiserver, so it is only sent when
+  the configuration actually changes once normalised like the platform does.
+- `ccp_k8s_node_pool`: computed `current_k8s_version`.
+- `ccp_k8s_cluster` and `ccp_k8s_node_pool`: optional `timeouts` (`create`,
+  `update`, `delete` for the cluster, `update` for the pool), with the
+  waits used so far as defaults.
+- `current_k8s_version` (cluster and pool) is the platform's
+  `k8s_version_effective` when it reports it (cetic-cloud-platform#2146): the
+  version that really runs, updated at the end of an upgrade. Before that,
+  the version last requested (the target during and after an upgrade).
+- `ccp_k8s_cluster` data source: `plan`, `etcd_volume_gb`,
+  `node_ip_block_size`, `os_image`, `patch_disponible`, `upgrade_en_cours`,
+  `oidc_issuer_url`.
+
+### Changed
+
+- `ccp_k8s_cluster`: raising `k8s_version` upgrades the **control plane
+  only** (platform change of #2143) and the provider now waits for the end of
+  the upgrade operation (a failed one is an error). Node pools no longer
+  follow: they are upgraded through `initial_pool.k8s_version` and
+  `ccp_k8s_node_pool.k8s_version`, which now call the platform's pool upgrade
+  (one node at a time) instead of the PATCH, and wait for its end. An upgrade
+  already running is waited for; one paused until the next maintenance
+  window is reported. The provider waits for a running upgrade FIRST and
+  compares afterwards: nothing is sent when an automatic patch already
+  reached the target.
+- A failed upgrade (control plane or pool) is an error of the apply with the
+  platform's message, and is never recorded as done: the platform keeps the
+  target, the next plan still proposes it and the next apply relaunches it
+  with the same version (cetic-cloud-platform#2146), reported as a warning.
+  With #2146 a failed upgrade is not rolled back: the cluster or pool stays
+  `active` with `error_message` and `k8s_version_effective` below
+  `k8s_version`; the provider takes "effective below requested, no upgrade
+  running" as the failure (an unrelated `error_message` is not one). The
+  `error` status of older platforms is handled the same way. A
+  platform that does not relaunch yet answers with an error saying so.
+- Several pools upgraded in one apply wait for each other: a 409 caused by
+  another upgrade running is waited for (within `timeouts.update`), only a
+  409 that lasts without another upgrade fails after 3 tries.
+- SSO and plan changes wait for an active cluster (an automatic maintenance
+  may be running) instead of failing with 409.
+- A plan change (`standard` ↔ `pro`) is watched after the PATCH (at least 2
+  minutes, longer while the new plan is not reported yet, up to
+  `timeouts.update`): when the platform cancels it (node IP block that can no longer be
+  extended), the apply fails with its reason instead of proposing the change
+  again at every plan.
+- At creation, an SSO or maintenance configuration refused by the platform
+  is a warning, not an error: the cluster is kept (not tainted, not
+  recreated) and the next apply retries it in place.
+- `k8s_version` (cluster, initial pool, node pool) is validated: `X.Y.Z`
+  with an optional `v`; `v1.35` was a silent perpetual diff.
+- A `plan` known only after apply plans no replacement (never a destruction
+  on a guess) and warns that the apply will fail if it crosses `starter` ↔
+  paid (Terraform then reports an inconsistent final plan, before any
+  change); the provider refuses such a change at apply as a safety net.
+- `k8s_version` (cluster, initial pool, node pool) is the desired version and
+  is never downgraded: while the platform runs it or a higher version
+  (automatic patch, console upgrade, pool pinned after a control-plane
+  upgrade) the configured value stays and no diff is shown. A lower
+  configured value is recorded with a warning.
+- `ccp_k8s_node_pool.disk_gb` and `initial_pool.disk_gb`: the platform
+  default is now 20 GB (or the plan's minimum disk), read back without a diff.
+
+### Deprecated
+
+- `ccp_k8s_cluster.tier` (resource and data source): use `plan`. It stays
+  accepted, always consistent with `plan`; setting both with different
+  topologies is an error.
+
+### Fixed
+
+- `ccp_k8s_cluster`: an in-place update no longer plans a replacement of a
+  cluster whose `os_image` is not set (the computed value was unknown and
+  forced the replacement).
+- `ccp_k8s_cluster`: an in-place update no longer renames the cluster to an
+  empty `display_name` when `display_name` is not set.
+- `ccp_k8s_cluster`: a version upgrade no longer plans a replacement: the
+  platform rewrites `os_template_key`, the provider keeps the configured one.
+- `ccp_k8s_node_pool`: changing `replicas` (or any other attribute) no longer
+  replaces a pool created without `disk_gb`.
+- `ccp_k8s_cluster`: a state refreshed by an earlier provider after a version
+  upgrade holds the key rewritten by the platform (`kube-v1-34-9`); it no
+  longer plans a replacement — two keys of the `kube-vX-Y-Z` form are
+  changed in place without any call.
+- `ccp_k8s_cluster`: an import rebuilds `initial_pool` from the oldest pool;
+  the first plan no longer replaces an imported cluster.
+- `ccp_k8s_cluster`: `current_k8s_version`, `etcd_volume_gb` and
+  `node_ip_block_size` moved by the platform between the plan and the apply
+  no longer fail the apply (« inconsistent result »); the next refresh reads
+  them.
+- `ccp_k8s_node_pool`: waiting for a pool being deleted fails at once.
+- A cluster in `error` with an upgrade still listed as running fails at once
+  instead of waiting for the timeout; a pool upgrade on a cluster in `error`
+  (other than the relaunch of that pool's own failure) or on a pool in
+  `error` fails with a clear message instead of three 409.
+- While a cluster or a pool is not `active`, the versions it reports are
+  provisional: the known `k8s_version` is kept until it is.
+
 ## v7.5.1 (2026-11-15)
 
 A patch version, with no change needed on the platform side. It fixes

@@ -145,7 +145,7 @@ A full working example (SSH key, VPC, two VNets, region listing) lives in
 | `ccp_container_templates` | Container template catalog (resolve `key` for `ccp_container_instance.template`). |
 | `ccp_vm_templates` | Virtual machine template catalog (resolve `key` for `ccp_vm_instance.template`). |
 | `ccp_k8s_templates` | Kubernetes node OS template catalog. |
-| `ccp_k8s_cluster` | Look up an existing CCKS cluster by `id` or `(name, region)`. Exposes `tier` + HA proxy fields. |
+| `ccp_k8s_cluster` | Look up an existing CCKS cluster by `id` or `(name, region)`. Exposes the control-plane `plan`, HA proxy fields and the available patch / running upgrade. |
 | `ccp_db_plans` | Database plan catalog, filterable by `engine`. |
 | `ccp_db_engine_versions` | Active database engine versions, filterable by `engine`. |
 | `ccp_db_pg_credentials` | Admin credentials of a PostgreSQL instance (sensitive). |

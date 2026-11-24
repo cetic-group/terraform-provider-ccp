@@ -11,7 +11,7 @@ Manages a Kubernetes cluster on CETIC Cloud Platform. The cluster runs inside th
 
 ~> **Note:** Cluster provisioning is fully asynchronous and involves bootstrapping the control plane, joining workers, and deploying cluster add-ons (Cilium, CSI, cluster-agent). The provider polls until the cluster reaches `active` status, which typically takes 8 to 15 minutes.
 
-~> **Note:** `k8s_version` is mutable and triggers an in-place rolling upgrade when changed. Upgrades apply to both control-plane nodes and all node pools. Expect ~20 minutes of rolling upgrade time. The cluster remains available during the upgrade.
+~> **Note:** Raising `k8s_version` upgrades the **control plane only**, in place, one minor version at a time; the provider waits until the upgrade is over (the cluster goes `updating` → `active`). **Node pools no longer follow**: the platform pins every pool on the version it runs, and each pool is upgraded through its own `k8s_version` (`initial_pool.k8s_version`, [`ccp_k8s_node_pool.k8s_version`](k8s_node_pool.md)), after the control plane — in the same apply is fine. See [Kubernetes versions and upgrades](#kubernetes-versions-and-upgrades).
 
 → **End-to-end Terraform examples** for every ingress controller and apiserver exposure pattern: see the [public documentation page](https://docs.cloud.cetic-group.com/terraform/ccp_k8s_cluster).
 
@@ -43,7 +43,7 @@ resource "ccp_k8s_cluster" "ubuntu" {
 ```
 
 Default behavior:
-- `tier = "dev"` → single apiserver frontend (SPOF acceptable in dev).
+- `plan = "starter"` → free control plane, single apiserver frontend (no HA), up to 10 nodes.
 - `os_image = "flatcar"` → nodes run Flatcar Container Linux unless overridden.
 - `ingress_controller_enabled = true`, `ingress_controller_class = "incluster"`, `ingress_controller_scope = "internal"` → ingress handled by Cilium inside the cluster on an auto-allocated VNet IP.
 - Apiserver private only (no public IP).
@@ -105,7 +105,7 @@ resource "ccp_k8s_cluster" "prod" {
   vnet_id         = ccp_vnet.workers.id
   k8s_version     = "v1.34.8"
   os_template_key = "kube-v1-34-8"
-  tier            = "prod" # HA: redundant apiserver frontend with automatic failover
+  plan            = "standard" # HA: redundant apiserver frontend with automatic failover
 
   # Apiserver: public access
   apiserver_public_ip_id = ccp_public_ip.apiserver.id
@@ -133,6 +133,55 @@ resource "ccp_k8s_cluster" "prod" {
 }
 ```
 
+## Example Usage — automatic updates and SSO
+
+```hcl
+resource "ccp_k8s_cluster" "prod" {
+  name            = "prod-cluster"
+  region          = "RNN"
+  vpc_id          = ccp_vpc.main.id
+  vnet_id         = ccp_vnet.workers.id
+  k8s_version     = "v1.34.8"
+  os_template_key = "kube-v1-34-8"
+  plan            = "pro"
+
+  # Only the fields written are managed; the others keep the platform value.
+  maintenance = {
+    auto_patch   = true
+    auto_mineure = false
+    fenetre = {
+      jours        = [6, 7] # Saturday and Sunday
+      heure_debut  = "03:00"
+      duree_heures = 6
+      fuseau       = "Europe/Paris"
+    }
+    dates_gel = [{ debut = "2026-12-20", fin = "2027-01-03" }]
+  }
+
+  # Sign-in with the organisation's identity provider (kubeconfig mode=sso).
+  oidc = {
+    issuer_url   = "https://sso.example.com/realms/acme"
+    client_id    = "kubernetes" # public client, no secret
+    extra_scopes = ["profile"]
+  }
+
+  initial_pool {
+    name        = "default"
+    plan        = "small"
+    replicas    = 3
+    k8s_version = "v1.34.8" # raise it after (or with) k8s_version to upgrade the pool
+  }
+}
+```
+
+## Kubernetes versions and upgrades
+
+- `k8s_version` is the **desired** version of the control plane, written `X.Y.Z` with an optional `v` (anything else is refused at validation). Raising it calls the platform's control-plane upgrade (one minor at a time) and waits for its end; if an upgrade is already running (an automatic patch for instance), the provider waits for it **first** and compares afterwards — nothing is sent when the target is already reached. An automatic upgrade paused until the next maintenance window is reported as an error instead of being waited for.
+- **A failed upgrade** (timeout, refused rollout) is an error of the apply, with the platform's message. Nothing is rolled back: the cluster stays `status = "active"` (it runs) with the reason in `error_message`, `k8s_version` holds the target and `current_k8s_version` (`k8s_version_effective`) stays on the previous version until the platform sees the rollout converge. The provider takes "effective below requested, no upgrade running" as a failed upgrade — an `error_message` alone (e.g. a cancelled plan change) is not one. On a platform older than cetic-cloud-platform#2146, a failed upgrade puts the cluster in `status = "error"`, which is handled the same way. The platform keeps the requested version, so the next plan still proposes it, and **the next apply relaunches it** (same target) and waits again; the relaunch is reported as a warning. A platform that does not relaunch yet (before cetic-cloud-platform#2146) answers with an error saying so: relaunch it from the console, then apply. The provider never records a failed target as reached. The same applies to the node pools.
+- The platform also moves versions **up** on its own: automatic patches inside the maintenance window (`maintenance.auto_patch`, on by default, and a patch forced 30 days after its release), upgrades from the console. The provider never **downgrades**: while the cluster runs the configured version or a higher one, `k8s_version` stays as written and no diff is shown. The version actually running is `current_k8s_version`. A configured value below it is recorded with a warning and nothing is called.
+- Node pools are upgraded separately: `initial_pool.k8s_version` here, `k8s_version` on [`ccp_k8s_node_pool`](k8s_node_pool.md). The platform's pool upgrade replaces the nodes one at a time (drains respect the PodDisruptionBudgets); the target must be `<=` the control plane and of the same minor. A pool without a configured version keeps the version it runs.
+- The platform rewrites `os_template_key` on a version upgrade (`kube-vX-Y-Z`); the provider keeps the configured value, so an upgrade never plans a replacement. A state refreshed by an earlier provider holds the rewritten key: moving between two keys of that `kube-vX-Y-Z` form is planned **in place** and applied without any call (no replacement); any other change of `os_template_key` still forces a replacement — including a configured key outside that form (e.g. `clks-capi-debian-13`) facing a rewritten key in such a state: the state keeps no trace of the key configured before, so it cannot be told apart from a real change of template. Write the key as the platform reports it (`kube-vX-Y-Z`) before upgrading the provider in that case. Such a state also holds the requested version without `v` (`1.34.9`): the first apply records the configured `k8s_version` (a warning when it is below the running version), without calling the platform.
+
 ## Argument Reference
 
 ### Required
@@ -141,18 +190,20 @@ resource "ccp_k8s_cluster" "prod" {
 - `region` - (Forces new resource) Region where the cluster is created. One of: `RNN`, `PAR`, `ABJ`.
 - `vpc_id` - (Forces new resource) UUID of the VPC.
 - `vnet_id` - (Forces new resource) UUID of the VNet where worker nodes attach. An **isolated** subnet (`snat = false`) is accepted — see the isolated-network example above for what it rules out.
-- `k8s_version` - Kubernetes version (e.g. `"v1.34.8"`). Mutable — triggers a rolling upgrade when changed. Must match an `os_template_key` available in the region — list available versions via the [`ccp_k8s_templates`](../data-sources/k8s_templates.md) data source.
-- `os_template_key` - (Forces new resource) OS template key for worker nodes (e.g. `"kube-v1-34-8"`). Must match the chosen `k8s_version` and be available in the region.
+- `k8s_version` - Desired Kubernetes version of the control plane (e.g. `"v1.34.8"`). Raising it upgrades the control plane only, in place (see [Kubernetes versions and upgrades](#kubernetes-versions-and-upgrades)); a value below the running version is never applied. Must match an `os_template_key` available in the region — list available versions via the [`ccp_k8s_templates`](../data-sources/k8s_templates.md) data source.
+- `os_template_key` - (Forces new resource) OS template key for worker nodes (e.g. `"kube-v1-34-8"`). Must match the chosen `k8s_version` and be available in the region. The platform rewrites it on a version upgrade; the provider keeps the configured value (no replacement).
 
 ### Optional — cluster topology
 
 - `display_name` - Display name shown in the console. Defaults to `name`.
 - `os_image` - (Forces new resource) Operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky9`. Defaults to `flatcar` when omitted. Changing the node OS forces destroy + recreate.
-- `tier` - (Forces new resource) Topology of the apiserver frontend:
-    * `dev` (default) — single frontend (SPOF acceptable in dev/staging).
-    * `prod` — redundant frontend (primary + secondary) with automatic failover on a floating address, providing HA at the apiserver layer.
+- `plan` - Plan of the control plane:
+    * `starter` (default) — free, single apiserver frontend (no HA), 1 control-plane replica, up to 10 nodes, etcd volume 2 GiB.
+    * `standard` — redundant apiserver frontend (primary + secondary) with automatic failover on a floating address, 2 control-plane replicas, up to 50 nodes, etcd volume 5 GiB.
+    * `pro` — like `standard` with 3 control-plane replicas, up to 150 nodes, etcd volume 10 GiB.
 
-    Immutable on the backend — changing `tier` forces destroy + recreate.
+    `standard` ↔ `pro` is changed **in place**; the provider waits for the cluster to be `active` first, then watches the change for at least 2 minutes — longer while the cluster does not report the new plan yet, up to `timeouts.update` (default `30m`): the platform applies it asynchronously and may cancel it (node IP block that can no longer be extended) — the apply then fails with the platform's reason instead of proposing the change again at every plan. `starter` ↔ a paid plan **forces destroy + recreate** (the apiserver frontend changes topology; the platform refuses it in place). When `plan` depends on a value known only after apply, no replacement can be planned: the plan shows a warning and, if the value turns out to cross `starter` ↔ paid, **the apply fails** before changing anything (Terraform reports an inconsistent final plan, the change needing a new cluster) — set `plan` to a known value or recreate with `terraform apply -replace`. The provider also refuses such a change at apply as a safety net. The node limit is the sum, per pool, of `max(replicas, max_size)`. Plans and prices: `GET /v1/k8s/clusters/plans`.
+- `tier` - **Deprecated**, use `plan`. `dev` is `plan = "starter"`, `prod` is a paid plan (`standard`, or `pro` when the cluster already is). Optional and computed: it always reads back as the tier of `plan`. A configuration that sets only `tier` keeps working without a diff (`tier = "prod"` on an existing cluster plans no change, even if the cluster was moved to `pro`). Setting both `plan` and `tier` with different topologies is an error.
 - `pod_cidr` - (Forces new resource) Pod IP range. Default `"10.244.0.0/16"`.
 - `service_cidr` - (Forces new resource) Service IP range. Default `"10.96.0.0/12"`.
 - `tags` - List of free-form tags (max 60, max 50 chars each).
@@ -160,8 +211,8 @@ resource "ccp_k8s_cluster" "prod" {
     * `name` - (Forces new resource) Pool name. Default `"default"`.
     * `plan` - (Forces new resource) Instance plan (`nano` … `xlarge`). Default `"small"`.
     * `replicas` - Worker count. Mutable in-place (rolling).
-    * `k8s_version` - (Optional) Kubernetes version of the worker nodes in the initial pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Must be `<=` the cluster control-plane version (`k8s_version`); omit to inherit it. Mutable in-place (changing it triggers a rolling upgrade of the pool's nodes).
-    * `disk_gb` - (Optional, Forces new resource) Root disk size in GB of every node in the initial pool. Defaults to the pool's plan disk size when omitted. No resize endpoint exists for node pools, so changing it forces destroy + recreate of the cluster (like `name`/`plan`).
+    * `k8s_version` - (Optional) Desired Kubernetes version of the worker nodes in the initial pool, in `vX.Y.Z` format (e.g. `v1.33.4`). Omit to keep the version the pool runs (the control-plane version at creation). Raising it upgrades the pool in place through the platform's pool upgrade and waits for the end; the target must be `<=` the control-plane version and of the same minor. Since a control-plane upgrade no longer moves the pools, raise it after (or in the same apply as) `k8s_version`. A value below the version the pool runs is not applied (no downgrade, warning).
+    * `disk_gb` - (Optional, Forces new resource) Root disk size in GB of every node in the initial pool. When omitted the platform picks 20 GB (or the plan's minimum disk if higher). No resize endpoint exists for node pools, so changing it forces destroy + recreate of the cluster (like `name`/`plan`).
     * `labels` - Map of Kubernetes labels applied to the pool's nodes (parity with `ccp_k8s_node_pool.labels`). Mutable in-place.
     * `taints` - Set of Kubernetes taints (`{ key, value?, effect }`, `effect` ∈ `NoSchedule`/`PreferNoSchedule`/`NoExecute`) applied to the pool's nodes (parity with `ccp_k8s_node_pool.taints`). Mutable in-place.
     * `min_size` / `max_size` - Cluster autoscaler bounds (see *Optional — autoscaler*).
@@ -198,6 +249,34 @@ CETIC Cloud Kubernetes Service (CCKS) ships with an ingress controller deployed 
 | `managed` | `internal` | Internal services that need L4 features (proxy protocol, custom listeners) | Auto-allocated, or pin via `ingress_internal_ip` | Dedicated load balancer, HA pair with automatic failover on a floating address — TLS and L4 features decoupled from the cluster |
 | `managed` | `external` | Public services that need an external load balancer | Auto-allocated, or pin via `ingress_public_ip_id` | Dedicated load balancer exposed on the internet — TLS termination and full L4 control at a tier separate from the cluster |
 
+### Optional — automatic updates (`maintenance`)
+
+Optional and computed: without it, the platform settings are read back and left alone (changes made in the console included). With it, **only the fields written are managed** — removing a field, or the whole attribute, keeps the current value. The provider sends the written fields only when they differ from the state.
+
+- `auto_patch` - Apply new patches of the current minor automatically, inside the window. Platform default `true`. Even when `false`, a patch is applied 30 days after its release.
+- `auto_mineure` - Move to the next minor version automatically. Default `false`.
+- `auto_majeure` - Move to the next major version automatically (no effect while no 2.x exists). Default `false`.
+- `fenetre` - Maintenance window, a whole block (all four fields required): an automatic update only starts inside it.
+    * `jours` - ISO week days, `1` (Monday) to `7` (Sunday). Default `[2, 3, 4]`.
+    * `heure_debut` - Local start time, `HH:MM`. Default `"02:00"`.
+    * `duree_heures` - Duration in hours, 4 to 24. Default `4`.
+    * `fuseau` - IANA time zone. Default `"Europe/Paris"`.
+- `dates_gel` - Freeze periods (at most 12, 31 days each, bounds included, `YYYY-MM-DD` in the window's time zone): no window starting on those days is used. `{ debut, fin }` objects; replaces the whole list, `[]` empties it.
+- `personnalise` - (Computed) `false` while the cluster follows the platform defaults.
+
+### Optional — SSO (`oidc`)
+
+Users sign in to the cluster with the organisation's identity provider (`kubeconfig` in `mode=sso`, through kubelogin). Authoritative: set, it is the configuration of the cluster; **removed, the SSO is removed**. **A change restarts the apiserver** (a short API cut on the `starter` plan): the provider only sends it when it actually changes once normalised like the platform does (surrounding spaces, duplicate scopes, PEM layout). The certificate kubeconfig remains the cluster-admin access. Requires an active cluster: the provider waits for it (an automatic maintenance may be running). At creation, a configuration the platform refuses (unreachable issuer, invalid CA…) is a **warning**, not an error — the cluster is kept, not tainted — and the next apply retries the SSO in place; the same holds for `maintenance`.
+
+- `issuer_url` - (Required) Exact `iss` of the tokens: `https://`, port 443, public host, no query nor fragment.
+- `client_id` - (Required) **Public** client of the identity provider (PKCE / device flow, no secret) — the expected audience.
+- `username_claim` - Claim giving the Kubernetes user name. Default `"email"`.
+- `username_prefix` - Prefix of the user name (`oidc:alice@example.com`); `""` for none. Default `"oidc:"`.
+- `groups_claim` - Claim giving the groups; `""` for no groups (RBAC by user name only). Default `"groups"`.
+- `groups_prefix` - Prefix of every group; `""` for none. Default `"oidc:"`.
+- `extra_scopes` - Scopes asked for besides `openid` (at most 10). Default none.
+- `ca_pem` - PEM certificates of the identity provider's CA, when it is not signed by a public CA.
+
 ### Optional — autoscaler
 
 - `autoscaler_scale_down_delay_after_add` - Duration the autoscaler waits after a scale-up before considering scale-down (e.g. `"10m"`). Default `"10m"`.
@@ -216,7 +295,10 @@ In addition to all arguments above, the following attributes are exported.
 ### Cluster
 
 - `id` - UUID of the cluster.
-- `status` - Current status. Possible values: `provisioning`, `active`, `upgrading`, `error`.
+- `status` - Current status. Possible values: `creating`, `provisioning`, `active`, `updating` (version upgrade running), `error`, `deleting`. A failed upgrade leaves the cluster `active` with `error_message` and `current_k8s_version` below `k8s_version` (`error` on a platform older than cetic-cloud-platform#2146); the next apply relaunches it.
+- `current_k8s_version` - Kubernetes version the control plane actually runs: the platform's `k8s_version_effective`, updated at the end of an upgrade (may be above `k8s_version` after an automatic patch). On a platform that does not report it yet, the version last requested — the target during an upgrade, and also after a failed one (check `status`).
+- `etcd_volume_gb` - Effective etcd volume (GiB): the plan's at creation, raised when the plan goes up, never reduced.
+- `node_ip_block_size` - Size of the node IP block allocated in the VNet (`null` until allocated).
 - `kubeconfig` - (Sensitive) Kubeconfig file content (YAML) for accessing the cluster with `kubectl`. Store securely.
 - `endpoint` - Kubernetes API server endpoint URL (e.g. `https://10.0.1.5:6443`).
 
@@ -228,11 +310,19 @@ In addition to all arguments above, the following attributes are exported.
 
 - `ingress_public_ip_address` - Effective public IP of the ingress controller (Computed). Populated once the IP is reserved + bound — `scope = "external"` only.
 
-### Apiserver frontend HA (tier = "prod")
+### Apiserver frontend HA (`plan` = `standard` or `pro`)
 
-This attribute is populated when `tier = "prod"` and is `null` when `tier = "dev"`.
+This attribute is populated on a paid plan and is `null` on `starter`.
 
 - `proxy_vip_vnet` - Floating address on the VNet shared between the two apiserver frontends — this is the IP the kubeconfig points at when HA is active.
+
+### Optional — waiting times (`timeouts`)
+
+- `create` - Provisioning until `active`. Default `15m`.
+- `update` - Each wait of an update. Defaults: `30m` for a running upgrade to end (or for an active cluster before an SSO or plan change), `45m` for the control-plane upgrade, `90m` for the upgrade of the initial pool. Set, the value applies to each of them.
+- `delete` - Teardown until the cluster is gone. Default `20m`.
+
+Go durations (`30m`, `1h30m`). Never sent to the platform: adding or changing them plans an update without any call.
 
 ## Import
 
@@ -241,6 +331,8 @@ Kubernetes clusters can be imported using their UUID:
 ```
 terraform import ccp_k8s_cluster.prod <cluster_id>
 ```
+
+`initial_pool` is never read back from the platform; at import it is rebuilt once from the oldest pool of the cluster (the one created with it): `name`, `plan`, `replicas`, `min_size`/`max_size`, `labels`, `taints` and `disk_gb`. Write the block with the same values. `k8s_version` is left unset (the pool keeps its version) and leaving `disk_gb` unset right after the import does not force a replacement. Set `os_template_key` and `k8s_version` as the platform reports them, or as written before — two keys of the `kube-vX-Y-Z` form never replace the cluster.
 
 ## See also
 
