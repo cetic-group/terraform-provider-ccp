@@ -209,12 +209,12 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{templateKeyRequiresReplace()},
 			},
 			"os_image": schema.StringAttribute{
-				MarkdownDescription: "Node operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky9`. " +
+				MarkdownDescription: "Node operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky10`, `rocky9` (`rocky9`: existing clusters only, no new Rocky Linux 9 templates). " +
 					"Defaults to `flatcar` when omitted. Forces replacement (changing the node OS recreates the cluster).",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("flatcar", "ubuntu", "rocky9"),
+					stringvalidator.OneOf("flatcar", "ubuntu", "rocky10", "rocky9"),
 				},
 				// UseStateForUnknown FIRST: an unset os_image is unknown in the
 				// plan of any other change (Computed), and RequiresReplace would

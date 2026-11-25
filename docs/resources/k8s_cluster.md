@@ -38,7 +38,7 @@ resource "ccp_k8s_cluster" "ubuntu" {
   vnet_id         = ccp_vnet.workers.id
   k8s_version     = "v1.34.8"
   os_template_key = "kube-v1-34-8"
-  os_image        = "ubuntu" # node OS family — one of flatcar (default), ubuntu, rocky9
+  os_image        = "ubuntu" # node OS family — one of flatcar (default), ubuntu, rocky10
 }
 ```
 
@@ -196,7 +196,7 @@ resource "ccp_k8s_cluster" "prod" {
 ### Optional — cluster topology
 
 - `display_name` - Display name shown in the console. Defaults to `name`.
-- `os_image` - (Forces new resource) Operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky9`. Defaults to `flatcar` when omitted. Changing the node OS forces destroy + recreate.
+- `os_image` - (Forces new resource) Operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky10`, `rocky9` (`rocky9`: existing clusters only, no new Rocky Linux 9 templates). Defaults to `flatcar` when omitted. Changing the node OS forces destroy + recreate.
 - `plan` - Plan of the control plane:
     * `starter` (default) — free, single apiserver frontend (no HA), 1 control-plane replica, up to 10 nodes, etcd volume 2 GiB.
     * `standard` — redundant apiserver frontend (primary + secondary) with automatic failover on a floating address, 2 control-plane replicas, up to 50 nodes, etcd volume 5 GiB.
