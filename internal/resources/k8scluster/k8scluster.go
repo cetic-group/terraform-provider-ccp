@@ -149,6 +149,20 @@ type k8sResourceModel struct {
 	CreatedAt   types.String `tfsdk:"created_at"`
 }
 
+// osImages are the OS families accepted in a configuration. `rocky9` was
+// withdrawn (cetic-cloud-platform#2155): refused on write, still read.
+var osImages = []string{"flatcar", "ubuntu", "rocky10"}
+
+// defaultOSChange is the `os_image` to PATCH, nil when unchanged (or unset:
+// UseStateForUnknown already planned the state value).
+func defaultOSChange(planned, prior types.String) *string {
+	if !set(planned) || planned.ValueString() == prior.ValueString() {
+		return nil
+	}
+	v := planned.ValueString()
+	return &v
+}
+
 func (r *k8sResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "ccp_k8s_cluster"
 }
@@ -212,19 +226,26 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{templateKeyRequiresReplace()},
 			},
 			"os_image": schema.StringAttribute{
-				MarkdownDescription: "Node operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky10`, `rocky9` (`rocky9`: existing clusters only, no new Rocky Linux 9 templates). " +
-					"Defaults to `flatcar` when omitted. Forces replacement (changing the node OS recreates the cluster).",
+				MarkdownDescription: "Default OS of new node pools: the OS family a pool created without its own OS " +
+					"gets (`initial_pool` included at creation). One of `flatcar`, `ubuntu`, `rocky10`. Defaults to " +
+					"`flatcar` when omitted. Changing it is **in place** (no recreation): the platform first pins the " +
+					"pools that inherited it on their current OS, so no existing node changes; only pools created " +
+					"afterwards get the new OS. The region must have a template of that OS for the cluster version. " +
+					"`rocky9` (Rocky Linux 9, withdrawn) is refused in a configuration; a state that holds it is read " +
+					"as is — leave `os_image` unset to keep it.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("flatcar", "ubuntu", "rocky10", "rocky9"),
+					// Configuration only: a value read back (state, import,
+					// data source) is never validated, so a cluster still
+					// holding `rocky9` reads without error.
+					stringvalidator.OneOf(osImages...),
 				},
-				// UseStateForUnknown FIRST: an unset os_image is unknown in the
-				// plan of any other change (Computed), and RequiresReplace would
-				// then replace the cluster for a tags change.
+				// An unset os_image keeps the state value (Computed): without
+				// it, any other change would plan it unknown, and the PATCH
+				// would have nothing to compare.
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"vpc_id": schema.StringAttribute{
@@ -367,7 +388,7 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				"create": "Provisioning until `active`. Default `15m`.",
 				"update": "Each wait of an update: a running upgrade to end (default `30m`), the control-plane " +
 					"upgrade (default `45m`), the upgrade of the initial pool (default `90m`), an active " +
-					"cluster before an SSO, custom DNS or plan change (default `30m`).",
+					"cluster before an SSO, custom DNS, plan or default OS change (default `30m`).",
 				"delete": "Teardown until the cluster is gone. Default `20m`.",
 			}),
 			"proxy_vip_vnet": schema.StringAttribute{
@@ -1225,10 +1246,15 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		upd.Plan = &v
 	}
 
-	if upd.Plan != nil {
-		// The platform refuses a plan change on a cluster that is not active.
+	// Default OS of new node pools (cetic-cloud-platform#2155): in place, the
+	// platform pins the pools that inherited it on their current OS first.
+	upd.OsImage = defaultOSChange(plan.OsImage, state.OsImage)
+
+	if upd.Plan != nil || upd.OsImage != nil {
+		// The platform refuses a plan change on a cluster that is not active;
+		// a change of default OS takes the lock of the (version, OS) pair.
 		if _, err := ccks.WaitClusterActive(ctx, r.client, id, settle); err != nil {
-			resp.Diagnostics.AddError("K8s cluster not active for a plan change", err.Error())
+			resp.Diagnostics.AddError("K8s cluster not active for a plan or default OS change", err.Error())
 			return
 		}
 	}

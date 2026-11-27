@@ -136,7 +136,7 @@ func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed:            true,
 			},
 			"os_image": schema.StringAttribute{
-				MarkdownDescription: "Node operating-system family (`flatcar`, `ubuntu`, `rocky10`, `rocky9`).",
+				MarkdownDescription: "Default OS of new node pools (`flatcar`, `ubuntu`, `rocky10`): the OS family a pool created without its own OS gets. Read as the platform reports it.",
 				Computed:            true,
 			},
 			"proxy_vip_vnet": schema.StringAttribute{

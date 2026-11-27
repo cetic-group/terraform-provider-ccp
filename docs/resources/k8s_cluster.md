@@ -38,13 +38,13 @@ resource "ccp_k8s_cluster" "ubuntu" {
   vnet_id         = ccp_vnet.workers.id
   k8s_version     = "v1.34.8"
   os_template_key = "kube-v1-34-8"
-  os_image        = "ubuntu" # node OS family — one of flatcar (default), ubuntu, rocky10
+  os_image        = "ubuntu" # default OS of new pools — one of flatcar (default), ubuntu, rocky10
 }
 ```
 
 Default behavior:
 - `plan = "starter"` → free control plane, single apiserver frontend (no HA), up to 10 nodes.
-- `os_image = "flatcar"` → nodes run Flatcar Container Linux unless overridden.
+- `os_image = "flatcar"` → new pools (the initial one included) run Flatcar Container Linux unless overridden.
 - `ingress_controller_enabled = true`, `ingress_controller_class = "incluster"`, `ingress_controller_scope = "internal"` → ingress handled by Cilium inside the cluster on an auto-allocated VNet IP.
 - Apiserver private only (no public IP).
 - Pod CIDR `10.244.0.0/16`, service CIDR `10.96.0.0/12`.
@@ -204,7 +204,7 @@ resource "ccp_k8s_cluster" "prod" {
 ### Optional — cluster topology
 
 - `display_name` - Display name shown in the console. Defaults to `name`.
-- `os_image` - (Forces new resource) Operating-system family for the cluster nodes. One of `flatcar`, `ubuntu`, `rocky10`, `rocky9` (`rocky9`: existing clusters only, no new Rocky Linux 9 templates). Defaults to `flatcar` when omitted. Changing the node OS forces destroy + recreate.
+- `os_image` - **Default OS of new node pools**: the OS family a pool created without its own OS gets (the initial pool at creation). One of `flatcar`, `ubuntu`, `rocky10`. Defaults to `flatcar` when omitted. **Changing it is in place** (`PATCH`, no recreation), after waiting for an active cluster: the platform first pins the pools that inherited the previous OS on it, in the same transaction, so **no existing node changes** — only pools created afterwards get the new OS. The platform refuses it (422) when the OS is not offered, not rendered by the cluster's chart, or when the region has no template of that OS for the cluster version. `rocky9` (Rocky Linux 9) is withdrawn: refused in a configuration, but a state that still holds it is read without error — leave `os_image` unset to keep it.
 - `plan` - Plan of the control plane:
     * `starter` (default) — free, single apiserver frontend (no HA), 1 control-plane replica, up to 10 nodes, etcd volume 2 GiB.
     * `standard` — redundant apiserver frontend (primary + secondary) with automatic failover on a floating address, 2 control-plane replicas, up to 50 nodes, etcd volume 5 GiB.
@@ -360,7 +360,7 @@ This attribute is populated on a paid plan and is `null` on `starter`.
 ### Optional — waiting times (`timeouts`)
 
 - `create` - Provisioning until `active`. Default `15m`.
-- `update` - Each wait of an update. Defaults: `30m` for a running upgrade to end (or for an active cluster before an SSO, custom DNS or plan change), `45m` for the control-plane upgrade, `90m` for the upgrade of the initial pool. Set, the value applies to each of them.
+- `update` - Each wait of an update. Defaults: `30m` for a running upgrade to end (or for an active cluster before an SSO, custom DNS, plan or default OS change), `45m` for the control-plane upgrade, `90m` for the upgrade of the initial pool. Set, the value applies to each of them.
 - `delete` - Teardown until the cluster is gone. Default `20m`.
 
 Go durations (`30m`, `1h30m`). Never sent to the platform: adding or changing them plans an update without any call.
