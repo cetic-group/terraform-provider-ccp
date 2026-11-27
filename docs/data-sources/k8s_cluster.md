@@ -80,6 +80,8 @@ Provide **either** `id`, **or** the pair `(name, region)`. Combining the two yie
 - `patch_disponible` — Newest Kubernetes patch of the same minor available for the cluster, `null` when none: `version`, `os`, `templates_ok` (a template exists for the OS of every pool concerned), `plan_de_controle` (the control plane is concerned), `pools` (names of the pools concerned), `duree_estimee_minutes`.
 - `upgrade_en_cours` — Upgrade running or waiting for its maintenance window, `null` when none: `id`, `type` (`plan_de_controle`, `pool`, `patch`, `mineure`), `origine` (`manuelle`, `automatique`), `statut` (`en_cours`, `en_pause`), `version_depart`, `version_cible`.
 - `oidc_issuer_url` — Issuer of the SSO OIDC configured on the apiserver, `null` without SSO.
+- `custom_dns` — Custom DNS of the cluster's CoreDNS, an empty list when none: `domain` (lower case) and `servers` (the first is the primary, the second a fallback).
+- `private_dns` — State of the private DNS in the cluster's CoreDNS, `null` when the VPC has no private DNS zone and no custom DNS is set: `status` (`applied`, `pending`, `error`, `unsupported`), `resolver_ip`, `zones` (`name`, `status`), `excluded` (`zone`, `reason`), `custom_domains` (`domain`, `servers`, `status`, `reason`), `pending_reason` (`resolver_not_ready`, `resolver_unavailable`), `applied_at`, `checked_at`, `error`, `error_code`. Same attributes as on the [`ccp_k8s_cluster`](../resources/k8s_cluster.md#private-dns-private_dns) resource.
 - `status` — `creating`, `provisioning`, `active`, `updating`, `error`, or `deleting`.
 - `error_message` — Last error message reported by the provisioning workflow (nullable).
 - `tags` — Free-form tags.

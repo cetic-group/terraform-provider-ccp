@@ -801,6 +801,12 @@ type K8sCluster struct {
 	NodeIPBlockSize *int `json:"node_ip_block_size,omitempty"`
 	// OIDC is the SSO configuration of the apiserver (nil = not configured).
 	OIDC *K8sClusterOIDC `json:"oidc,omitempty"`
+	// CustomDNS is the custom DNS of the cluster's CoreDNS, normalised by the
+	// API (cetic-cloud-platform#2181). Empty: none.
+	CustomDNS []K8sCustomDNSEntry `json:"custom_dns,omitempty"`
+	// PrivateDNS is the state of the private DNS in the cluster's CoreDNS
+	// (nil: no private DNS zone in the VPC and no custom DNS).
+	PrivateDNS *K8sClusterPrivateDNS `json:"private_dns,omitempty"`
 	// PatchDisponible is the newest patch of the same minor (nil = none).
 	PatchDisponible *K8sPatchDisponible `json:"patch_disponible,omitempty"`
 	// UpgradeEnCours is the upgrade running or waiting (nil = none).
@@ -867,6 +873,9 @@ type K8sClusterCreateRequest struct {
 	Tier string `json:"tier,omitempty"`
 	// Plan — `starter`, `standard` or `pro` (#2143).
 	Plan string `json:"plan,omitempty"`
+	// CustomDNS — same rules as `PUT …/custom-dns`, validated before any
+	// provisioning (422).
+	CustomDNS []K8sCustomDNSEntry `json:"custom_dns,omitempty"`
 }
 
 type K8sClusterUpdateRequest struct {
@@ -939,6 +948,52 @@ type K8sClusterOIDC struct {
 	GroupsPrefix   string   `json:"groups_prefix"`
 	ExtraScopes    []string `json:"extra_scopes"`
 	CaPEM          *string  `json:"ca_pem"`
+}
+
+// K8sCustomDNSEntry — one domain resolved by 1 or 2 DNS servers of the
+// client, in a subnet of the cluster's VPC (cetic-cloud-platform#2181). With
+// two servers, the first is the primary and the second a fallback.
+type K8sCustomDNSEntry struct {
+	Domain  string   `json:"domain"`
+	Servers []string `json:"servers"`
+}
+
+// K8sClusterCustomDNSUpdate — `PUT /v1/k8s/clusters/{id}/custom-dns` body: it
+// replaces the WHOLE list (empty = removal).
+type K8sClusterCustomDNSUpdate struct {
+	CustomDNS []K8sCustomDNSEntry `json:"custom_dns"`
+}
+
+// K8sClusterPrivateDNS — state of the private DNS in the cluster's CoreDNS
+// (`private_dns` of the cluster response, #2181).
+type K8sClusterPrivateDNS struct {
+	Status        string                      `json:"status"` // applied | pending | error | unsupported
+	ResolverIP    *string                     `json:"resolver_ip,omitempty"`
+	Zones         []K8sPrivateDNSZone         `json:"zones"`
+	Excluded      []K8sPrivateDNSExcluded     `json:"excluded"`
+	CustomDomains []K8sPrivateDNSCustomDomain `json:"custom_domains"`
+	PendingReason *string                     `json:"pending_reason,omitempty"`
+	AppliedAt     *string                     `json:"applied_at,omitempty"`
+	CheckedAt     *string                     `json:"checked_at,omitempty"`
+	Error         *string                     `json:"error,omitempty"`
+	ErrorCode     *string                     `json:"error_code,omitempty"`
+}
+
+type K8sPrivateDNSZone struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+type K8sPrivateDNSExcluded struct {
+	Zone   string `json:"zone"`
+	Reason string `json:"reason"`
+}
+
+type K8sPrivateDNSCustomDomain struct {
+	Domain  string   `json:"domain"`
+	Servers []string `json:"servers"`
+	Status  string   `json:"status"`
+	Reason  *string  `json:"reason,omitempty"`
 }
 
 // K8sMaintenanceFenetre — maintenance window: an automatic upgrade only

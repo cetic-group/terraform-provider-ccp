@@ -135,6 +135,9 @@ type k8sResourceModel struct {
 	// Automatic updates (maintenance.go) and SSO (oidc.go).
 	Maintenance types.Object `tfsdk:"maintenance"`
 	OIDC        types.Object `tfsdk:"oidc"`
+	// Custom DNS (authoritative) and private DNS state (customdns.go).
+	CustomDNS  types.List   `tfsdk:"custom_dns"`
+	PrivateDNS types.Object `tfsdk:"private_dns"`
 	// Waiting times (never sent to the API).
 	Timeouts types.Object `tfsdk:"timeouts"`
 	// Proxy HA (read-only, only populated for a paid plan)
@@ -358,11 +361,13 @@ func (r *k8sResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"maintenance": maintenanceSchema(),
 			"oidc":        oidcSchema(),
+			"custom_dns":  customDNSSchema(),
+			"private_dns": privateDNSSchema(),
 			"timeouts": ccks.TimeoutsAttribute(map[string]string{
 				"create": "Provisioning until `active`. Default `15m`.",
 				"update": "Each wait of an update: a running upgrade to end (default `30m`), the control-plane " +
 					"upgrade (default `45m`), the upgrade of the initial pool (default `90m`), an active " +
-					"cluster before an SSO or plan change (default `30m`).",
+					"cluster before an SSO, custom DNS or plan change (default `30m`).",
 				"delete": "Teardown until the cluster is gone. Default `20m`.",
 			}),
 			"proxy_vip_vnet": schema.StringAttribute{
@@ -556,6 +561,16 @@ func stateFromAPI(ctx context.Context, c *client.K8sCluster, prior *k8sResourceM
 		diagStrs = append(diagStrs, e.Summary()+": "+e.Detail())
 	}
 	m.OIDC = oidc
+	customDNS, d := customDNSValue(ctx, c.CustomDNS, prior.CustomDNS)
+	for _, e := range d.Errors() {
+		diagStrs = append(diagStrs, e.Summary()+": "+e.Detail())
+	}
+	m.CustomDNS = customDNS
+	privateDNS, d := ccks.PrivateDNSValue(c.PrivateDNS)
+	for _, e := range d.Errors() {
+		diagStrs = append(diagStrs, e.Summary()+": "+e.Detail())
+	}
+	m.PrivateDNS = privateDNS
 
 	// Proxy HA fields are only populated for a paid plan; nullable on starter.
 	m.ProxyVipVnet = stringOrNull(c.ProxyVipVnet)
@@ -808,6 +823,17 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 		plan.Tags.ElementsAs(ctx, &tags, false)
 		createReq.Tags = tags
 	}
+	// Custom DNS goes with the creation: the API validates it before any
+	// provisioning (an invalid line fails here, nothing created) and applies
+	// it itself once the cluster is active.
+	if known(plan.CustomDNS) {
+		entries, d := customDNSFromList(ctx, plan.CustomDNS)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createReq.CustomDNS = entries
+	}
 
 	created, err := r.client.CreateK8sCluster(ctx, createReq)
 	if err != nil {
@@ -866,10 +892,24 @@ func (r *k8sResource) Create(ctx context.Context, req resource.CreateRequest, re
 	} else if oidcGot != nil {
 		final = oidcGot
 	}
+	// Safety net: an API that ignored `custom_dns` in the creation request
+	// (older than #2181) gets it by the PUT. Same warning policy as the SSO.
+	dnsGot, dnsDiags := r.applyCustomDNS(ctx, final.ID, plan.CustomDNS, final.CustomDNS, defaultSettle)
+	if dnsDiags.HasError() {
+		for _, e := range dnsDiags.Errors() {
+			resp.Diagnostics.AddWarning("Custom DNS not set yet — retried by the next apply",
+				e.Summary()+": "+e.Detail())
+		}
+	} else if dnsGot != nil {
+		final = dnsGot
+	}
 	state, diags := stateFromAPI(ctx, final, &plan)
 	warnDiags(&resp.Diagnostics, diags)
 	if d.HasError() {
 		state.OIDC = plan.OIDC
+	}
+	if dnsDiags.HasError() {
+		state.CustomDNS = plan.CustomDNS
 	}
 	if md := r.applyMaintenance(ctx, final.ID, &state, config.Maintenance,
 		types.ObjectNull(maintenanceAttrTypes), plan.Maintenance); md.HasError() {
@@ -1096,6 +1136,19 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	if _, d := r.applyOIDC(ctx, id, plan.OIDC, state.OIDC, settle); d.HasError() {
 		resp.Diagnostics.Append(d...)
 		return
+	}
+
+	// ── Custom DNS — authoritative, sent only when it changes ──────────────
+	{
+		current, d := customDNSFromList(ctx, state.CustomDNS)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if _, d := r.applyCustomDNS(ctx, id, plan.CustomDNS, current, settle); d.HasError() {
+			resp.Diagnostics.Append(d...)
+			return
+		}
 	}
 
 	// ── Initial pool — réconciliation in-place ────────────────────────────
