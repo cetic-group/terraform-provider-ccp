@@ -137,3 +137,18 @@ func TestUpdate_OsImageByPatch(t *testing.T) {
 		t.Fatalf("unchanged: os_image omitted, got %s", raw)
 	}
 }
+
+func TestCheckDefaultOSApplied(t *testing.T) {
+	ubuntu, flatcar := "ubuntu", "flatcar"
+	if err := checkDefaultOSApplied(nil, &client.K8sCluster{OsImage: "flatcar"}); err != nil {
+		t.Errorf("no change requested: %v", err)
+	}
+	if err := checkDefaultOSApplied(&ubuntu, &client.K8sCluster{OsImage: "ubuntu"}); err != nil {
+		t.Errorf("applied: %v", err)
+	}
+	// An API older than #2155 ignores os_image in the PATCH.
+	err := checkDefaultOSApplied(&ubuntu, &client.K8sCluster{OsImage: flatcar})
+	if err == nil || !strings.Contains(err.Error(), "#2155") {
+		t.Errorf("ignored change must fail with a clear error, got %v", err)
+	}
+}

@@ -163,6 +163,17 @@ func defaultOSChange(planned, prior types.String) *string {
 	return &v
 }
 
+// checkDefaultOSApplied fails when a requested `os_image` is not the one the
+// PATCH answered with: an API older than cetic-cloud-platform#2155 ignores
+// the field, and the apply would otherwise end in an "inconsistent result".
+func checkDefaultOSApplied(requested *string, got *client.K8sCluster) error {
+	if requested == nil || got == nil || got.OsImage == *requested {
+		return nil
+	}
+	return fmt.Errorf("the platform kept os_image = %q instead of %q: changing the default OS of new "+
+		"node pools needs the platform API of cetic-cloud-platform#2155", got.OsImage, *requested)
+}
+
 func (r *k8sResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "ccp_k8s_cluster"
 }
@@ -1273,6 +1284,10 @@ func (r *k8sResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			return
 		}
 		updated = watched
+	}
+	if err := checkDefaultOSApplied(upd.OsImage, updated); err != nil {
+		resp.Diagnostics.AddError("K8s cluster default OS not changed", err.Error())
+		return
 	}
 	newState, diags := stateFromAPI(ctx, updated, &plan)
 	warnDiags(&resp.Diagnostics, diags)
