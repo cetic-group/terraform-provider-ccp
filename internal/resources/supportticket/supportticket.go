@@ -8,6 +8,7 @@ package supportticket
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -154,7 +155,13 @@ func (r *ticketResource) Read(ctx context.Context, req resource.ReadRequest, res
 		resp.Diagnostics.AddError("Failed to read support ticket", err.Error())
 		return
 	}
-	state.Subject = types.StringValue(got.Subject)
+	// L'API enregistre le sujet sans espaces autour (`strip()`). `subject`
+	// force le remplacement : relire sa valeur brute fermait puis rouvrait le
+	// ticket à chaque apply pour un sujet en heredoc (`"Panne\n"`) (revue de
+	// #121). La valeur de l'état est gardée tant qu'elle désigne le même sujet.
+	if state.Subject.IsNull() || strings.TrimSpace(state.Subject.ValueString()) != got.Subject {
+		state.Subject = types.StringValue(got.Subject)
+	}
 	state.Status = types.StringValue(got.Status)
 	state.CreatedAt = types.StringValue(got.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

@@ -434,7 +434,16 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		}
 	}
 
-	updated, err := r.client.UpdateContainerScaleSet(ctx, id, upd)
+	// Tags seuls : aucun PATCH. Un PATCH, même vide, passe le scale set en
+	// `scaling` et relance un cycle de scaling, voire un remplacement
+	// progressif (revue de #121) ; l'état est relu.
+	var updated *client.ContainerScaleSet
+	var err error
+	if upd == (client.ContainerScaleSetUpdateRequest{}) {
+		updated, err = r.client.GetContainerScaleSet(ctx, id)
+	} else {
+		updated, err = r.client.UpdateContainerScaleSet(ctx, id, upd)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update Container Scale Set", err.Error())
 		return
@@ -449,6 +458,15 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	newState.UserData = plan.UserData
 	newState.BastionAccess = plan.BastionAccess
 	newState.Docker = plan.Docker
+	// root_password : Required, jamais renvoyé par l'API ; sans lui, toute
+	// mise à jour sur place finissait en « inconsistent result » (revue de #121).
+	newState.RootPassword = plan.RootPassword
+	// `status` est planifié depuis l'état (UseStateForUnknown) : un PATCH qui
+	// passe le scale set en `scaling` rendait l'apply incohérent. La valeur
+	// réelle est relue au prochain refresh, comme pour le VPC.
+	if !plan.Status.IsUnknown() {
+		newState.Status = plan.Status
+	}
 	// disk_gb is RequiresReplace — an Update call means it didn't change.
 	switch {
 	case updated.DiskGB != nil:

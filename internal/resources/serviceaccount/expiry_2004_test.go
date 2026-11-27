@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -54,5 +57,27 @@ func TestToleranceAvantRequiresReplace(t *testing.T) {
 	}
 	if tolerance < 0 || remplacement < 0 || tolerance > remplacement {
 		t.Fatalf("ordre attendu : tolérance (%d) avant remplacement (%d)", tolerance, remplacement)
+	}
+}
+
+// Revue de #121 : `expires_at = timeadd(timestamp(), "720h")` est inconnu à
+// chaque plan ; il ne doit pas remplacer un compte qui a déjà une échéance.
+func TestExpirationInconnueNeRemplacePas(t *testing.T) {
+	cas := []struct {
+		nom          string
+		plan, etat   types.String
+		remplacement bool
+	}{
+		{"inconnue, échéance en état", types.StringUnknown(), types.StringValue("2027-01-15T12:00:00Z"), false},
+		{"inconnue, sans échéance", types.StringUnknown(), types.StringNull(), true},
+		{"connue et différente", types.StringValue("2027-03-01T00:00:00Z"), types.StringValue("2027-01-15T12:00:00Z"), true},
+	}
+	for _, c := range cas {
+		resp := &stringplanmodifier.RequiresReplaceIfFuncResponse{}
+		remplacerSiExpirationConnue(context.Background(),
+			planmodifier.StringRequest{PlanValue: c.plan, StateValue: c.etat}, resp)
+		if resp.RequiresReplace != c.remplacement {
+			t.Errorf("%s : remplacement = %v, attendu %v", c.nom, resp.RequiresReplace, c.remplacement)
+		}
 	}
 }

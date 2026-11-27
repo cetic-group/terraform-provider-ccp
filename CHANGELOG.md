@@ -22,13 +22,16 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the creation response (`memberships`).
 - `ccp_support_ticket`: creation reads `{ticket: …}` (the id was empty),
   categories are those of the API (`technical`, `billing`, `abuse`,
-  `feature_request`, `other`), and destroy closes the ticket.
+  `feature_request`, `other`), destroy closes the ticket, and a subject with
+  surrounding whitespace (heredoc) no longer replaces the ticket on refresh.
 - `ccp_service_account`: `expires_at` is stable after apply (the API counts
   days) and changing it replaces the account.
 - `ccp_registry`: `name` forces replacement (the API cannot change it);
   `image_tag` is applied at creation only.
 - `ccp_container_scale_set`: `name` forces replacement; `tags` are updated by
-  `PUT /v1/tags` (the PATCH ignored both).
+  `PUT /v1/tags` (the PATCH ignored both), without a PATCH when only the tags
+  change (it restarted a scaling cycle); an in-place update keeps
+  `root_password` and the planned `status` (inconsistent result after apply).
 - `ccp_vpc_peering`: `tags` are read-only (the API cannot tag a peering).
 - `ccp_vnet_firewall_rule`: `comment` and `enabled` force replacement (the
   API has no PATCH for a rule; updates failed); `position` is applied at
@@ -45,7 +48,9 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Attributes that now force replacement (they were silently ignored by the
   API): `ccp_registry.name`, `ccp_container_scale_set.name`,
-  `ccp_service_account.expires_at` (beyond a two-day tolerance),
+  `ccp_service_account.expires_at` (beyond a one-day tolerance, 25 h; a
+  value unknown at plan time such as `timeadd(timestamp(), …)` does not
+  replace an account that already has an expiry),
   `ccp_vnet_firewall_rule.comment|enabled`. `ccp_vpc_peering.tags` can no
   longer be set.
 - Applied at creation only, a later difference is a plan warning (never a
