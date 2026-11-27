@@ -53,7 +53,7 @@ type oidcModel struct {
 func oidcSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "SSO OIDC of the apiserver: users sign in with the organisation's identity " +
-			"provider (kubeconfig `mode=sso`, kubelogin). Set, it is the configuration of the cluster; " +
+			"provider (kubelogin; kubeconfig `mode=sso` on the public endpoint, `mode=sso-private` on the private endpoint of the VNet, both with PKCE S256). Set, it is the configuration of the cluster; " +
 			"removed, the SSO is removed. **Changing it restarts the apiserver** (a short API cut on the " +
 			"Starter plan); the provider only sends it when it actually changes. The certificate " +
 			"kubeconfig remains the cluster-admin access. Requires an active cluster.",

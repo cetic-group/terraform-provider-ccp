@@ -133,7 +133,7 @@ resource "ccp_k8s_cluster" "prod" {
 }
 ```
 
-## Example Usage — automatic updates and SSO
+## Example Usage — automatic updates, SSO and custom DNS
 
 ```hcl
 resource "ccp_k8s_cluster" "prod" {
@@ -158,12 +158,20 @@ resource "ccp_k8s_cluster" "prod" {
     dates_gel = [{ debut = "2026-12-20", fin = "2027-01-03" }]
   }
 
-  # Sign-in with the organisation's identity provider (kubeconfig mode=sso).
+  # Sign-in with the organisation's identity provider (kubeconfig
+  # mode=sso, or mode=sso-private through the VNet).
   oidc = {
     issuer_url   = "https://sso.example.com/realms/acme"
     client_id    = "kubernetes" # public client, no secret
     extra_scopes = ["profile"]
   }
+
+  # Domains resolved by your own DNS servers, in a subnet of the VPC
+  # (the private DNS zones of the VPC are added automatically).
+  custom_dns = [
+    { domain = "corp.example.com", servers = ["10.0.1.10", "10.0.1.11"] },
+    { domain = "lab.example", servers = ["10.0.2.5"] },
+  ]
 
   initial_pool {
     name        = "default"
@@ -266,7 +274,14 @@ Optional and computed: without it, the platform settings are read back and left 
 
 ### Optional — SSO (`oidc`)
 
-Users sign in to the cluster with the organisation's identity provider (`kubeconfig` in `mode=sso`, through kubelogin). Authoritative: set, it is the configuration of the cluster; **removed, the SSO is removed**. **A change restarts the apiserver** (a short API cut on the `starter` plan): the provider only sends it when it actually changes once normalised like the platform does (surrounding spaces, duplicate scopes, PEM layout). The certificate kubeconfig remains the cluster-admin access. Requires an active cluster: the provider waits for it (an automatic maintenance may be running). At creation, a configuration the platform refuses (unreachable issuer, invalid CA…) is a **warning**, not an error — the cluster is kept, not tainted — and the next apply retries the SSO in place; the same holds for `maintenance`.
+Users sign in to the cluster with the organisation's identity provider, through kubelogin (`kubectl oidc-login`), with a kubeconfig in one of two modes:
+
+- `mode=sso` — the **public** endpoint of the apiserver: needs `apiserver_public_ip_id`;
+- `mode=sso-private` — the **private** endpoint in the VNet (the address of `mode=private`): reached through a VPN or from the VNet, **no public IP needed**.
+
+Both impose PKCE (`--oidc-pkce-method=S256`): the identity provider's client must accept it. Both are refused (409) while the configuration is not applied on the control plane yet. The provider has no kubeconfig data source: download it with `cetic k8s kubeconfig <cluster-id> --mode sso-private` or `GET /v1/k8s/clusters/{id}/kubeconfig?mode=sso-private`.
+
+Authoritative: set, it is the configuration of the cluster; **removed, the SSO is removed**. **A change restarts the apiserver** (a short API cut on the `starter` plan): the provider only sends it when it actually changes once normalised like the platform does (surrounding spaces, duplicate scopes, PEM layout). The certificate kubeconfig remains the cluster-admin access. Requires an active cluster: the provider waits for it (an automatic maintenance may be running). At creation, a configuration the platform refuses (unreachable issuer, invalid CA…) is a **warning**, not an error — the cluster is kept, not tainted — and the next apply retries the SSO in place; the same holds for `maintenance`.
 
 - `issuer_url` - (Required) Exact `iss` of the tokens: `https://`, port 443, public host, no query nor fragment.
 - `client_id` - (Required) **Public** client of the identity provider (PKCE / device flow, no secret) — the expected audience.
@@ -276,6 +291,15 @@ Users sign in to the cluster with the organisation's identity provider (`kubecon
 - `groups_prefix` - Prefix of every group; `""` for none. Default `"oidc:"`.
 - `extra_scopes` - Scopes asked for besides `openid` (at most 10). Default none.
 - `ca_pem` - PEM certificates of the identity provider's CA, when it is not signed by a public CA.
+
+### Optional — custom DNS (`custom_dns`)
+
+Domains of your network resolved by your own DNS servers, written into the cluster's CoreDNS: each `domain` (with all its subdomains) is forwarded to its `servers`. **At most 5 domains.** Authoritative, like `oidc`: set, it is the list of the cluster; **removed (or `[]`), the custom DNS is removed**. Applied **without restart** (CoreDNS reloads it within 2 minutes); the state of the application is in `private_dns`.
+
+- `domain` - (Required) Domain, e.g. `corp.example.com`. The platform stores it in lower case without its final dot; the provider compares the lists the same way, so another spelling of the same domain plans nothing.
+- `servers` - (Required) 1 or 2 IPv4 addresses of DNS servers **in a subnet of the cluster's VPC**, accepting queries from the nodes on port 53. With two servers, the first is the primary, the second a fallback (`policy sequential`): their order matters.
+
+The private DNS zones of the VPC (DNS service) are added automatically and must not be listed; nor can `cluster.local`, the reverse zones that cover everything, or the pod and service ranges of the cluster. The platform validates the whole list (422 with a reason per line, nothing written): **at creation it is sent with the creation request**, so an invalid line fails the apply before anything is provisioned. On an update, the list is sent only when it changes once normalised, after waiting for the cluster to be `active` (an automatic maintenance may be running).
 
 ### Optional — autoscaler
 
@@ -302,6 +326,21 @@ In addition to all arguments above, the following attributes are exported.
 - `kubeconfig` - (Sensitive) Kubeconfig file content (YAML) for accessing the cluster with `kubectl`. Store securely.
 - `endpoint` - Kubernetes API server endpoint URL (e.g. `https://10.0.1.5:6443`).
 
+### Private DNS (`private_dns`)
+
+State of the private DNS in the cluster's CoreDNS: the private zones of the VPC DNS service (automatic) and `custom_dns`, per zone and per domain. `null` when the VPC has no private DNS zone and no custom DNS is set. Read at every refresh; it moves on its own (a zone goes from `pending` to `applied` when the resolver is ready).
+
+- `status` - `applied` (everything is in CoreDNS), `pending` (a zone or a domain is waiting), `error` (see `error` and `error_code`) or `unsupported`.
+- `resolver_ip` - Address of the VPC DNS service the private zones are forwarded to.
+- `zones` - Private DNS zones of the VPC: `name` and `status` (`applied` or `pending`).
+- `excluded` - Zones of the VPC left out: `zone` and `reason` (`denylisted`, `cluster_domain`, `cluster_range`, `client_conflict`, `invalid_name`, `custom_dns_conflict`).
+- `custom_domains` - Custom DNS domains as applied: `domain`, `servers`, `status` (`applied`, `pending` or `error`) and `reason`.
+- `pending_reason` - Why the zones are waiting: `resolver_not_ready` or `resolver_unavailable`.
+- `applied_at` - Last time the platform wrote the configuration into the cluster.
+- `checked_at` - Last time the platform checked the configuration in the cluster.
+- `error` - Readable error message, when `status` is `error`.
+- `error_code` - Machine code of the error (e.g. `cluster_unreachable`, `client_coredns_config_invalid`).
+
 ### Apiserver
 
 - `public_ip_address` - Public IP address of the apiserver, if attached. Empty otherwise.
@@ -319,7 +358,7 @@ This attribute is populated on a paid plan and is `null` on `starter`.
 ### Optional — waiting times (`timeouts`)
 
 - `create` - Provisioning until `active`. Default `15m`.
-- `update` - Each wait of an update. Defaults: `30m` for a running upgrade to end (or for an active cluster before an SSO or plan change), `45m` for the control-plane upgrade, `90m` for the upgrade of the initial pool. Set, the value applies to each of them.
+- `update` - Each wait of an update. Defaults: `30m` for a running upgrade to end (or for an active cluster before an SSO, custom DNS or plan change), `45m` for the control-plane upgrade, `90m` for the upgrade of the initial pool. Set, the value applies to each of them.
 - `delete` - Teardown until the cluster is gone. Default `20m`.
 
 Go durations (`30m`, `1h30m`). Never sent to the platform: adding or changing them plans an update without any call.

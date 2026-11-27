@@ -1222,6 +1222,20 @@ func (c *Client) DeleteK8sClusterOIDC(ctx context.Context, id string) (*K8sClust
 	return &out, nil
 }
 
+// PutK8sClusterCustomDNS — replace the custom DNS of the cluster (empty list:
+// removal). No restart: CoreDNS reloads it within 2 minutes.
+func (c *Client) PutK8sClusterCustomDNS(ctx context.Context, id string, entries []K8sCustomDNSEntry) (*K8sCluster, error) {
+	if entries == nil {
+		entries = []K8sCustomDNSEntry{}
+	}
+	var out K8sCluster
+	if err := c.do(ctx, http.MethodPut, "/v1/k8s/clusters/"+id+"/custom-dns",
+		K8sClusterCustomDNSUpdate{CustomDNS: entries}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ─── K8s Node Pool (sub-resource du cluster) ────────────────────────────────
 
 func (c *Client) ListK8sNodePools(ctx context.Context, clusterID string) ([]K8sNodePool, error) {

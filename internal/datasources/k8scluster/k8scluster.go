@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cetic-group/terraform-provider-ccp/internal/ccks"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -64,6 +65,9 @@ type k8sClusterDSModel struct {
 	PatchDisponible types.Object `tfsdk:"patch_disponible"`
 	UpgradeEnCours  types.Object `tfsdk:"upgrade_en_cours"`
 	OIDCIssuerURL   types.String `tfsdk:"oidc_issuer_url"`
+	// Custom DNS and private DNS state (#2181)
+	CustomDNS  types.List   `tfsdk:"custom_dns"`
+	PrivateDNS types.Object `tfsdk:"private_dns"`
 	// Lifecycle
 	Status       types.String `tfsdk:"status"`
 	ErrorMessage types.String `tfsdk:"error_message"`
@@ -174,6 +178,16 @@ func (d *k8sClusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				MarkdownDescription: "Issuer of the SSO OIDC configured on the apiserver, `null` without SSO.",
 				Computed:            true,
 			},
+			"custom_dns": schema.ListNestedAttribute{
+				MarkdownDescription: "Custom DNS of the cluster's CoreDNS (empty list: none): each `domain` is " +
+					"resolved by its `servers` (the first is the primary, the second a fallback).",
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+					"domain":  schema.StringAttribute{Computed: true, MarkdownDescription: "Domain, in lower case."},
+					"servers": schema.ListAttribute{Computed: true, ElementType: types.StringType, MarkdownDescription: "1 or 2 DNS servers."},
+				}},
+			},
+			"private_dns":   privateDNSSchema(),
 			"status":        schema.StringAttribute{Computed: true},
 			"error_message": schema.StringAttribute{Computed: true},
 			"tags": schema.ListAttribute{
@@ -349,6 +363,13 @@ func (d *k8sClusterDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		state.OIDCIssuerURL = types.StringValue(found.OIDC.IssuerURL)
 	}
 
+	customDNS, diags := ccks.CustomDNSListValue(found.CustomDNS)
+	resp.Diagnostics.Append(diags...)
+	state.CustomDNS = customDNS
+	privateDNS, diags := ccks.PrivateDNSValue(found.PrivateDNS)
+	resp.Diagnostics.Append(diags...)
+	state.PrivateDNS = privateDNS
+
 	tags, _ := types.ListValueFrom(ctx, types.StringType, found.Tags)
 	state.Tags = tags
 
@@ -415,4 +436,50 @@ func upgradeValue(u *client.K8sUpgradeOperation) types.Object {
 		"version_depart": depart,
 		"version_cible":  types.StringValue(u.VersionCible),
 	})
+}
+
+// privateDNSSchema mirrors the resource's computed `private_dns`.
+func privateDNSSchema() schema.SingleNestedAttribute {
+	d := ccks.PrivateDNSDescriptions
+	str := func(name string) schema.StringAttribute {
+		return schema.StringAttribute{MarkdownDescription: d[name], Computed: true}
+	}
+	return schema.SingleNestedAttribute{
+		MarkdownDescription: "State of the private DNS in the cluster's CoreDNS: private zones of the VPC DNS " +
+			"service (automatic) and `custom_dns`, per zone and per domain. `null` when the VPC has no private " +
+			"DNS zone and no custom DNS is set.",
+		Computed: true,
+		Attributes: map[string]schema.Attribute{
+			"status":      str("status"),
+			"resolver_ip": str("resolver_ip"),
+			"zones": schema.ListNestedAttribute{
+				MarkdownDescription: d["zones"], Computed: true,
+				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+					"name":   schema.StringAttribute{Computed: true, MarkdownDescription: "Zone name."},
+					"status": schema.StringAttribute{Computed: true, MarkdownDescription: "`applied` or `pending`."},
+				}},
+			},
+			"excluded": schema.ListNestedAttribute{
+				MarkdownDescription: d["excluded"], Computed: true,
+				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+					"zone":   schema.StringAttribute{Computed: true, MarkdownDescription: "Zone name."},
+					"reason": schema.StringAttribute{Computed: true, MarkdownDescription: "Why it is left out."},
+				}},
+			},
+			"custom_domains": schema.ListNestedAttribute{
+				MarkdownDescription: d["custom_domains"], Computed: true,
+				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+					"domain":  schema.StringAttribute{Computed: true, MarkdownDescription: "Domain."},
+					"servers": schema.ListAttribute{Computed: true, ElementType: types.StringType, MarkdownDescription: "DNS servers."},
+					"status":  schema.StringAttribute{Computed: true, MarkdownDescription: "`applied`, `pending` or `error`."},
+					"reason":  schema.StringAttribute{Computed: true, MarkdownDescription: "Reason of an `error`."},
+				}},
+			},
+			"pending_reason": str("pending_reason"),
+			"applied_at":     str("applied_at"),
+			"checked_at":     str("checked_at"),
+			"error":          str("error"),
+			"error_code":     str("error_code"),
+		},
+	}
 }

@@ -11,6 +11,10 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // clusterFixture mirrors the JSON shape returned by `GET /v1/k8s/clusters/{id}`
@@ -220,5 +224,63 @@ func TestDatasource_PlanAndUpgradeStatus(t *testing.T) {
 	}
 	if !patchValue(nil).IsNull() || !upgradeValue(nil).IsNull() {
 		t.Fatal("absent: null")
+	}
+}
+
+// The data source projects `custom_dns` (always a list) and `private_dns`
+// (null when the API has none) into its state.
+func TestRead_CustomAndPrivateDNS(t *testing.T) {
+	ctx := context.Background()
+	fx := clusterFixture("ccks-1", "prod-cluster", "RNN", "prod")
+	fx["custom_dns"] = []map[string]any{{"domain": "corp.example.com", "servers": []string{"10.0.1.10", "10.0.1.11"}}}
+	fx["private_dns"] = map[string]any{
+		"status": "error", "resolver_ip": "10.0.0.53",
+		"zones":          []map[string]any{{"name": "internal.example", "status": "applied"}},
+		"excluded":       []map[string]any{},
+		"custom_domains": []map[string]any{{"domain": "corp.example.com", "servers": []string{"10.0.1.10"}, "status": "error", "reason": "invalid_server"}},
+		"error":          "Le cluster n'a pas pu être joint.", "error_code": "cluster_unreachable",
+		"applied_at": "2026-11-27T10:00:00Z",
+	}
+	nu := clusterFixture("ccks-2", "bare", "RNN", "dev")
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/k8s/clusters/ccks-1", Status: http.StatusOK, Body: fx},
+		{Method: "GET", Path: "/v1/k8s/clusters/ccks-2", Status: http.StatusOK, Body: nu},
+	})
+	defer srv.Close()
+	d := &k8sClusterDataSource{client: client.New(srv.URL, "ccp_test_unit", "0.0.0-test")}
+	var sresp datasource.SchemaResponse
+	d.Schema(ctx, datasource.SchemaRequest{}, &sresp)
+	read := func(id string) k8sClusterDSModel {
+		objType := sresp.Schema.Type().TerraformType(ctx).(tftypes.Object)
+		champs := map[string]tftypes.Value{}
+		for nom, typ := range objType.AttributeTypes {
+			champs[nom] = tftypes.NewValue(typ, nil)
+		}
+		champs["id"] = tftypes.NewValue(tftypes.String, id)
+		resp := &datasource.ReadResponse{State: tfsdk.State{Schema: sresp.Schema}}
+		d.Read(ctx, datasource.ReadRequest{
+			Config: tfsdk.Config{Raw: tftypes.NewValue(objType, champs), Schema: sresp.Schema},
+		}, resp)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("Read: %v", resp.Diagnostics.Errors())
+		}
+		var m k8sClusterDSModel
+		if diags := resp.State.Get(ctx, &m); diags.HasError() {
+			t.Fatalf("State.Get: %v", diags.Errors())
+		}
+		return m
+	}
+	m := read("ccks-1")
+	if len(m.CustomDNS.Elements()) != 1 {
+		t.Fatalf("custom_dns = %s", m.CustomDNS)
+	}
+	a := m.PrivateDNS.Attributes()
+	if a["status"].(types.String).ValueString() != "error" || a["error_code"].(types.String).ValueString() != "cluster_unreachable" ||
+		a["applied_at"].(types.String).ValueString() != "2026-11-27T10:00:00Z" || !a["checked_at"].(types.String).IsNull() {
+		t.Fatalf("private_dns = %s", m.PrivateDNS)
+	}
+	m = read("ccks-2")
+	if !m.PrivateDNS.IsNull() || m.CustomDNS.IsNull() || len(m.CustomDNS.Elements()) != 0 {
+		t.Fatalf("no DNS: private_dns null, custom_dns [] (got %s, %s)", m.PrivateDNS, m.CustomDNS)
 	}
 }

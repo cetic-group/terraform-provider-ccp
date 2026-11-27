@@ -12,6 +12,21 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cetic-cloud-platform#2145). `rocky9` stays accepted for existing clusters;
   the platform no longer builds Rocky Linux 9 templates. Needs the platform
   API of #2145.
+- `ccp_k8s_cluster`: `custom_dns` — domains resolved by your own DNS servers
+  in the cluster's CoreDNS (at most 5, 1 or 2 servers in a subnet of the VPC,
+  cetic-cloud-platform#2181). Authoritative like `oidc`: removing it removes
+  the custom DNS. Sent with the creation request (an invalid line fails before
+  anything is provisioned), then only when the list changes once normalised
+  like the platform does, after waiting for an active cluster. No restart.
+- `ccp_k8s_cluster` resource and data source: computed `private_dns` — state
+  of the private DNS (VPC zones and custom DNS, per zone and per domain,
+  `pending_reason`, error). The data source also exposes `custom_dns`.
+
+### Documentation
+
+- `ccp_k8s_cluster`: the SSO section covers the kubeconfig `mode=sso-private`
+  (private endpoint of the VNet, no public IP needed) and the PKCE `S256` both
+  SSO modes impose (cetic-cloud-platform#2167).
 
 ## v7.6.0 (2026-11-24)
 
