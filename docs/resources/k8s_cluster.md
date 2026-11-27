@@ -296,6 +296,8 @@ Authoritative: set, it is the configuration of the cluster; **removed, the SSO i
 
 Domains of your network resolved by your own DNS servers, written into the cluster's CoreDNS: each `domain` (with all its subdomains) is forwarded to its `servers`. **At most 5 domains.** Authoritative, like `oidc`: set, it is the list of the cluster; **removed (or `[]`), the custom DNS is removed**. Applied **without restart** (CoreDNS reloads it within 2 minutes); the state of the application is in `private_dns`.
 
+A custom DNS set outside Terraform (console, `cetic k8s dns set`) is read back at the next refresh: if the configuration has no `custom_dns`, the plan **removes it**. Add the list to the configuration before the first apply with this provider version.
+
 - `domain` - (Required) Domain, e.g. `corp.example.com`. The platform stores it in lower case without its final dot; the provider compares the lists the same way, so another spelling of the same domain plans nothing.
 - `servers` - (Required) 1 or 2 IPv4 addresses of DNS servers **in a subnet of the cluster's VPC**, accepting queries from the nodes on port 53. With two servers, the first is the primary, the second a fallback (`policy sequential`): their order matters.
 

@@ -18,6 +18,10 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the custom DNS. Sent with the creation request (an invalid line fails before
   anything is provisioned), then only when the list changes once normalised
   like the platform does, after waiting for an active cluster. No restart.
+  **Upgrading**: on a cluster whose custom DNS was set outside Terraform
+  (console, CLI), a configuration without `custom_dns` plans its removal —
+  add the list to the configuration before applying. Needs the platform API
+  of #2181.
 - `ccp_k8s_cluster` resource and data source: computed `private_dns` — state
   of the private DNS (VPC zones and custom DNS, per zone and per domain,
   `pending_reason`, error). The data source also exposes `custom_dns`.
