@@ -891,6 +891,9 @@ type K8sClusterUpdateRequest struct {
 	// Plan — Standard ↔ Pro in place; Starter ↔ paid plan answers 409
 	// `ccks_plan_change_requires_recreation` (#2143).
 	Plan *string `json:"plan,omitempty"`
+	// OsImage — default OS of new node pools (cetic-cloud-platform#2155).
+	// The pools that inherited it are pinned on their current OS first.
+	OsImage *string `json:"os_image,omitempty"`
 }
 
 // K8sUpgradeVersionRequest — `POST /v1/k8s/clusters/{id}/upgrade-version`.

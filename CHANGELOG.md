@@ -9,9 +9,7 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - `ccp_k8s_cluster`: `os_image = "rocky10"` (Rocky Linux 10,
-  cetic-cloud-platform#2145). `rocky9` stays accepted for existing clusters;
-  the platform no longer builds Rocky Linux 9 templates. Needs the platform
-  API of #2145.
+  cetic-cloud-platform#2145). Needs the platform API of #2145.
 - `ccp_k8s_cluster`: `custom_dns` — domains resolved by your own DNS servers
   in the cluster's CoreDNS (at most 5, 1 or 2 servers in a subnet of the VPC,
   cetic-cloud-platform#2181). Authoritative like `oidc`: removing it removes
@@ -25,6 +23,20 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `ccp_k8s_cluster` resource and data source: computed `private_dns` — state
   of the private DNS (VPC zones and custom DNS, per zone and per domain,
   `pending_reason`, error). The data source also exposes `custom_dns`.
+
+### Changed
+
+- `ccp_k8s_cluster`: `os_image` is the **default OS of new node pools** and
+  is changed **in place** (PATCH) instead of replacing the cluster
+  (cetic-cloud-platform#2155): the platform first pins the pools that
+  inherited it on their current OS, so no node changes. The provider waits
+  for an active cluster first. Needs the platform API of #2155.
+
+### Removed
+
+- `ccp_k8s_cluster`: `os_image = "rocky9"` (Rocky Linux 9 withdrawn,
+  cetic-cloud-platform#2155) is refused in a configuration. A state that
+  still holds it is read without error; leave `os_image` unset to keep it.
 
 ### Documentation
 
