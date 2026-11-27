@@ -123,19 +123,19 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"url": schema.StringAttribute{
 				MarkdownDescription: "Full HTTPS URL of the registry — same value whether reached over Internet " +
-					"or LAN (DNS split-horizon picks the right IP).",
+					"or from your private network.",
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"image_tag": schema.StringAttribute{
 				MarkdownDescription: "Tag of the upstream `registry` image to deploy. Defaults to the " +
-					"backoffice-managed default (currently `2.8`). Applied at creation only: the API " +
-					"cannot change it on an existing registry, and the back-office may raise it; a " +
+					"platform-managed default (currently `2.8`). Applied at creation only: the API " +
+					"cannot change it on an existing registry, and the platform may raise it; a " +
 					"different value is reported as a warning, never by a replacement (which would " +
 					"destroy the images).",
 				Optional: true,
 				Computed: true,
-				// Pas de RequiresReplace : une montée d'image par le back-office
+				// Pas de RequiresReplace : une montée d'image par la plateforme
 				// aurait planifié la destruction du registre et de ses images
 				// (revue de terraform-provider-ccp#121).
 				PlanModifiers: []planmodifier.String{

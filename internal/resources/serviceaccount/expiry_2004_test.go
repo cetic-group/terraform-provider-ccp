@@ -21,6 +21,9 @@ func TestKeepConfiguredExpiry(t *testing.T) {
 		want types.String
 	}{
 		{"même jour, heure différente", types.StringValue("2027-01-16T09:31:07Z"), conf},
+		{"écart de 24 h 30 (arrondi au jour + latence)", types.StringValue("2027-01-16T12:30:00Z"), conf},
+		// Revue de #121 : raccourcir l'échéance d'un jour doit produire un diff.
+		{"écart de 30 h", types.StringValue("2027-01-16T18:00:00Z"), types.StringValue("2027-01-16T18:00:00Z")},
 		{"écart de plus de 2 jours", types.StringValue("2027-02-15T12:00:00Z"), types.StringValue("2027-02-15T12:00:00Z")},
 		{"plus d'expiration côté API", types.StringNull(), types.StringNull()},
 	}

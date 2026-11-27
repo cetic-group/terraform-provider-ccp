@@ -94,7 +94,7 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"expires_at": schema.StringAttribute{
 				MarkdownDescription: "Optional RFC 3339 timestamp after which the service account token is " +
 					"rejected by the API. The API counts whole days: the effective expiry may differ " +
-					"by less than two days, a difference Terraform ignores. Changing it beyond that " +
+					"by up to one day, a difference Terraform ignores. Changing it by more than that " +
 					"replaces the service account.",
 				Optional: true,
 				Computed: true,
@@ -246,12 +246,14 @@ func (r *serviceAccountResource) Create(ctx context.Context, req resource.Create
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// expiryTolerance : l'API arrondit en jours entiers, et l'heure de création
-// s'ajoute : l'écart peut atteindre presque deux jours.
-const expiryTolerance = 48 * time.Hour
+// expiryTolerance : Create envoie `floor(heures/24)+1` jours, donc l'échéance
+// de l'API dépasse la date configurée de ]0 ; 24 h] (plus la latence de la
+// requête). 25 h couvre cet écart sans masquer le raccourcissement d'un jour
+// d'un attribut de sécurité (revue de #121 : 48 h le rendait invisible).
+const expiryTolerance = 25 * time.Hour
 
 // keepConfiguredExpiry garde la date configurée tant que celle de l'API
-// désigne le même instant à moins de deux jours près : l'API convertit en jours entiers
+// désigne le même instant à `expiryTolerance` près : l'API convertit en jours entiers
 // (`expires_in_days`), et relire sa valeur exacte provoquait « inconsistent
 // result after apply » puis un remplacement à chaque plan
 // (cetic-cloud-platform#2004).

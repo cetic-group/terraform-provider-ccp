@@ -96,7 +96,7 @@ resource "ccp_registry" "public" {
 - `image_tag` - (Optional, Computed) Tag of the upstream `registry` image to
   deploy at creation. Defaults to the platform-managed default (currently
   `2.8`). Applied at creation only: the API cannot change it on an existing
-  registry, and the back-office may raise it. A different value is reported as
+  registry, and the platform may raise it. A different value is reported as
   a plan warning, never by a replacement.
 - `storage_gb` - (Optional, Computed) Provisioned storage quota in GB, distinct
   from `storage_used_gb` (actual blob usage). Defaults to the platform-managed
@@ -112,7 +112,7 @@ In addition to all arguments above, the following attributes are exported:
 - `slug` - URL-safe slug derived from `name`, used as the hostname prefix.
 - `url` - Fully qualified registry URL (e.g.
   `https://ccr-prod-1a2b3c4d.registry-rnn.cloud.cetic-group.com`), identical for
-  public and private exposure (split-horizon DNS).
+  public and private exposure.
 - `gc_schedule_cron` - 5-field cron expression of the weekly garbage-collection job (server-managed, read-only).
 - `status` - Provisioning status: `creating`, `provisioning`, `active`, `error`, `deleting`.
 - `storage_used_gb` - Approximate storage used by registry blobs (GB), refreshed periodically.
