@@ -6,12 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // cetic-cloud-platform#2004 : l'API arrondit l'expiration en jours ; relire sa
@@ -60,24 +61,31 @@ func TestToleranceAvantRequiresReplace(t *testing.T) {
 	}
 }
 
-// Revue de #121 : `expires_at = timeadd(timestamp(), "720h")` est inconnu à
-// chaque plan ; il ne doit pas remplacer un compte qui a déjà une échéance.
-func TestExpirationInconnueNeRemplacePas(t *testing.T) {
-	cas := []struct {
-		nom          string
-		plan, etat   types.String
-		remplacement bool
-	}{
-		{"inconnue, échéance en état", types.StringUnknown(), types.StringValue("2027-01-15T12:00:00Z"), false},
-		{"inconnue, sans échéance", types.StringUnknown(), types.StringNull(), true},
-		{"connue et différente", types.StringValue("2027-03-01T00:00:00Z"), types.StringValue("2027-01-15T12:00:00Z"), true},
+// Une valeur inconnue au plan (`timeadd(timestamp(), …)`, ressource `time_*`
+// recréée) doit remplacer le compte dès le plan. Terraform refuse qu'une
+// action annoncée « update » devienne un remplacement à l'apply, quand la
+// valeur devient connue (« inconsistent final plan »).
+func TestExpirationInconnueRemplaceDesLePlan(t *testing.T) {
+	var sr resource.SchemaResponse
+	New().Schema(context.Background(), resource.SchemaRequest{}, &sr)
+	brut := tftypes.NewValue(tftypes.String, "présent")
+	req := planmodifier.StringRequest{
+		Path:        path.Root("expires_at"),
+		State:       tfsdk.State{Raw: brut},
+		Plan:        tfsdk.Plan{Raw: brut},
+		StateValue:  types.StringValue("2027-01-15T12:00:00Z"),
+		ConfigValue: types.StringUnknown(),
+		PlanValue:   types.StringUnknown(),
 	}
-	for _, c := range cas {
-		resp := &stringplanmodifier.RequiresReplaceIfFuncResponse{}
-		remplacerSiExpirationConnue(context.Background(),
-			planmodifier.StringRequest{PlanValue: c.plan, StateValue: c.etat}, resp)
-		if resp.RequiresReplace != c.remplacement {
-			t.Errorf("%s : remplacement = %v, attendu %v", c.nom, resp.RequiresReplace, c.remplacement)
+	resp := &planmodifier.StringResponse{PlanValue: req.PlanValue}
+	for _, m := range sr.Schema.Attributes["expires_at"].(schema.StringAttribute).PlanModifiers {
+		if strings.Contains(strings.ToLower(fmt.Sprintf("%T", m)), "usestateforunknown") {
+			continue // sans effet quand la config est inconnue
 		}
+		req.PlanValue = resp.PlanValue
+		m.PlanModifyString(context.Background(), req, resp)
+	}
+	if !resp.RequiresReplace {
+		t.Fatal("une échéance inconnue au plan doit remplacer le compte dès le plan")
 	}
 }

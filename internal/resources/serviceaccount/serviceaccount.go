@@ -95,9 +95,8 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "Optional RFC 3339 timestamp after which the service account token is " +
 					"rejected by the API. The API counts whole days: the effective expiry may differ " +
 					"by up to one day, a difference Terraform ignores. Changing it by more than that " +
-					"replaces the service account. A value unknown at plan time (`timeadd(timestamp(), …)`) " +
-					"does not replace an account that already has an expiry, and does not slide it: use " +
-					"`time_offset`/`time_static` (provider `hashicorp/time`) for a stable value.",
+					"replaces the service account: prefer `time_static`/`time_offset` (provider " +
+					"`hashicorp/time`) to `timeadd(timestamp(), …)`, which replaces it at every apply.",
 				Optional: true,
 				Computed: true,
 				// L'API n'a pas de PATCH pour l'expiration : sans RequiresReplace,
@@ -109,8 +108,7 @@ func (r *serviceAccountResource) Schema(_ context.Context, _ resource.SchemaRequ
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 					ccpplanmodifier.TimeWithinTolerance(expiryTolerance),
-					stringplanmodifier.RequiresReplaceIf(remplacerSiExpirationConnue,
-						expiryReplaceDesc, expiryReplaceDesc),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"token": schema.StringAttribute{
@@ -254,19 +252,6 @@ func (r *serviceAccountResource) Create(ctx context.Context, req resource.Create
 // requête). 25 h couvre cet écart sans masquer le raccourcissement d'un jour
 // d'un attribut de sécurité (revue de #121 : 48 h le rendait invisible).
 const expiryTolerance = 25 * time.Hour
-
-const expiryReplaceDesc = "Changing the expiry recreates the service account, unless the planned " +
-	"value is unknown (e.g. `timeadd(timestamp(), …)`) and an expiry is already set."
-
-// remplacerSiExpirationConnue : une valeur INCONNUE au plan (`timestamp()`,
-// réévalué à chaque plan) ne remplace pas un compte qui a déjà une échéance.
-// Avec RequiresReplace seul, `expires_at = timeadd(timestamp(), "720h")`
-// recréait le compte, et cassait son jeton, à CHAQUE apply (revue de #121).
-// L'Update relit alors l'échéance réelle de l'API ; l'expiration ne glisse
-// pas (l'API n'a pas de PATCH pour elle).
-func remplacerSiExpirationConnue(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
-	resp.RequiresReplace = !(req.PlanValue.IsUnknown() && !req.StateValue.IsNull())
-}
 
 // keepConfiguredExpiry garde la date configurée tant que celle de l'API
 // désigne le même instant à `expiryTolerance` près : l'API convertit en jours entiers

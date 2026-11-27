@@ -48,9 +48,9 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Attributes that now force replacement (they were silently ignored by the
   API): `ccp_registry.name`, `ccp_container_scale_set.name`,
-  `ccp_service_account.expires_at` (beyond a one-day tolerance, 25 h; a
-  value unknown at plan time such as `timeadd(timestamp(), …)` does not
-  replace an account that already has an expiry),
+  `ccp_service_account.expires_at` (beyond a one-day tolerance, 25 h; use
+  `time_static`/`time_offset` rather than `timestamp()`, which replaces the
+  account at every apply),
   `ccp_vnet_firewall_rule.comment|enabled`. `ccp_vpc_peering.tags` can no
   longer be set.
 - Applied at creation only, a later difference is a plan warning (never a

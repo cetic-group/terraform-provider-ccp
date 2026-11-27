@@ -70,10 +70,9 @@ output "ci_sa_token" {
   which the token is rejected by the API. Omit for no expiry. The API counts
   whole days, so the effective expiry may differ by up to one day, a
   difference Terraform ignores (also for states written by older provider
-  versions). A value unknown at plan time (`timeadd(timestamp(), "720h")`)
-  does not replace an account that already has an expiry, and does not slide
-  it either (the API cannot change an expiry): use `time_offset` or
-  `time_static` (provider `hashicorp/time`) for a stable value, or
+  versions). `timeadd(timestamp(), "720h")` changes at every plan and
+  replaces the account (new token) at every apply: use `time_static` or
+  `time_offset` (provider `hashicorp/time`) for a stable value, or
   `lifecycle { ignore_changes = [expires_at] }`.
 
 ## Attributes Reference
