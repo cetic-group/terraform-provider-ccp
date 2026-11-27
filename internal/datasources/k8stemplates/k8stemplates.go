@@ -57,7 +57,7 @@ func (d *k8sTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 							Computed:    true,
 						},
 						"os": schema.StringAttribute{
-							Description: "Node OS family slug for this template. One of `flatcar`, `ubuntu`, `rocky9`.",
+							Description: "Node OS family slug for this template. One of `flatcar`, `ubuntu`, `rocky10`, `rocky9` (`rocky9`: existing clusters only, no new Rocky Linux 9 templates).",
 							Computed:    true,
 						},
 						"display_name": schema.StringAttribute{

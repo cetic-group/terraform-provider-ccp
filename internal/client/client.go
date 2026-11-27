@@ -1183,6 +1183,55 @@ func (c *Client) DetachIPFromK8sCluster(ctx context.Context, id string) (*K8sClu
 	return &out, nil
 }
 
+// ListK8sClusterUpgrades — `GET /v1/k8s/clusters/{id}/upgrades`: upgrade
+// history, newest first, finished ones included (#2143).
+func (c *Client) ListK8sClusterUpgrades(ctx context.Context, id string, limit int) ([]K8sUpgradeOperation, error) {
+	var out []K8sUpgradeOperation
+	path := fmt.Sprintf("/v1/k8s/clusters/%s/upgrades?limit=%d", id, limit)
+	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetK8sClusterMaintenance — automatic update settings (#2143). Platform
+// defaults when the cluster was never configured.
+func (c *Client) GetK8sClusterMaintenance(ctx context.Context, id string) (*K8sMaintenance, error) {
+	var out K8sMaintenance
+	if err := c.do(ctx, http.MethodGet, "/v1/k8s/clusters/"+id+"/maintenance", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateK8sClusterMaintenance — partial PUT of the automatic update settings.
+func (c *Client) UpdateK8sClusterMaintenance(ctx context.Context, id string, req K8sMaintenanceUpdateRequest) (*K8sMaintenance, error) {
+	var out K8sMaintenance
+	if err := c.do(ctx, http.MethodPut, "/v1/k8s/clusters/"+id+"/maintenance", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PutK8sClusterOIDC — configure the SSO OIDC of the apiserver. A changed
+// configuration restarts the apiserver: callers send it only on a change.
+func (c *Client) PutK8sClusterOIDC(ctx context.Context, id string, req K8sClusterOIDC) (*K8sCluster, error) {
+	var out K8sCluster
+	if err := c.do(ctx, http.MethodPut, "/v1/k8s/clusters/"+id+"/oidc", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteK8sClusterOIDC — remove the SSO OIDC (idempotent).
+func (c *Client) DeleteK8sClusterOIDC(ctx context.Context, id string) (*K8sCluster, error) {
+	var out K8sCluster
+	if err := c.do(ctx, http.MethodDelete, "/v1/k8s/clusters/"+id+"/oidc", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ─── K8s Node Pool (sub-resource du cluster) ────────────────────────────────
 
 func (c *Client) ListK8sNodePools(ctx context.Context, clusterID string) ([]K8sNodePool, error) {
@@ -1212,6 +1261,18 @@ func (c *Client) CreateK8sNodePool(ctx context.Context, clusterID string, req K8
 func (c *Client) UpdateK8sNodePool(ctx context.Context, clusterID, poolID string, req K8sNodePoolUpdateRequest) (*K8sNodePool, error) {
 	var out K8sNodePool
 	if err := c.do(ctx, http.MethodPatch, "/v1/k8s/clusters/"+clusterID+"/node-pools/"+poolID, req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpgradeK8sNodePool — `POST …/node-pools/{pool_id}/upgrade` (#2143):
+// rolling upgrade of this pool's nodes only, tracked as an upgrade operation.
+// The target must be above the pool version, <= the control plane and of the
+// same minor (422 otherwise).
+func (c *Client) UpgradeK8sNodePool(ctx context.Context, clusterID, poolID string, req K8sNodePoolUpgradeRequest) (*K8sNodePool, error) {
+	var out K8sNodePool
+	if err := c.do(ctx, http.MethodPost, "/v1/k8s/clusters/"+clusterID+"/node-pools/"+poolID+"/upgrade", req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

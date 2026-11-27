@@ -188,3 +188,37 @@ func TestDatasourceMultipleMatches(t *testing.T) {
 	// In the live data source, this branch raises:
 	//   "Multiple K8s clusters matched: Found N clusters named %q in region %q."
 }
+
+// #2143: the cluster response carries the plan and the upgrade status; the
+// data source exposes them (null objects when absent).
+func TestDatasource_PlanAndUpgradeStatus(t *testing.T) {
+	fx := clusterFixture("ccks-2", "c", "RNN", "prod")
+	fx["plan"] = "pro"
+	fx["etcd_volume_gb"] = 10
+	fx["patch_disponible"] = map[string]any{"version": "1.31.4", "os": "flatcar", "templates_ok": true,
+		"plan_de_controle": true, "pools": []string{"default"}, "duree_estimee_minutes": 25}
+	fx["upgrade_en_cours"] = map[string]any{"id": "op", "type": "patch", "origine": "automatique",
+		"statut": "en_pause", "version_cible": "1.31.4"}
+	srv := testutil.NewTestServer(t, testutil.Routes{
+		{Method: "GET", Path: "/v1/k8s/clusters/ccks-2", Status: http.StatusOK, Body: fx},
+	})
+	defer srv.Close()
+	got, err := client.New(srv.URL, "ccp_test_unit", "0.0.0-test").GetK8sCluster(context.Background(), "ccks-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Plan != "pro" || got.EtcdVolumeGB == nil || *got.EtcdVolumeGB != 10 {
+		t.Fatalf("plan/etcd = %q/%v", got.Plan, got.EtcdVolumeGB)
+	}
+	p := patchValue(got.PatchDisponible)
+	if p.IsNull() || p.Attributes()["version"].String() != `"1.31.4"` {
+		t.Fatalf("patch_disponible = %s", p)
+	}
+	u := upgradeValue(got.UpgradeEnCours)
+	if u.IsNull() || u.Attributes()["statut"].String() != `"en_pause"` || !u.Attributes()["version_depart"].IsNull() {
+		t.Fatalf("upgrade_en_cours = %s", u)
+	}
+	if !patchValue(nil).IsNull() || !upgradeValue(nil).IsNull() {
+		t.Fatal("absent: null")
+	}
+}

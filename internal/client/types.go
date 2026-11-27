@@ -799,13 +799,32 @@ type K8sCluster struct {
 	IngressInternalIP        *string `json:"ingress_internal_ip,omitempty"`
 	// Tier — `dev` (single apiserver frontend) or `prod` (HA frontends + floating address).
 	// Immutable on the backend; provider exposes it as Optional+Computed+ForceNew.
-	Tier         string    `json:"tier"`
-	ProxyVipVnet *string   `json:"proxy_vip_vnet,omitempty"`
-	Status       string    `json:"status"`
-	ErrorMessage *string   `json:"error_message,omitempty"`
-	Tags         []string  `json:"tags"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Tier string `json:"tier"`
+	// Plan of the control plane (cetic-cloud-platform#2143): `starter`,
+	// `standard` or `pro`. Empty on an API older than #2143 — the provider then
+	// derives it from Tier.
+	Plan string `json:"plan"`
+	// EtcdVolumeGB is the effective etcd volume (GiB), never shrunk.
+	EtcdVolumeGB *int `json:"etcd_volume_gb,omitempty"`
+	// NodeIPBlockSize is the size of the node IP block allocated in the VNet
+	// (nil until allocated).
+	NodeIPBlockSize *int `json:"node_ip_block_size,omitempty"`
+	// OIDC is the SSO configuration of the apiserver (nil = not configured).
+	OIDC *K8sClusterOIDC `json:"oidc,omitempty"`
+	// PatchDisponible is the newest patch of the same minor (nil = none).
+	PatchDisponible *K8sPatchDisponible `json:"patch_disponible,omitempty"`
+	// UpgradeEnCours is the upgrade running or waiting (nil = none).
+	UpgradeEnCours *K8sUpgradeOperation `json:"upgrade_en_cours,omitempty"`
+	// K8sVersionEffective is the version the control plane actually runs,
+	// updated at the end of an upgrade step (cetic-cloud-platform#2146).
+	// K8sVersion is the requested (target) version. Nil on an older API.
+	K8sVersionEffective *string   `json:"k8s_version_effective,omitempty"`
+	ProxyVipVnet        *string   `json:"proxy_vip_vnet,omitempty"`
+	Status              string    `json:"status"`
+	ErrorMessage        *string   `json:"error_message,omitempty"`
+	Tags                []string  `json:"tags"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 type K8sInitialPool struct {
@@ -853,9 +872,11 @@ type K8sClusterCreateRequest struct {
 	// Apiserver IP (optionnel, auto-attaché après provisioning)
 	ApiserverPublicIPID *string `json:"apiserver_public_ip_id,omitempty"`
 	ApiserverInternalIP *string `json:"apiserver_internal_ip,omitempty"`
-	// Tier — `dev` (default, single apiserver frontend) or `prod` (HA frontends).
-	// Immutable on the backend — changing requires recreate.
+	// Tier — DEPRECATED (#2143), derived from Plan. The provider sends it next
+	// to Plan (always consistent) so an API older than #2143 keeps the topology.
 	Tier string `json:"tier,omitempty"`
+	// Plan — `starter`, `standard` or `pro` (#2143).
+	Plan string `json:"plan,omitempty"`
 }
 
 type K8sClusterUpdateRequest struct {
@@ -868,10 +889,103 @@ type K8sClusterUpdateRequest struct {
 	IngressControllerClass           *string  `json:"ingress_controller_class,omitempty"`
 	IngressPublicIPID                *string  `json:"ingress_public_ip_id,omitempty"`
 	IngressInternalIP                *string  `json:"ingress_internal_ip,omitempty"`
+	// Plan — Standard ↔ Pro in place; Starter ↔ paid plan answers 409
+	// `ccks_plan_change_requires_recreation` (#2143).
+	Plan *string `json:"plan,omitempty"`
 }
 
+// K8sUpgradeVersionRequest — `POST /v1/k8s/clusters/{id}/upgrade-version`.
+// Since #2143 it upgrades the CONTROL PLANE only: pools that inherited the
+// version are pinned on the previous one and are upgraded one by one through
+// `POST …/node-pools/{pool_id}/upgrade`.
 type K8sUpgradeVersionRequest struct {
 	K8sVersion string `json:"k8s_version"`
+}
+
+// K8sNodePoolUpgradeRequest — `POST …/node-pools/{pool_id}/upgrade` (#2143).
+type K8sNodePoolUpgradeRequest struct {
+	K8sVersion string `json:"k8s_version"`
+}
+
+// K8sPatchDisponible — newest Kubernetes patch available for a cluster (#2143).
+type K8sPatchDisponible struct {
+	Version             string   `json:"version"`
+	Os                  string   `json:"os"`
+	TemplatesOK         bool     `json:"templates_ok"`
+	PlanDeControle      bool     `json:"plan_de_controle"`
+	Pools               []string `json:"pools"`
+	DureeEstimeeMinutes int      `json:"duree_estimee_minutes"`
+}
+
+// K8sUpgradeOperation — upgrade running or waiting on a cluster (#2143), and
+// one row of `GET …/upgrades` (ErrorMessage only filled there).
+type K8sUpgradeOperation struct {
+	ID            string  `json:"id"`
+	Type          string  `json:"type"`    // plan_de_controle | pool | patch | mineure
+	Origine       string  `json:"origine"` // manuelle | automatique
+	Statut        string  `json:"statut"`  // en_cours | en_pause | terminee | echec
+	VersionDepart *string `json:"version_depart,omitempty"`
+	VersionCible  string  `json:"version_cible"`
+	ErrorMessage  *string `json:"error_message,omitempty"`
+}
+
+const (
+	K8sUpgradeStatutEnCours  = "en_cours"
+	K8sUpgradeStatutEnPause  = "en_pause"
+	K8sUpgradeStatutTerminee = "terminee"
+	K8sUpgradeStatutEchec    = "echec"
+)
+
+// K8sClusterOIDC — SSO OIDC of the apiserver, `PUT /v1/k8s/clusters/{id}/oidc`
+// body and `oidc` field of the cluster response (#2143). Every field is sent
+// explicitly: `groups_claim` null disables groups, `ca_pem` null uses the
+// system trust store.
+type K8sClusterOIDC struct {
+	IssuerURL      string   `json:"issuer_url"`
+	ClientID       string   `json:"client_id"`
+	UsernameClaim  string   `json:"username_claim"`
+	UsernamePrefix string   `json:"username_prefix"`
+	GroupsClaim    *string  `json:"groups_claim"`
+	GroupsPrefix   string   `json:"groups_prefix"`
+	ExtraScopes    []string `json:"extra_scopes"`
+	CaPEM          *string  `json:"ca_pem"`
+}
+
+// K8sMaintenanceFenetre — maintenance window: an automatic upgrade only
+// STARTS inside it. Days are ISO (1 = Monday … 7 = Sunday).
+type K8sMaintenanceFenetre struct {
+	Jours       []int  `json:"jours"`
+	HeureDebut  string `json:"heure_debut"`
+	DureeHeures int    `json:"duree_heures"`
+	Fuseau      string `json:"fuseau"`
+}
+
+// K8sMaintenanceGel — freeze period, bounds included (YYYY-MM-DD).
+type K8sMaintenanceGel struct {
+	Debut string `json:"debut"`
+	Fin   string `json:"fin"`
+}
+
+// K8sMaintenance — `GET/PUT /v1/k8s/clusters/{id}/maintenance` (#2143). Only
+// the fields the provider manages; the response carries more (next run,
+// notifications…).
+type K8sMaintenance struct {
+	AutoPatch    bool                  `json:"auto_patch"`
+	AutoMineure  bool                  `json:"auto_mineure"`
+	AutoMajeure  bool                  `json:"auto_majeure"`
+	Fenetre      K8sMaintenanceFenetre `json:"fenetre"`
+	DatesGel     []K8sMaintenanceGel   `json:"dates_gel"`
+	Personnalise bool                  `json:"personnalise"`
+}
+
+// K8sMaintenanceUpdateRequest — partial PUT: an absent field keeps its value,
+// `fenetre` is a whole block, `dates_gel` replaces the list (`[]` empties it).
+type K8sMaintenanceUpdateRequest struct {
+	AutoPatch   *bool                  `json:"auto_patch,omitempty"`
+	AutoMineure *bool                  `json:"auto_mineure,omitempty"`
+	AutoMajeure *bool                  `json:"auto_majeure,omitempty"`
+	Fenetre     *K8sMaintenanceFenetre `json:"fenetre,omitempty"`
+	DatesGel    *[]K8sMaintenanceGel   `json:"dates_gel,omitempty"`
 }
 
 type K8sAttachIPRequest struct {
@@ -909,7 +1023,10 @@ type K8sNodePool struct {
 	MaxSize   *int              `json:"max_size,omitempty"`
 	// K8sVersion is the Kubernetes version of the worker nodes in this pool.
 	// NULL means the pool inherits the cluster control-plane version.
-	K8sVersion            *string `json:"k8s_version,omitempty"`
+	K8sVersion *string `json:"k8s_version,omitempty"`
+	// K8sVersionEffective is the version the pool's nodes actually run
+	// (cetic-cloud-platform#2146); nil on an older API.
+	K8sVersionEffective   *string `json:"k8s_version_effective,omitempty"`
 	MachineDeploymentName *string `json:"machine_deployment_name,omitempty"`
 	// DiskGB is the root disk size (GB) of every node in the pool. Nil when
 	// the API does not echo it back — the provider then preserves the
@@ -944,7 +1061,9 @@ type K8sNodePoolUpdateRequest struct {
 	Taints   []NodePoolTaint   `json:"taints,omitempty"`
 	MinSize  *int              `json:"min_size,omitempty"`
 	MaxSize  *int              `json:"max_size,omitempty"`
-	// K8sVersion triggers a rolling upgrade when changed.
+	// K8sVersion triggers a rolling upgrade when changed. Since #2143 the
+	// provider upgrades a pool through UpgradeK8sNodePool instead (tracked
+	// operation, one node at a time) and no longer sends it.
 	K8sVersion *string `json:"k8s_version,omitempty"`
 }
 
