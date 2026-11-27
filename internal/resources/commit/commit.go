@@ -1,11 +1,12 @@
 // Package commit provides the ccp_commit resource — manages a tenant's
-// monthly (-10%) or yearly (-20%) discount commitment.
+// monthly, yearly, two-year or three-year discount commitment.
 package commit
 
 import (
 	"context"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -14,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
 var (
@@ -24,6 +24,8 @@ var (
 )
 
 func New() resource.Resource { return &commitResource{} }
+
+var _ resource.ResourceWithModifyPlan = &commitResource{}
 
 type commitResource struct{ client *client.Client }
 
@@ -44,7 +46,9 @@ func (r *commitResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *commitResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Commitment-based discount on the tenant's overall consumption. `monthly` = -10% over 30 days, `yearly` = -20% over 365 days. Cancelling on delete keeps the discount active until end_at, then stops auto-renew.",
+		Description: "Commitment-based discount on the tenant's overall consumption: `monthly`, `yearly`, " +
+			"`two_years` or `three_years` (discount resolved by the platform, see `discount_pct`). " +
+			"Destroying the resource cancels the commitment: the discount stops immediately.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -55,15 +59,17 @@ func (r *commitResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"commit_type": schema.StringAttribute{
 				Required:    true,
-				Description: "`monthly` (-10%) or `yearly` (-20%). Changing this requires a new resource.",
+				Description: "`monthly`, `yearly`, `two_years` or `three_years`. Changing this requires a new resource.",
+				// Valeurs de l'API (`TenantCommitType`) : 2 et 3 ans étaient
+				// refusés côté provider (cetic-cloud-platform#2004).
 				Validators: []validator.String{
-					stringvalidator.OneOf("monthly", "yearly"),
+					stringvalidator.OneOf("monthly", "yearly", "two_years", "three_years"),
 				},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"discount_pct": schema.Int64Attribute{
 				Computed:    true,
-				Description: "Resolved discount % (10 or 20).",
+				Description: "Discount % resolved by the platform for the commitment type.",
 			},
 			"start_at": schema.StringAttribute{
 				Computed:    true,
@@ -74,10 +80,11 @@ func (r *commitResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description: "RFC3339 timestamp.",
 			},
 			"auto_renew": schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "If true, renews automatically at end_at.",
-				Default:     booldefault.StaticBool(true),
+				Optional: true,
+				Computed: true,
+				Description: "Recorded at creation, but not applied yet: the platform does not renew " +
+					"commitments automatically. Cannot be changed after creation.",
+				Default: booldefault.StaticBool(true),
 			},
 			"canceled_at": schema.StringAttribute{
 				Computed:    true,
@@ -136,12 +143,54 @@ func (r *commitResource) Read(ctx context.Context, req resource.ReadRequest, res
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// ModifyPlan refuse un changement d'`auto_renew` dès `terraform plan` : sans
+// lui, le plan annonçait une modification sur place qui échouait à l'apply
+// (revue de terraform-provider-ccp#121).
+func (r *commitResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return // création ou destruction
+	}
+	var plan, state commitModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Un changement de `commit_type` (RequiresReplace) crée un NOUVEL
+	// engagement, qui porte le nouvel `auto_renew` : ce n'est pas une mise à
+	// jour. Le framework (v1.13) passe `resp.RequiresReplace` vide à ce
+	// ModifyPlan : la comparaison est faite ici (revue de la PR #121).
+	if remplacementPrevu(plan, state) {
+		return
+	}
+	if !plan.AutoRenew.IsUnknown() && !plan.AutoRenew.Equal(state.AutoRenew) {
+		resp.Diagnostics.AddAttributeError(path.Root("auto_renew"), "auto_renew cannot be changed",
+			"The platform has no update for a commitment's auto_renew (and does not renew "+
+				"commitments automatically yet). Revert the value.")
+	}
+}
+
+// remplacementPrevu : vrai si un attribut `RequiresReplace` change (seul
+// `commit_type` l'est). Une valeur inconnue au plan compte comme un changement.
+func remplacementPrevu(plan, state commitModel) bool {
+	return plan.CommitType.IsUnknown() || !plan.CommitType.Equal(state.CommitType)
+}
+
 func (r *commitResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// La seule chose mutable côté API est l'autorenew — pas exposé en PATCH.
 	// On read-back simplement pour matcher l'état.
-	var plan commitModel
+	var plan, prior commitModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	// L'API ne modifie pas `auto_renew` : relire l'ancienne valeur rendait
+	// l'état incohérent avec le plan (cetic-cloud-platform#2004).
+	if !plan.AutoRenew.IsUnknown() && !plan.AutoRenew.Equal(prior.AutoRenew) {
+		resp.Diagnostics.AddAttributeError(path.Root("auto_renew"), "auto_renew cannot be changed",
+			"The platform has no update for a commitment's auto_renew (and does not renew "+
+				"commitments automatically yet). Revert the value.")
 		return
 	}
 	c, err := r.client.GetCommit(ctx, plan.ID.ValueString())

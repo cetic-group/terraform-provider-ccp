@@ -12,10 +12,11 @@ up by name, narrow the search with `built_in = true|false` to disambiguate
 between a platform-managed built-in role and a custom tenant role of the
 same name.
 
-The 10 platform built-in roles — `AdminAll`, `ReadOnlyAll`, `Member`,
-`RegistryAdmin`, `RegistryReader`, `BucketReader`, `BucketWriter`,
-`K8sViewer`, `BillingReader`, `NetworkAdmin` — are stable across releases
-and can be safely identified by `(name, built_in = true)`.
+The platform built-in roles (36 today, e.g. `AdminAll`, `ReadOnlyAll`,
+`Member`, `ComputeAdmin`, `NetworkAdmin`, `StorageReader`, `SecretsAdmin`,
+`DnsAdmin`…; the full list is returned by the roles listing of the API) are
+stable across releases and can be safely identified by
+`(name, built_in = true)`.
 
 ## Example Usage
 

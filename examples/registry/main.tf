@@ -67,7 +67,7 @@ resource "ccp_registry_acl" "alice_all" {
   registry_id  = ccp_registry.main.id
   user_id      = ccp_registry_user.alice.id
   repo_pattern = "*"
-  actions      = ["*"]
+  actions      = ["all"]
 }
 
 resource "ccp_registry_acl" "ci_push_myapp" {

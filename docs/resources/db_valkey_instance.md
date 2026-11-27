@@ -36,7 +36,7 @@ output "valkey_endpoint" {
 Retrieve the auth password through the dedicated CLI / API endpoint (not exposed as a Terraform attribute):
 
 ```bash
-cetic db valkey credentials <instance_id>
+cetic db redis credentials <instance_id>
 ```
 
 ## Argument Reference

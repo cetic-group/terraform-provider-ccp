@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -72,9 +73,13 @@ func (r *peerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"tags": schema.ListAttribute{
-				ElementType: types.StringType,
-				Optional:    true,
-				Computed:    true,
+				// Lecture seule : l'API n'accepte aucun tag pour un peering (ni à
+				// la création, ni ensuite). Des tags déclarés étaient ignorés et
+				// l'état devenait incohérent après apply (cetic-cloud-platform#2004).
+				MarkdownDescription: "Tags renvoyés par l'API (lecture seule : un peering ne se tague pas).",
+				ElementType:         types.StringType,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"status": schema.StringAttribute{
 				Computed:      true,
@@ -130,16 +135,10 @@ func (r *peerResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	tags := []string{}
-	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
-		plan.Tags.ElementsAs(ctx, &tags, false)
-	}
-
 	created, err := r.client.CreateVpcPeering(ctx, client.VpcPeeringCreateRequest{
 		Name:   plan.Name.ValueString(),
 		VpcAID: a,
 		VpcBID: b,
-		Tags:   tags,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create VPC peering", err.Error())

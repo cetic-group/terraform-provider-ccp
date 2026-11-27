@@ -8,6 +8,7 @@ package orgmember
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -53,8 +54,20 @@ func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"email": schema.StringAttribute{
-				Required:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Required: true,
+				// Remplacement seulement pour un AUTRE e-mail. L'API rend l'e-mail en
+				// minuscules : après `terraform import` (état écrit depuis l'API),
+				// `Alice@…` en config contre `alice@…` en état aurait supprimé puis
+				// réinvité le membre. Une différence de casse donne une mise à jour
+				// sur place, sans appel (Update n'envoie que le rôle), qui aligne
+				// l'état sur la config (revue de terraform-provider-ccp#121).
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplaceIf(
+					func(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+						resp.RequiresReplace = !strings.EqualFold(req.PlanValue.ValueString(), req.StateValue.ValueString())
+					},
+					"Changing the e-mail (case aside) recreates the membership.",
+					"Changing the e-mail (case aside) recreates the membership.",
+				)},
 			},
 			"role": schema.StringAttribute{
 				Required: true,
@@ -92,7 +105,13 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 
 func setState(m *memberResourceModel, x *client.OrgMember) {
 	m.ID = types.StringValue(x.ID)
-	m.Email = types.StringValue(x.Email)
+	// L'API enregistre l'e-mail en minuscules : garder la casse de la
+	// configuration tant qu'il s'agit du même e-mail, sinon l'apply finit en
+	// « inconsistent result » puis remplace le membre à chaque plan (revue de
+	// terraform-provider-ccp#121).
+	if m.Email.IsNull() || m.Email.IsUnknown() || !strings.EqualFold(m.Email.ValueString(), x.Email) {
+		m.Email = types.StringValue(x.Email)
+	}
 	m.Role = types.StringValue(x.Role)
 	m.Accepted = types.BoolValue(x.AcceptedAt != nil)
 	if x.AcceptedAt != nil {

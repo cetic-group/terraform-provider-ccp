@@ -1,13 +1,14 @@
 // Package supportticket implements the ccp_support_ticket Terraform resource.
 //
 // Use-case IaC limité — utile pour automatiser des tickets d'incident
-// (monitoring → ouverture auto). Update/Delete pas exposés en TF (on ne
-// supprime pas un ticket via TF, on le ferme via la console/API).
+// (monitoring → ouverture auto). Pas d'Update ; Delete clôture le ticket
+// (l'API ne supprime pas un ticket).
 package supportticket
 
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -49,7 +50,7 @@ func (r *ticketResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Open a CETIC Cloud support ticket. Useful for monitoring → auto " +
 			"ticket creation. The body is set at creation time only (replies via API/console). " +
-			"Destroying the resource does NOT close the ticket — close it manually.",
+			"Destroying the resource closes the ticket (it stays visible, closed, in the console).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -66,7 +67,10 @@ func (r *ticketResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"category": schema.StringAttribute{
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("bug", "feature", "billing", "network", "infra", "question"),
+					// Catégories de l'API (`SupportTicketCategory`) ; les
+					// anciennes valeurs étaient refusées en 422
+					// (cetic-cloud-platform#2004).
+					stringvalidator.OneOf("technical", "billing", "abuse", "feature_request", "other"),
 				},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -119,9 +123,20 @@ func (r *ticketResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Failed to create support ticket", err.Error())
 		return
 	}
-	plan.ID = types.StringValue(created.ID)
-	plan.Status = types.StringValue(created.Status)
-	plan.CreatedAt = types.StringValue(created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	// Le plan de support peut abaisser la priorité demandée : le dire, sans
+	// changer `priority` (attribut configuré : l'état doit égaler le plan).
+	// Revue de terraform-provider-ccp#121.
+	if created.PriorityCappedFrom != nil {
+		detail := fmt.Sprintf("Requested priority %q was capped by your support plan to %q.",
+			*created.PriorityCappedFrom, created.Ticket.Priority)
+		if created.UpgradeMessage != nil {
+			detail += " " + *created.UpgradeMessage
+		}
+		resp.Diagnostics.AddWarning("Support ticket priority capped", detail)
+	}
+	plan.ID = types.StringValue(created.Ticket.ID)
+	plan.Status = types.StringValue(created.Ticket.Status)
+	plan.CreatedAt = types.StringValue(created.Ticket.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -140,7 +155,13 @@ func (r *ticketResource) Read(ctx context.Context, req resource.ReadRequest, res
 		resp.Diagnostics.AddError("Failed to read support ticket", err.Error())
 		return
 	}
-	state.Subject = types.StringValue(got.Subject)
+	// L'API enregistre le sujet sans espaces autour (`strip()`). `subject`
+	// force le remplacement : relire sa valeur brute fermait puis rouvrait le
+	// ticket à chaque apply pour un sujet en heredoc (`"Panne\n"`) (revue de
+	// #121). La valeur de l'état est gardée tant qu'elle désigne le même sujet.
+	if state.Subject.IsNull() || strings.TrimSpace(state.Subject.ValueString()) != got.Subject {
+		state.Subject = types.StringValue(got.Subject)
+	}
 	state.Status = types.StringValue(got.Status)
 	state.CreatedAt = types.StringValue(got.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -150,9 +171,18 @@ func (r *ticketResource) Update(_ context.Context, _ resource.UpdateRequest, res
 	resp.Diagnostics.AddError("Update not supported", "All ticket attributes force replacement.")
 }
 
-// Delete : NO-OP — un ticket reste tracé côté CL même après destroy. L'API
-// ne supporte pas la suppression de tickets ; on retire juste la resource du state.
-func (r *ticketResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+// Delete clôture le ticket : l'API ne supprime pas un ticket, mais
+// `POST …/close` existe (idempotent). Le destroy laissait le ticket ouvert
+// (cetic-cloud-platform#2004). Un ticket introuvable est déjà sorti.
+func (r *ticketResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state ticketResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.CloseSupportTicket(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+		resp.Diagnostics.AddError("Failed to close support ticket", err.Error())
+	}
 }
 
 func (r *ticketResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

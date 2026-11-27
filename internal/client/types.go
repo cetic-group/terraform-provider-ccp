@@ -64,10 +64,12 @@ type VPCCreateRequest struct {
 }
 
 // VPCUpdateRequest — PATCH /v1/vpcs/{id}. A nil field is left out of the
-// body and the API keeps its current value. Only `dedicated_egress_ip` is
-// changed in place by the provider: `name` and `tags` force replacement.
+// body and the API keeps its current value. `name`, `tags` and
+// `dedicated_egress_ip` are changed in place by the provider.
 type VPCUpdateRequest struct {
-	DedicatedEgressIP *bool `json:"dedicated_egress_ip,omitempty"`
+	Name              *string   `json:"name,omitempty"`
+	Tags              *[]string `json:"tags,omitempty"`
+	DedicatedEgressIP *bool     `json:"dedicated_egress_ip,omitempty"`
 }
 
 // VNet represents a VNet resource (nested under VPC). Status: active | deleting | error.
@@ -670,13 +672,21 @@ type ContainerScaleSetCreateRequest struct {
 	DiskGB *int `json:"disk_gb,omitempty"`
 }
 
+// ContainerScaleSetUpdateRequest is the body of PATCH /v1/container-scale-sets/{id}.
+// The API's ScaleSetUpdate takes neither `name` nor `tags` (they were sent and
+// silently ignored, cetic-cloud-platform#2004): tags go through SetTags.
 type ContainerScaleSetUpdateRequest struct {
-	Name             *string  `json:"name,omitempty"`
-	MinInstances     *int     `json:"min_instances,omitempty"`
-	MaxInstances     *int     `json:"max_instances,omitempty"`
-	DesiredInstances *int     `json:"desired_instances,omitempty"`
-	AutoRepair       *bool    `json:"auto_repair,omitempty"`
-	Tags             []string `json:"tags,omitempty"`
+	MinInstances     *int  `json:"min_instances,omitempty"`
+	MaxInstances     *int  `json:"max_instances,omitempty"`
+	DesiredInstances *int  `json:"desired_instances,omitempty"`
+	AutoRepair       *bool `json:"auto_repair,omitempty"`
+}
+
+// TagsSetRequest is the body of PUT /v1/tags (replaces every tag of a resource).
+type TagsSetRequest struct {
+	ResourceType string   `json:"resource_type"`
+	ResourceID   string   `json:"resource_id"`
+	Tags         []string `json:"tags"`
 }
 
 type ContainerScaleSetScaleRequest struct {
@@ -1414,10 +1424,9 @@ type VpcPeering struct {
 }
 
 type VpcPeeringCreateRequest struct {
-	Name   string   `json:"name"`
-	VpcAID string   `json:"vpc_a_id"`
-	VpcBID string   `json:"vpc_b_id"`
-	Tags   []string `json:"tags,omitempty"`
+	Name   string `json:"name"`
+	VpcAID string `json:"vpc_a_id"`
+	VpcBID string `json:"vpc_b_id"`
 }
 
 // ─── Support Ticket ────────────────────────────────────────────────────────

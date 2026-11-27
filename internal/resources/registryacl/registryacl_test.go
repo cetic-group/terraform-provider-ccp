@@ -10,8 +10,8 @@ import (
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/client/testutil"
-	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -106,20 +106,28 @@ func TestDelete_404IsSilent(t *testing.T) {
 	}
 }
 
+// Valide avec les validateurs RÉELS du schéma (l'ancien test recopiait le
+// validateur et ne pouvait pas échouer). Actions de l'API : pull, push, all ;
+// `*` est refusé en 422 (cetic-cloud-platform#2004).
 func TestValidator_Actions(t *testing.T) {
-	v := setvalidator.ValueStringsAre(stringvalidator.OneOf("pull", "push", "*"))
+	var sresp resource.SchemaResponse
+	New().Schema(context.Background(), resource.SchemaRequest{}, &sresp)
+	attr := sresp.Schema.Attributes["actions"].(schema.SetAttribute)
 	for _, tc := range []struct {
 		actions []attrLike
 		valid   bool
 	}{
 		{[]attrLike{{val: "pull"}}, true},
-		{[]attrLike{{val: "push"}, {val: "*"}}, true},
+		{[]attrLike{{val: "push"}, {val: "all"}}, true},
+		{[]attrLike{{val: "*"}}, false},
 		{[]attrLike{{val: "delete"}}, false},
 	} {
 		set, _ := types.SetValueFrom(context.Background(), types.StringType, valuesOf(tc.actions))
 		req := validator.SetRequest{ConfigValue: set}
 		resp := &validator.SetResponse{}
-		v.ValidateSet(context.Background(), req, resp)
+		for _, v := range attr.Validators {
+			v.ValidateSet(context.Background(), req, resp)
+		}
 		if got := !resp.Diagnostics.HasError(); got != tc.valid {
 			t.Errorf("actions=%v valid=%v, got %v: %v", tc.actions, tc.valid, got, resp.Diagnostics)
 		}
@@ -135,7 +143,7 @@ func TestValidator_RepoPattern(t *testing.T) {
 		{"myapp/*", true},
 		{"*", true},
 		{"library/nginx", true},
-		{"My/App", false},  // uppercase
+		{"My/App", false},   // uppercase
 		{"app name", false}, // space
 	} {
 		got := re.MatchString(tc.val)

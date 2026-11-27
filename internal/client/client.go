@@ -1051,6 +1051,16 @@ func (c *Client) UpdateContainerScaleSet(ctx context.Context, id string, req Con
 	return &out, nil
 }
 
+// SetTags replaces every tag of a resource (PUT /v1/tags). Used for resources
+// whose PATCH ignores `tags`.
+func (c *Client) SetTags(ctx context.Context, resourceType, id string, tags []string) error {
+	if tags == nil {
+		tags = []string{}
+	}
+	return c.do(ctx, http.MethodPut, "/v1/tags",
+		TagsSetRequest{ResourceType: resourceType, ResourceID: id, Tags: tags}, nil)
+}
+
 func (c *Client) DeleteContainerScaleSet(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/container-scale-sets/"+id, nil, nil)
 }
@@ -1481,20 +1491,39 @@ func (c *Client) DeleteApiKey(ctx context.Context, id string) error {
 
 // ─── Org Member ────────────────────────────────────────────────────────────
 
+// GetOrgMember reads a member from the organisation list: the API has no
+// `GET /v1/members/{id}` route, so the previous direct GET failed on every
+// refresh (cetic-cloud-platform#2004). An absent id is reported as a 404 so
+// that Read drops the resource from state.
 func (c *Client) GetOrgMember(ctx context.Context, id string) (*OrgMember, error) {
-	var out OrgMember
-	if err := c.do(ctx, http.MethodGet, "/v1/members/"+id, nil, &out); err != nil {
+	var list []OrgMember
+	if err := c.do(ctx, http.MethodGet, "/v1/members", nil, &list); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	for i := range list {
+		if list[i].ID == id {
+			return &list[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Detail: "membre introuvable",
+		Method: http.MethodGet, Path: "/v1/members"}
 }
 
+// CreateOrgMember invites a member in the active organisation. The API answers
+// `{email, memberships: [...]}` (one membership per organisation), not a bare
+// member: decoding it as OrgMember left the id empty.
 func (c *Client) CreateOrgMember(ctx context.Context, req OrgMemberCreateRequest) (*OrgMember, error) {
-	var out OrgMember
+	var out struct {
+		Email       string      `json:"email"`
+		Memberships []OrgMember `json:"memberships"`
+	}
 	if err := c.do(ctx, http.MethodPost, "/v1/members", req, &out); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	if len(out.Memberships) == 0 {
+		return nil, fmt.Errorf("invitation de %s : réponse sans membership", req.Email)
+	}
+	return &out.Memberships[0], nil
 }
 
 func (c *Client) UpdateOrgMember(ctx context.Context, id string, req OrgMemberUpdateRequest) (*OrgMember, error) {
@@ -1563,12 +1592,29 @@ func (c *Client) GetSupportTicket(ctx context.Context, id string) (*SupportTicke
 	return &out, nil
 }
 
-func (c *Client) CreateSupportTicket(ctx context.Context, req SupportTicketCreateRequest) (*SupportTicket, error) {
-	var out SupportTicket
+// CreateSupportTicket opens a ticket. The API answers `{ticket: {...},
+// max_priority_allowed, ...}` (TicketGatedResponse): decoding it as a bare
+// ticket left the id empty (cetic-cloud-platform#2004).
+func (c *Client) CreateSupportTicket(ctx context.Context, req SupportTicketCreateRequest) (*SupportTicketCreated, error) {
+	var out SupportTicketCreated
 	if err := c.do(ctx, http.MethodPost, "/v1/support/tickets", req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// SupportTicketCreated is the creation response: the ticket and, when the
+// support plan capped the requested priority, what was asked for and why.
+type SupportTicketCreated struct {
+	Ticket             SupportTicket `json:"ticket"`
+	PriorityCappedFrom *string       `json:"priority_capped_from,omitempty"`
+	UpgradeMessage     *string       `json:"upgrade_message,omitempty"`
+}
+
+// CloseSupportTicket closes a ticket; idempotent on the API side (an already
+// closed ticket is returned as is).
+func (c *Client) CloseSupportTicket(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodPost, "/v1/support/tickets/"+id+"/close", nil, nil)
 }
 
 // ─── Object Storage Keys ──────────────────────────────────────────────────
@@ -1595,12 +1641,20 @@ func (c *Client) DeleteObjectStorageKey(ctx context.Context, id string) error {
 
 // ─── Quota Request ─────────────────────────────────────────────────────────
 
+// GetQuotaRequest reads a request from the list: the API has no
+// `GET /v1/quotas/requests/{id}` route (cetic-cloud-platform#2004).
 func (c *Client) GetQuotaRequest(ctx context.Context, id string) (*QuotaRequest, error) {
-	var out QuotaRequest
-	if err := c.do(ctx, http.MethodGet, "/v1/quotas/requests/"+id, nil, &out); err != nil {
+	var list []QuotaRequest
+	if err := c.do(ctx, http.MethodGet, "/v1/quotas/requests", nil, &list); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	for i := range list {
+		if list[i].ID == id {
+			return &list[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Detail: "demande de quota introuvable",
+		Method: http.MethodGet, Path: "/v1/quotas/requests"}
 }
 
 func (c *Client) CreateQuotaRequest(ctx context.Context, req QuotaRequestCreateRequest) (*QuotaRequest, error) {
@@ -1745,12 +1799,6 @@ func (c *Client) GetVnetFirewallRule(ctx context.Context, vnetID, ruleID string)
 		}
 	}
 	return nil, &APIError{StatusCode: http.StatusNotFound, Method: http.MethodGet, Path: "/v1/vnets/" + vnetID + "/firewall/rules/" + ruleID, Detail: "vnet firewall rule not found"}
-}
-
-func (c *Client) UpdateVnetFirewallRule(ctx context.Context, vnetID, ruleID string, patch map[string]any) (*VnetFirewallRule, error) {
-	var out VnetFirewallRule
-	err := c.do(ctx, http.MethodPatch, "/v1/vnets/"+vnetID+"/firewall/rules/"+ruleID, patch, &out)
-	return &out, err
 }
 
 func (c *Client) DeleteVnetFirewallRule(ctx context.Context, vnetID, ruleID string) error {

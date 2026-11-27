@@ -140,7 +140,7 @@ func TestCreate_BothExposures_ForwardsBody(t *testing.T) {
 
 func TestRead_DriftOnExposePublic(t *testing.T) {
 	drifted := fixtureActive("reg-3", map[string]any{
-		"expose_public": true,  // backoffice/admin a togglé
+		"expose_public": true, // backoffice/admin a togglé
 	})
 	srv := testutil.NewTestServer(t, testutil.Routes{
 		{Method: "GET", Path: "/v1/registries/reg-3", Status: http.StatusOK, Body: drifted},

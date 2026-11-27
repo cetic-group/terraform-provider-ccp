@@ -44,7 +44,7 @@ resource "ccp_registry_acl" "alice_all" {
   registry_id  = ccp_registry.main.id
   user_id      = ccp_registry_user.alice.id
   repo_pattern = "*"
-  actions      = ["*"]
+  actions      = ["all"]
 }
 
 # CI can push only to myapp/*
@@ -67,7 +67,7 @@ resource "ccp_registry_acl" "ci_push" {
 - `actions` - (Required) Set of actions. Subset of:
   - `pull` — read images.
   - `push` — write images (implies pull on the same pattern when used together).
-  - `*` — admin-equivalent on this pattern.
+  - `all` — admin-equivalent on this pattern (`*` is refused by the API).
 
 ## Attributes Reference
 

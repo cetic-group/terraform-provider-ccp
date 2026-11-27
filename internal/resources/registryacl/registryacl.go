@@ -96,12 +96,14 @@ func (r *registryACLResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 			"actions": schema.SetAttribute{
-				MarkdownDescription: "Subset of `pull`, `push`, `*` (admin-equivalent on this pattern).",
+				MarkdownDescription: "Subset of `pull`, `push`, `all` (admin-equivalent on this pattern).",
 				ElementType:         types.StringType,
 				Required:            true,
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
-					setvalidator.ValueStringsAre(stringvalidator.OneOf("pull", "push", "*")),
+					// Valeurs de l'API : `*` est refusé en 422, l'équivalent est
+					// `all` (cetic-cloud-platform#2004).
+					setvalidator.ValueStringsAre(stringvalidator.OneOf("pull", "push", "all")),
 				},
 			},
 			"created_at": schema.StringAttribute{

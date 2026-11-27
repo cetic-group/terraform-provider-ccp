@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -85,9 +86,13 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Human-readable name (1-100 chars).",
-				Required:            true,
-				Validators:          []validator.String{stringvalidator.LengthBetween(1, 100)},
+				MarkdownDescription: "Human-readable name (1-100 chars). Forces replacement: the API " +
+					"cannot rename a registry (the hostname derives from it).",
+				Required:   true,
+				Validators: []validator.String{stringvalidator.LengthBetween(1, 100)},
+				// Le PATCH de l'API n'accepte pas `name` : sans RequiresReplace,
+				// le changement était annoncé puis ignoré (cetic-cloud-platform#2004).
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"slug": schema.StringAttribute{
 				MarkdownDescription: "URL-safe slug derived from `name`, used to build the hostname " +
@@ -118,16 +123,25 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"url": schema.StringAttribute{
 				MarkdownDescription: "Full HTTPS URL of the registry — same value whether reached over Internet " +
-					"or LAN (DNS split-horizon picks the right IP).",
+					"or from your private network.",
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"image_tag": schema.StringAttribute{
 				MarkdownDescription: "Tag of the upstream `registry` image to deploy. Defaults to the " +
-					"backoffice-managed default (currently `2.8`).",
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					"platform-managed default (currently `2.8`). Applied at creation only: the API " +
+					"cannot change it on an existing registry, and the platform may raise it; a " +
+					"different value is reported as a warning, never by a replacement (which would " +
+					"destroy the images).",
+				Optional: true,
+				Computed: true,
+				// Pas de RequiresReplace : une montée d'image par la plateforme
+				// aurait planifié la destruction du registre et de ses images
+				// (revue de terraform-provider-ccp#121).
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					ccpplanmodifier.CreateOnlyString("image_tag"),
+				},
 			},
 			"gc_schedule_cron": schema.StringAttribute{
 				MarkdownDescription: "Cron expression (5 fields) for the weekly garbage-collection job " +

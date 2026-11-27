@@ -9,10 +9,12 @@ package containerscaleset
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
 	"github.com/cetic-group/terraform-provider-ccp/internal/snatvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -78,9 +80,13 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Name (1-80 chars, alphanumerics + `-` + `_`).",
-				Required:            true,
-				Validators:          []validator.String{stringvalidator.LengthBetween(1, 80)},
+				MarkdownDescription: "Name (1-80 chars, alphanumerics + `-` + `_`). Forces replacement: " +
+					"the API cannot rename a scale set.",
+				Required:   true,
+				Validators: []validator.String{stringvalidator.LengthBetween(1, 80)},
+				// Le PATCH de l'API n'accepte pas `name` : le changement était
+				// annoncé puis ignoré (cetic-cloud-platform#2004).
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "Region code (RNN, PAR, ABJ). Forces replacement.",
@@ -184,6 +190,16 @@ func (r *cssResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"tags": schema.ListAttribute{
+				// PUT /v1/tags normalise (minuscules, espaces retirés, sans
+				// doublon) : une valeur non normalisée rendait l'état incohérent
+				// après apply puis un diff permanent (revue de
+				// terraform-provider-ccp#121). On l'exige déjà normalisée.
+				MarkdownDescription: "Free-form tags, already normalized: lowercase, no surrounding " +
+					"spaces, no duplicates (the API normalizes them). Updated in place.",
+				Validators: []validator.List{
+					listvalidator.UniqueValues(),
+					listvalidator.ValueStringsAre(tagNormalise{}),
+				},
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
@@ -389,10 +405,6 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	id := state.ID.ValueString()
 
 	var upd client.ContainerScaleSetUpdateRequest
-	if !plan.Name.Equal(state.Name) {
-		v := plan.Name.ValueString()
-		upd.Name = &v
-	}
 	if !plan.MinInstances.Equal(state.MinInstances) {
 		v := int(plan.MinInstances.ValueInt64())
 		upd.MinInstances = &v
@@ -409,15 +421,29 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		v := plan.AutoRepair.ValueBool()
 		upd.AutoRepair = &v
 	}
-	if !plan.Tags.Equal(state.Tags) {
+	// Les tags passent par PUT /v1/tags : le PATCH du scale set les ignore
+	// (cetic-cloud-platform#2004).
+	if !plan.Tags.IsUnknown() && !plan.Tags.Equal(state.Tags) {
 		tags := []string{}
-		if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		if !plan.Tags.IsNull() {
 			plan.Tags.ElementsAs(ctx, &tags, false)
 		}
-		upd.Tags = tags
+		if err := r.client.SetTags(ctx, "container_scale_set", id, tags); err != nil {
+			resp.Diagnostics.AddError("Failed to update Container Scale Set tags", err.Error())
+			return
+		}
 	}
 
-	updated, err := r.client.UpdateContainerScaleSet(ctx, id, upd)
+	// Tags seuls : aucun PATCH. Un PATCH, même vide, passe le scale set en
+	// `scaling` et relance un cycle de scaling, voire un remplacement
+	// progressif (revue de #121) ; l'état est relu.
+	var updated *client.ContainerScaleSet
+	var err error
+	if upd == (client.ContainerScaleSetUpdateRequest{}) {
+		updated, err = r.client.GetContainerScaleSet(ctx, id)
+	} else {
+		updated, err = r.client.UpdateContainerScaleSet(ctx, id, upd)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update Container Scale Set", err.Error())
 		return
@@ -432,6 +458,15 @@ func (r *cssResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	newState.UserData = plan.UserData
 	newState.BastionAccess = plan.BastionAccess
 	newState.Docker = plan.Docker
+	// root_password : Required, jamais renvoyé par l'API ; sans lui, toute
+	// mise à jour sur place finissait en « inconsistent result » (revue de #121).
+	newState.RootPassword = plan.RootPassword
+	// `status` est planifié depuis l'état (UseStateForUnknown) : un PATCH qui
+	// passe le scale set en `scaling` rendait l'apply incohérent. La valeur
+	// réelle est relue au prochain refresh, comme pour le VPC.
+	if !plan.Status.IsUnknown() {
+		newState.Status = plan.Status
+	}
 	// disk_gb is RequiresReplace — an Update call means it didn't change.
 	switch {
 	case updated.DiskGB != nil:
@@ -461,4 +496,29 @@ func (r *cssResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 
 func (r *cssResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// tagNormalise exige une valeur égale à sa forme normalisée par l'API
+// (`validate_tags` : `strip().lower()` en Python, sur TOUT l'Unicode). Une
+// expression `[^A-Z\s]` ne couvrait que l'ASCII : `Équipe`, ou un tag
+// terminé par une espace insécable, passait puis revenait normalisé de l'API
+// (« inconsistent result after apply », revue de terraform-provider-ccp#121).
+// Longueur et nombre de tags restent contrôlés par l'API (422 clair).
+type tagNormalise struct{}
+
+func (tagNormalise) Description(context.Context) string {
+	return "must be lowercase, without surrounding spaces (the API normalizes tags)"
+}
+
+func (v tagNormalise) MarkdownDescription(ctx context.Context) string { return v.Description(ctx) }
+
+func (v tagNormalise) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	brut := req.ConfigValue.ValueString()
+	if normal := strings.ToLower(strings.TrimSpace(brut)); normal != brut || normal == "" {
+		resp.Diagnostics.AddAttributeError(req.Path, "Tag not normalized",
+			fmt.Sprintf("%q %s; the API would store %q.", brut, v.Description(context.Background()), normal))
+	}
 }

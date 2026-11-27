@@ -2,12 +2,12 @@
 page_title: "ccp_commit Resource - terraform-provider-ccp"
 subcategory: "Billing"
 description: |-
-  Commitment-based discount on the tenant's overall consumption (-10% monthly or -20% yearly).
+  Commitment-based discount on the tenant's overall consumption (monthly, yearly, two or three years).
 ---
 
 # ccp_commit (Resource)
 
-Subscribe to a commitment that grants an immediate discount on every billable resource of the tenant. Cancelable any time — the discount remains active until `end_at`, then stops auto-renewing.
+Subscribe to a commitment that grants an immediate discount on every billable resource of the tenant. Cancelable any time — destroying the resource cancels the commitment and **the discount stops immediately**.
 
 ## Example Usage
 
@@ -26,8 +26,8 @@ resource "ccp_commit" "yearly" {
 
 ## Argument Reference
 
-- `commit_type` (Required, String) — `monthly` (-10% over 30 days) or `yearly` (-20% over 365 days). **Immutable** — changing requires a new resource.
-- `auto_renew` (Optional, Bool) — Renew automatically at `end_at`. Default `true`.
+- `commit_type` (Required, String) — `monthly`, `yearly`, `two_years` or `three_years`; the discount is resolved by the platform (`discount_pct`). **Immutable** — changing requires a new resource.
+- `auto_renew` (Optional, Bool) — Recorded at creation, but **not applied yet**: the platform does not renew commitments automatically. Cannot be changed after creation. Default `true`.
 
 ## Attributes Reference
 
@@ -36,7 +36,7 @@ resource "ccp_commit" "yearly" {
 - `discount_pct` — Resolved discount (10 or 20).
 - `start_at` (RFC3339)
 - `end_at` (RFC3339)
-- `canceled_at` (RFC3339 or empty) — Set when the commit was cancelled; the discount stays valid until `end_at`.
+- `canceled_at` (RFC3339 or empty) — Set when the commit was cancelled; the discount stops at that time.
 
 ## Behaviour
 

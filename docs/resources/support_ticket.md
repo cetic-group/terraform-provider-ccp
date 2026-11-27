@@ -9,14 +9,14 @@ description: |-
 
 Creates and manages a support ticket with the CETIC Cloud team. Use this resource to report incidents, request assistance, or ask technical questions. Tickets are tracked through to resolution and support chat is available from the console.
 
-~> **Note:** `subject`, `category` and `body` are immutable after creation — changing any forces a new ticket. Only `priority` can be updated in place. Destroying this resource closes the ticket.
+~> **Note:** every argument (`subject`, `category`, `body`, `priority`) forces a new ticket when changed. Destroying this resource closes the ticket (it stays visible, closed, in the console).
 
 ## Example Usage
 
 ```hcl
 resource "ccp_support_ticket" "container_unreachable" {
   subject  = "Container unreachable after VNet migration"
-  category = "network"
+  category = "technical"
   body     = <<-EOT
     Container ID: ${ccp_container_instance.web.id}
     Region: RNN
@@ -33,20 +33,19 @@ resource "ccp_support_ticket" "container_unreachable" {
 ### Required
 
 - `subject` - (Required, Forces new resource) Short summary of the issue (max 200 characters). Used as the ticket title in the console.
-- `category` - (Required, Forces new resource) Ticket category. One of: `bug`, `feature`, `billing`, `network`, `infra`, `question`.
+- `category` - (Required, Forces new resource) Ticket category. One of: `technical`, `billing`, `abuse`, `feature_request`, `other`.
 - `body` - (Required, Forces new resource) Detailed description of the issue or request. Include resource IDs, region, steps to reproduce, and any error messages.
 
 ### Optional
 
-- `priority` - (Optional) Ticket priority. One of: `low`, `normal`, `high`, `urgent`. Defaults to `normal`. Mutable without forcing a new resource. Use `urgent` only for production-down incidents.
+- `priority` - (Optional, Forces new resource) Ticket priority. One of: `low`, `normal`, `high`, `urgent`. Defaults to `normal`. The platform may cap it to the maximum allowed by your support plan. Use `urgent` only for production-down incidents.
 
 ## Attributes Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 - `id` - The UUID of the support ticket.
-- `status` - Current status. Possible values: `open`, `in_progress`, `waiting`, `resolved`, `closed`.
-- `ticket_number` - Human-readable ticket reference (e.g. `TKT-00247`). Use this when communicating with the support team.
+- `status` - Current status. Possible values: `open`, `pending_customer`, `pending_admin`, `resolved`, `closed`.
 - `created_at` - Timestamp when the ticket was created (RFC3339).
 
 ## Import

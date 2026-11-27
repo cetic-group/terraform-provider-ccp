@@ -1,8 +1,9 @@
 // Package vnetfirewallrule implements the ccp_vnet_firewall_rule resource.
 //
 // Règle de firewall pour un VNet CETIC Cloud (isolation par instance).
-// Modifiable : enabled, position. Les autres champs (direction, action,
-// proto, CIDRs, dport) requièrent une recréation.
+// L'API n'a pas de mise à jour d'une règle : tout changement d'argument la
+// recrée, sauf `position`, appliquée à la création seulement (l'ordre se
+// règle ensuite dans la console).
 package vnetfirewallrule
 
 import (
@@ -11,10 +12,14 @@ import (
 	"strings"
 
 	"github.com/cetic-group/terraform-provider-ccp/internal/client"
+	ccpplanmodifier "github.com/cetic-group/terraform-provider-ccp/internal/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -24,6 +29,7 @@ var (
 	_ resource.Resource                = (*fwResource)(nil)
 	_ resource.ResourceWithConfigure   = (*fwResource)(nil)
 	_ resource.ResourceWithImportState = (*fwResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*fwResource)(nil)
 )
 
 func New() resource.Resource { return &fwResource{} }
@@ -64,18 +70,19 @@ func (r *fwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 			},
 			"direction": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "`in` ou `out`.",
+				MarkdownDescription: "`in`, `out` ou `forward`.",
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"action": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "`ACCEPT` ou `DROP`.",
+				MarkdownDescription: "`ACCEPT`, `DROP` ou `REJECT`.",
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"proto": schema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Protocole : `tcp`, `udp`, `icmp`.",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Optional: true,
+				MarkdownDescription: "Protocole : `tcp`, `udp`, `icmp`, `icmpv6`, `esp`, `ah`, `gre`. " +
+					"Omis = tous les protocoles (`any` est refusé par l'API).",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"source_cidr": schema.StringAttribute{
 				Optional:      true,
@@ -90,18 +97,34 @@ func (r *fwResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				MarkdownDescription: "Port de destination, ex : `80`, `443`, `8000-9000`.",
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			// L'API n'a pas de PATCH pour une règle (seuls création, suppression
+			// et réordonnancement existent) : changer `comment` ou `enabled`
+			// recrée la règle, comme les arguments de correspondance. Avant,
+			// Update appelait un PATCH inexistant et échouait
+			// (cetic-cloud-platform#2004). `position` fait exception (plus bas).
 			"comment": schema.StringAttribute{
-				Optional: true,
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"position": schema.Int64Attribute{
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Priorité de la règle (ordre d'évaluation croissant).",
-			},
-			"enabled": schema.BoolAttribute{
 				Optional: true,
 				Computed: true,
-				Default:  booldefault.StaticBool(true),
+				MarkdownDescription: "Priorité de la règle à la création (ordre d'évaluation croissant). " +
+					"Ensuite, l'ordre se règle dans la console (réordonnancement par pas de 10) : un écart " +
+					"est signalé, jamais par une recréation.",
+				// Pas de RequiresReplace : le réordonnancement de la console renumérote
+				// toutes les règles ; chaque règle à position fixée aurait été recréée
+				// au plan suivant (revue de terraform-provider-ccp#121).
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+					ccpplanmodifier.CreateOnlyInt64("position"),
+				},
+			},
+			"enabled": schema.BoolAttribute{
+				Optional:      true,
+				Computed:      true,
+				Default:       booldefault.StaticBool(true),
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
@@ -228,20 +251,10 @@ func (r *fwResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// Only enabled, position, and comment are mutable.
-	patch := map[string]any{
-		"enabled":  plan.Enabled.ValueBool(),
-		"position": int(plan.Position.ValueInt64()),
-	}
-	if !plan.Comment.IsNull() && !plan.Comment.IsUnknown() {
-		patch["comment"] = plan.Comment.ValueString()
-	}
-	rule, err := r.client.UpdateVnetFirewallRule(ctx, state.VnetID.ValueString(), state.ID.ValueString(), patch)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update VNet firewall rule", err.Error())
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, stateFrom(rule))...)
+	// Every user-settable attribute forces replacement: the API has no PATCH
+	// for a rule. Update is only reached for computed-only changes; keep the
+	// plan.
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *fwResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -268,4 +281,54 @@ func (r *fwResource) ImportState(ctx context.Context, req resource.ImportStateRe
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("vnet_id"), parts[0])...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+}
+
+// ModifyPlan avertit quand un remplacement est prévu et que la nouvelle règle
+// ne reprendra pas la position actuelle : un remplacement repart d'un état nul,
+// `CreateOnlyInt64` ne s'applique plus, et la règle reçoit la `position`
+// configurée (ou celle de l'API si elle est omise). Une règle que la console
+// avait mise en 30 reviendrait en 1 pour un simple changement de commentaire,
+// et l'ordre d'évaluation du VNet changerait sans que le plan l'annonce (revue
+// de terraform-provider-ccp#121).
+func (r *fwResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan, state, config fwModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() || !remplacementPrevu(plan, state) {
+		return
+	}
+	if state.Position.IsNull() || state.Position.IsUnknown() || config.Position.IsUnknown() {
+		return
+	}
+	if config.Position.Equal(state.Position) {
+		return
+	}
+	cible := "the position assigned by the platform"
+	if !config.Position.IsNull() {
+		cible = fmt.Sprintf("position %d (configured)", config.Position.ValueInt64())
+	}
+	resp.Diagnostics.AddAttributeWarning(path.Root("position"), "Replacement changes the rule order",
+		fmt.Sprintf("This rule is replaced, and the new rule gets %s instead of its current position %d: "+
+			"the evaluation order of the VNet rules changes. Set position = %d to keep it.",
+			cible, state.Position.ValueInt64(), state.Position.ValueInt64()))
+}
+
+// remplacementPrevu : vrai si un attribut `RequiresReplace` change. Le
+// framework (v1.13) passe `resp.RequiresReplace` vide au ModifyPlan de la
+// ressource : la comparaison est faite ici.
+func remplacementPrevu(plan, state fwModel) bool {
+	for _, c := range [][2]attr.Value{
+		{plan.VnetID, state.VnetID}, {plan.Direction, state.Direction}, {plan.Action, state.Action},
+		{plan.Proto, state.Proto}, {plan.SourceCIDR, state.SourceCIDR}, {plan.DestCIDR, state.DestCIDR},
+		{plan.Dport, state.Dport}, {plan.Comment, state.Comment}, {plan.Enabled, state.Enabled},
+	} {
+		if c[0].IsUnknown() || !c[0].Equal(c[1]) {
+			return true
+		}
+	}
+	return false
 }

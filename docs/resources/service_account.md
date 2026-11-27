@@ -25,8 +25,8 @@ model maps poorly to it — taint or `terraform apply -replace` are the
 idiomatic answers.
 
 ~> **`name` / `description` are mutable in place.** Terraform issues a
-`PATCH` rather than a replace when these change. `expires_at` is not
-mutable in place — change it by recreating the resource.
+`PATCH` rather than a replace when these change. Changing `expires_at`
+replaces the service account (a new token is issued).
 
 ## Example Usage
 
@@ -66,8 +66,14 @@ output "ci_sa_token" {
 ### Optional
 
 - `description` - (Optional) Free-form description (max 512 chars).
-- `expires_at` - (Optional) RFC 3339 timestamp after which the token is
-  rejected by the API. Omit for no expiry.
+- `expires_at` - (Optional, Forces new resource) RFC 3339 timestamp after
+  which the token is rejected by the API. Omit for no expiry. The API counts
+  whole days, so the effective expiry may differ by up to one day, a
+  difference Terraform ignores (also for states written by older provider
+  versions). `timeadd(timestamp(), "720h")` changes at every plan and
+  replaces the account (new token) at every apply: use `time_static` or
+  `time_offset` (provider `hashicorp/time`) for a stable value, or
+  `lifecycle { ignore_changes = [expires_at] }`.
 
 ## Attributes Reference
 
